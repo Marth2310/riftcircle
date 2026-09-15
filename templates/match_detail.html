@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ champion }} - Postgame</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-1: #140b2e;
+    --bg-2: #0a1730;
+    --panel: #1b1440;
+    --panel-2: #17132f;
+    --border: rgba(150, 130, 240, 0.18);
+    --text: #ece9f9;
+    --muted: #a79fcf;
+    --accent: #8b6cf5;
+    --accent2: #4f8cff;
+    --win: #34d399;
+    --loss: #f76c8a;
+    --gold: #d4af6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%) fixed;
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 28px 16px 56px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+
+  .back-link {
+    display: inline-block;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+  .back-link:hover { color: var(--text); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+  }
+
+  .head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .head img.champ { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--border); }
+  .head .champ-name { font-size: 1.25rem; font-weight: 700; }
+  .head .meta { color: var(--muted); font-size: 0.85rem; }
+  .result-badge { margin-left: auto; padding: 5px 16px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+  .result-badge.win { background: rgba(52, 211, 153, 0.15); color: var(--win); }
+  .result-badge.loss { background: rgba(247, 108, 138, 0.15); color: var(--loss); }
+
+  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 18px; }
+  .stat-row .stat .value { font-size: 1.2rem; font-weight: 700; }
+  .stat-row .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  h2 { font-size: 0.95rem; margin: 0 0 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* Items */
+  .item-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .item-slot {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .item-slot img { width: 100%; height: 100%; }
+  .item-gap { width: 10px; }
+
+  /* Item-Baupfad - kompakte, durchgehende Zeile mit Pfeilen zum jeweils nächsten Item */
+  .build-row { display: flex; align-items: flex-end; gap: 3px; flex-wrap: wrap; }
+  .build-step { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .build-step .build-icon {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .build-step .build-icon img { width: 100%; height: 100%; }
+  .build-step .zeit { font-size: 0.6rem; color: var(--muted); }
+  .build-arrow { color: var(--accent); font-size: 0.75rem; padding-bottom: 12px; }
+
+  /* Runen - Baumansicht wie im Client */
+  .rune-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .rune-col-title { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; }
+  .rune-col-title img { width: 26px; height: 26px; }
+  .rune-row { display: flex; gap: 14px; margin-bottom: 14px; }
+  .rune-icon-wrap {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    opacity: 0.35;
+    filter: grayscale(70%);
+  }
+  .rune-icon-wrap img { width: 65%; height: 65%; }
+  .rune-icon-wrap.selected {
+    opacity: 1;
+    filter: none;
+    border-color: var(--gold);
+    background: radial-gradient(circle, rgba(212, 175, 106, 0.25), transparent 70%);
+    box-shadow: 0 0 10px rgba(212, 175, 106, 0.5);
+  }
+  .rune-row.keystones .rune-icon-wrap { width: 54px; height: 54px; }
+  .rune-row.keystones .rune-icon-wrap img { width: 75%; height: 75%; }
+
+  .stat-shards-title { font-size: 0.8rem; color: var(--muted); margin: 18px 0 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .stat-shard-row { display: flex; gap: 10px; margin-bottom: 8px; }
+  .stat-shard-row .rune-icon-wrap { width: 28px; height: 28px; border-radius: 6px; }
+
+  /* Map */
+  .map-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .map-marker {
+    position: absolute;
+    width: 14px; height: 14px;
+    background: var(--loss);
+    border: 2px solid #1b1440;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(247, 108, 138, 0.7);
+  }
+  .map-legend { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 10px; }
+
+  /* Team-Aufstellung */
+  .team-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .team-col-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .team-col-title.blue { color: var(--accent2); }
+  .team-col-title.red { color: var(--loss); }
+  .player-row {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .player-row:hover { background: var(--panel-2); }
+  .player-row.you { border: 1px solid var(--accent); }
+  .player-row-top { display: flex; align-items: center; gap: 10px; }
+  .player-row img.p-champ { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+  .player-row .p-name { font-size: 0.85rem; font-weight: 600; }
+  .player-row .p-kda { margin-left: auto; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+  .player-row-bottom { display: flex; align-items: center; gap: 10px; padding-left: 44px; flex-wrap: wrap; }
+  .p-runes { display: flex; align-items: center; }
+  .p-rune {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    background: var(--panel-2);
+    padding: 2px;
+  }
+  .p-rune-sub {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    padding: 2px;
+    margin-left: -6px;
+    box-shadow: 0 0 0 2px var(--panel);
+  }
+  .p-items { display: flex; gap: 3px; }
+  .p-item-slot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .p-item-slot img { width: 100%; height: 100%; }
+
+  /* Lane-Vergleich */
+  .vs-header { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 20px; }
+  .vs-side { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100px; }
+  .vs-side img { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--border); }
+  .vs-side.mine img { border-color: var(--accent2); }
+  .vs-side.gegner img { border-color: var(--loss); }
+  .vs-side .vs-name { font-size: 0.8rem; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px; }
+  .vs-label { color: var(--muted); font-size: 0.75rem; font-weight: 700; }
+
+  .vs-stat-row { display: grid; grid-template-columns: 56px 1fr 92px 1fr 56px; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .vs-stat-value { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-align: center; white-space: nowrap; }
+  .vs-stat-value.lead { color: var(--text); font-weight: 700; }
+  .vs-stat-label { text-align: center; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .vs-bar-track { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; display: flex; }
+  .vs-bar-track.mine { justify-content: flex-end; }
+  .vs-bar-fill { height: 100%; background: var(--accent2); }
+  .vs-bar-fill.gegner { background: var(--loss); }
+  .vs-bar-fill.lead { background: var(--win); }
+
+  .gold-chart-wrap { margin-top: 22px; height: 200px; }
+  .gold-chart-legend { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.75rem; color: var(--muted); }
+  .gold-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  .empty { color: var(--muted); padding: 12px 0; font-size: 0.9rem; }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 6, 20, 0.85);
+    backdrop-filter: blur(2px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 1000;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text); font-size: 0.95rem; text-align: center; max-width: 320px; padding: 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Lädt...</div>
+</div>
+
+<div class="wrap">
+
+  <a class="back-link" href="{{ url_for('index', riot_id = riot_name ~ '#' ~ riot_tag) }}">&larr; Zurück zu {{ riot_name }}#{{ riot_tag }}</a>
+
+  <div class="panel">
+    <div class="head">
+      <img class="champ" src="{{ champion_icon }}" alt="{{ champion }}">
+      <div>
+        <div class="champ-name">{{ champion }}</div>
+        <div class="meta">{{ role or "ARAM" }}</div>
+      </div>
+      <span class="result-badge {{ 'win' if win else 'loss' }}">{{ "Sieg" if win else "Niederlage" }}</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="value">{{ kills }}/{{ deaths }}/{{ assists }}</div>
+        <div class="label">KDA ({{ "%.2f"|format(kda) }})</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ cs }}</div>
+        <div class="label">CS ({{ "%.1f"|format(cs_per_min) }}/min)</div>
+      </div>
+      <div class="stat">
+        <div class="value">{{ vision }}</div>
+        <div class="label">Vision ({{ "%.2f"|format(vision_per_min) }}/min)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Finale Items</h2>
+    <div class="item-row">
+      {% for icon in item_slots[:6] %}
+        <div class="item-slot">{% if icon %}<img src="{{ icon }}" alt="Item" loading="lazy">{% endif %}</div>
+      {% endfor %}
+      <div class="item-gap"></div>
+      <div class="item-slot">{% if item_slots[6] %}<img src="{{ item_slots[6] }}" alt="Trinket" loading="lazy">{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Item-Baupfad</h2>
+    {% if item_build %}
+    <div class="build-row">
+      {% for step in item_build %}
+        {% if not loop.first %}<span class="build-arrow">&rarr;</span>{% endif %}
+        <div class="build-step">
+          <div class="build-icon"><img src="{{ step.icon }}" alt="" loading="lazy"></div>
+          <span class="zeit">{{ step.zeit }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Kein Kaufverlauf verfügbar.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Team-Aufstellung</h2>
+    {% if teams %}
+    <div class="team-cols">
+      <div>
+        <div class="team-col-title blue">Blaue Seite</div>
+        {% for p in teams["100"] %}
+        <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
+           href="{{ url_for('index', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
+          <div class="player-row-top">
+            <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
+            <span class="p-name">{{ p.riot_name }}</span>
+            <span class="p-kda">{{ p.kills }}/{{ p.deaths }}/{{ p.assists }}</span>
+          </div>
+          <div class="player-row-bottom">
+            <div class="p-runes">
+              {% if p.keystone_icon %}<img class="p-rune" src="{{ p.keystone_icon }}" alt="">{% endif %}
+              {% if p.secondary_icon %}<img class="p-rune-sub" src="{{ p.secondary_icon }}" alt="">{% endif %}
+            </div>
+            <div class="p-items">
+              {% for icon in p.item_icons %}
+              <div class="p-item-slot">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      <div>
+        <div class="team-col-title red">Rote Seite</div>
+        {% for p in teams["200"] %}
+        <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
+           href="{{ url_for('index', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
+          <div class="player-row-top">
+            <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
+            <span class="p-name">{{ p.riot_name }}</span>
+            <span class="p-kda">{{ p.kills }}/{{ p.deaths }}/{{ p.assists }}</span>
+          </div>
+          <div class="player-row-bottom">
+            <div class="p-runes">
+              {% if p.keystone_icon %}<img class="p-rune" src="{{ p.keystone_icon }}" alt="">{% endif %}
+              {% if p.secondary_icon %}<img class="p-rune-sub" src="{{ p.secondary_icon }}" alt="">{% endif %}
+            </div>
+            <div class="p-items">
+              {% for icon in p.item_icons %}
+              <div class="p-item-slot">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+              {% endfor %}
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">Team-Aufstellung konnte nicht geladen werden.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Lane-Vergleich</h2>
+    {% if lane_vergleich %}
+    <div class="vs-header">
+      <div class="vs-side mine">
+        <img src="{{ champion_icon }}" alt="{{ champion }}">
+        <span class="vs-name">{{ riot_name }}</span>
+      </div>
+      <span class="vs-label">VS</span>
+      <div class="vs-side gegner">
+        <img src="{{ lane_vergleich.gegner.champion_icon }}" alt="{{ lane_vergleich.gegner.champion }}">
+        <span class="vs-name">{{ lane_vergleich.gegner.riot_name }}</span>
+      </div>
+    </div>
+
+    {% for s in lane_vergleich.stats %}
+    <div class="vs-stat-row">
+      <span class="vs-stat-value {{ 'lead' if s.mein_besser else '' }}">{{ s.mein_text }}</span>
+      <div class="vs-bar-track mine">
+        <div class="vs-bar-fill {{ 'lead' if s.mein_besser else '' }}" style="width: {{ s.mein_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-label">{{ s.label }}</span>
+      <div class="vs-bar-track">
+        <div class="vs-bar-fill gegner {{ 'lead' if not s.mein_besser else '' }}" style="width: {{ 100 - s.mein_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-value {{ 'lead' if not s.mein_besser else '' }}">{{ s.gegner_text }}</span>
+    </div>
+    {% endfor %}
+
+    {% if lane_vergleich.gold_verlauf %}
+    <div class="gold-chart-wrap">
+      <canvas id="goldChart"></canvas>
+    </div>
+    <div class="gold-chart-legend">
+      <span><span class="legend-dot" style="background: var(--win);"></span>Gold-Vorsprung</span>
+      <span><span class="legend-dot" style="background: var(--loss);"></span>Gold-Rückstand</span>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="empty">Kein Lane-Gegner gefunden (z.B. bei ARAM ohne feste Rollen).</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Runen</h2>
+    {% if runen %}
+    <div class="rune-cols">
+      <div>
+        <div class="rune-col-title">
+          <img src="{{ runen.primary_icon }}" alt="">
+          {{ runen.primary_name }}
+        </div>
+        {% for row in runen.primary_rows %}
+        <div class="rune-row {{ 'keystones' if loop.first else '' }}">
+          {% for r in row %}
+          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
+            <img src="{{ r.icon }}" alt="{{ r.name }}">
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div>
+        <div class="rune-col-title">
+          <img src="{{ runen.secondary_icon }}" alt="">
+          {{ runen.secondary_name }}
+        </div>
+        {% for row in runen.secondary_rows %}
+        <div class="rune-row">
+          {% for r in row %}
+          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
+            <img src="{{ r.icon }}" alt="{{ r.name }}">
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+
+        <div class="stat-shards-title">Stat-Shards</div>
+        {% for row in runen.stat_rows %}
+        <div class="stat-shard-row">
+          {% for r in row %}
+          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
+            {% if r.icon %}<img src="{{ r.icon }}" alt="{{ r.name }}">{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">Runen-Daten liegen für dieses Spiel noch nicht vor. Suche das Profil erneut, um sie nachzuladen.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Todes-Orte auf der Karte</h2>
+    {% if todesmarker %}
+    <div class="map-wrap">
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <rect width="100" height="100" fill="#100a24"/>
+
+        <!-- Jungle-Quadranten -->
+        <polygon points="8,92 8,8 50,50" fill="#1c1640" opacity="0.7"/>
+        <polygon points="92,8 8,8 50,50" fill="#152850" opacity="0.6"/>
+        <polygon points="92,8 92,92 50,50" fill="#1c1640" opacity="0.7"/>
+        <polygon points="8,92 92,92 50,50" fill="#152850" opacity="0.6"/>
+
+        <!-- Fluss -->
+        <line x1="2" y1="2" x2="98" y2="98" stroke="#2f5f8f" stroke-width="10" opacity="0.55" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="6" fill="#2f6b95" opacity="0.7"/>
+        <circle cx="84" cy="84" r="6" fill="#2f6b95" opacity="0.7"/>
+
+        <!-- Lanes -->
+        <polyline points="8,92 8,8 92,8" fill="none" stroke="#4a4570" stroke-width="3.5" opacity="0.9"/>
+        <polyline points="8,92 92,92 92,8" fill="none" stroke="#4a4570" stroke-width="3.5" opacity="0.9"/>
+        <line x1="8" y1="92" x2="92" y2="8" stroke="#4a4570" stroke-width="3.5" opacity="0.9"/>
+
+        <!-- Basen -->
+        <rect x="2" y="86" width="12" height="12" rx="3" fill="#4f8cff" opacity="0.9"/>
+        <rect x="86" y="2" width="12" height="12" rx="3" fill="#f76c8a" opacity="0.9"/>
+      </svg>
+      {% for m in todesmarker %}
+      <div class="map-marker" style="left: {{ m.x }}%; top: {{ m.y }}%;" title="Tod bei {{ m.zeit }}"></div>
+      {% endfor %}
+    </div>
+    <div class="map-legend">{{ todesmarker|length }} Tod{{ "e" if todesmarker|length != 1 else "" }} - schematische Karte, Punkt = Todesort (Hover für Zeit)</div>
+    {% else %}
+    <p class="empty">Keine Tode in diesem Spiel, oder die Timeline-Daten waren nicht verfügbar.</p>
+    {% endif %}
+  </div>
+
+
+</div>
+
+<script>
+  (function () {
+    var overlay = document.getElementById("loadingOverlay");
+    var text = document.getElementById("loadingText");
+
+    function showLoading(msg) {
+      text.textContent = msg;
+      overlay.classList.add("active");
+    }
+
+    document.querySelectorAll(".back-link, .player-row").forEach(function (a) {
+      a.addEventListener("click", function () {
+        showLoading("Profil wird geladen...");
+      });
+    });
+  })();
+</script>
+
+{% if lane_vergleich and lane_vergleich.gold_verlauf %}
+<script>
+  (function () {
+    var minuten = {{ lane_vergleich.gold_verlauf | map(attribute="minute") | list | tojson }};
+    var diffs = {{ lane_vergleich.gold_verlauf | map(attribute="diff") | list | tojson }};
+
+    Chart.defaults.color = "#a79fcf";
+    Chart.defaults.borderColor = "rgba(150, 130, 240, 0.15)";
+    Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+    new Chart(document.getElementById("goldChart"), {
+      type: "line",
+      data: {
+        labels: minuten.map(function (m) { return m + "min"; }),
+        datasets: [{
+          data: diffs,
+          borderColor: "#4f8cff",
+          backgroundColor: "rgba(79, 140, 255, 0.12)",
+          segment: {
+            borderColor: function (ctx) {
+              var a = ctx.p0.parsed.y, b = ctx.p1.parsed.y;
+              if (a >= 0 && b >= 0) return "#34d399";
+              if (a < 0 && b < 0) return "#f76c8a";
+              return "#a79fcf";
+            },
+          },
+          fill: "origin",
+          pointRadius: 0,
+          tension: 0.25,
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8 } },
+          y: {
+            ticks: { callback: function (v) { return (v / 1000).toFixed(0) + "k"; } },
+            grid: { color: function (ctx) { return ctx.tick.value === 0 ? "rgba(255,255,255,0.35)" : "rgba(150,130,240,0.1)"; } },
+          },
+        },
+      },
+    });
+  })();
+</script>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoL Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-1: #140b2e;
+    --bg-2: #0a1730;
+    --panel: #1b1440;
+    --panel-2: #17132f;
+    --border: rgba(150, 130, 240, 0.18);
+    --text: #ece9f9;
+    --muted: #a79fcf;
+    --accent: #8b6cf5;
+    --accent2: #4f8cff;
+    --win: #34d399;
+    --loss: #f76c8a;
+    --gold: #d4af6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%) fixed;
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 28px 16px 56px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .brand {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .profile {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  .profile img.icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 4px rgba(139, 108, 245, 0.15);
+  }
+  .profile h1 { font-size: 1.4rem; margin: 0; }
+  .profile .tag { color: var(--muted); font-weight: 400; }
+  .rank-badge {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #0a0818;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .card, .chart-card, .problem {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+  }
+  .card { padding: 14px 16px; }
+  .card .value { font-size: 1.5rem; font-weight: 600; }
+  .card .label { color: var(--muted); font-size: 0.8rem; }
+  .win-value { color: var(--win); }
+  .loss-value { color: var(--loss); }
+
+  h2 { font-size: 1.05rem; margin: 28px 0 12px; color: var(--text); }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .chart-card { padding: 16px; }
+  .chart-card .chart-title { color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .chart-card canvas { max-height: 220px; }
+
+  .match-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .match-row {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 22px;
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .match-row:hover { transform: translateY(-2px); }
+  .match-row.win { border-left-color: var(--win); }
+  .match-row.loss { border-left-color: var(--loss); }
+  .match-row::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 18%;
+    opacity: 0.20;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 30%, transparent 78%);
+    mask-image: linear-gradient(to right, #000 0%, #000 30%, transparent 78%);
+    pointer-events: none;
+  }
+  .match-row > * { position: relative; }
+
+  .match-meta { width: 108px; flex-shrink: 0; }
+  .match-meta .result { font-weight: 700; font-size: 0.95rem; }
+  .match-row.win .match-meta .result { color: var(--win); }
+  .match-row.loss .match-meta .result { color: var(--loss); }
+  .match-meta .zeit, .match-meta .dauer { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
+
+  /* Champion + Halbkreis-Bogen aus Ring-Diagrammen (von oben nach unten kaskadierend) */
+  .champ-arc-wrap { width: 175px; flex-shrink: 0; }
+  .champ-top { display: flex; align-items: center; gap: 10px; height: 54px; }
+  .champ-portrait-wrap { position: relative; flex-shrink: 0; }
+  .champ-portrait { width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--accent); display: block; }
+  .champ-level {
+    position: absolute; bottom: -3px; right: -3px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.65rem; font-weight: 700;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .champ-name { font-size: 0.85rem; font-weight: 600; }
+  .champ-role { color: var(--muted); font-size: 0.72rem; }
+
+  .ring-arc { position: relative; height: 235px; margin-top: 6px; }
+  .ring-arc-item {
+    position: absolute;
+    transform: translateY(-50%);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ring-sm {
+    --pct: 0;
+    --ring-color: var(--accent);
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255, 255, 255, 0.08) 0);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .ring-sm::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--panel); }
+  .ring-sm span { position: relative; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+  .ring-label-sm { color: var(--muted); font-size: 0.66rem; line-height: 1.2; max-width: 68px; }
+
+  /* KDA */
+  .kda-block { flex-shrink: 0; min-width: 100px; }
+  .kda-numbers { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
+  .kda-numbers .deaths { color: var(--loss); }
+  .kda-ratio { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
+
+  /* Damage-Rang + Gold-Diff zum Lane-Gegner + Runen */
+  .impact-block { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; min-width: 140px; }
+  .rune-mini-row { display: flex; align-items: center; }
+  .rune-mini {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--gold, #d4af6a);
+    background: var(--panel-2);
+    padding: 2px;
+  }
+  .rune-mini-sub {
+    width: 18px; height: 18px;
+    border: 1px solid var(--border);
+    margin-left: -6px;
+    box-shadow: 0 0 0 2px var(--panel);
+  }
+  .dmg-rank-badge {
+    display: inline-flex; align-items: baseline; gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--muted);
+    width: fit-content;
+    white-space: nowrap;
+  }
+  .dmg-rank-badge strong { color: var(--text); font-size: 0.8rem; }
+  .dmg-rank-badge.top3 { border-color: var(--gold, #d4af6a); }
+  .dmg-rank-badge.top3 strong { color: var(--gold, #d4af6a); }
+  .gold-line { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; white-space: nowrap; }
+  .gold-value { font-weight: 600; }
+  .gold-diff { font-size: 0.74rem; font-weight: 700; }
+  .gold-diff.positive { color: var(--win); }
+  .gold-diff.negative { color: var(--loss); }
+
+  /* Items */
+  .item-row-sm { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-left: auto; }
+  .item-slot-sm {
+    width: 34px; height: 34px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .item-slot-sm img { width: 100%; height: 100%; }
+  .item-gap-sm { width: 6px; }
+
+  @media (max-width: 720px) {
+    .match-row { flex-direction: column; align-items: flex-start; }
+    .item-row-sm { margin-left: 0; }
+  }
+
+  .problem {
+    border-left: 3px solid var(--accent);
+    padding: 14px 18px;
+    margin-bottom: 12px;
+  }
+  .problem .headline { font-weight: 600; margin-bottom: 4px; }
+  .problem .stat { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
+  .problem .tipp { font-size: 0.9rem; }
+  .problem .tipp::before { content: "→ "; color: var(--accent2); }
+
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+
+  .search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-bar input[type="text"] {
+    flex: 1; min-width: 200px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-bar button {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #0a0818;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .known-players { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .known-players a {
+    text-decoration: none;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+  .known-players a:hover { color: var(--text); border-color: var(--accent); }
+  .error-msg {
+    background: rgba(247, 108, 138, 0.12);
+    border: 1px solid var(--loss);
+    color: var(--loss);
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 6, 20, 0.85);
+    backdrop-filter: blur(2px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 1000;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text); font-size: 0.95rem; text-align: center; max-width: 320px; padding: 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Lädt...</div>
+</div>
+
+<div class="wrap">
+
+  <div class="brand">LoL Analytics</div>
+
+  <form class="search-bar" method="get" action="/">
+    <input type="text" name="riot_id" placeholder="Summoner suchen: Name#Tag (nur Name = Versuch mit #EUW)" value="{{ riot_id_input }}">
+    <button type="submit">Suchen</button>
+  </form>
+
+  {% if fehler %}
+    <div class="error-msg">{{ fehler }}</div>
+  {% endif %}
+
+  {% if bekannte_spieler %}
+  <div class="known-players">
+    {% for sp in bekannte_spieler %}
+      <a href="{{ url_for('index', riot_id = sp.name ~ '#' ~ sp.tag) }}">{{ sp.name }}#{{ sp.tag }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% if kein_spieler %}
+  {% if not fehler %}
+    <p class="empty">Noch kein Profil gespeichert. Suche oben nach einem Summoner (Name#Tag).</p>
+  {% endif %}
+{% else %}
+
+  <div class="profile">
+    {% if summoner_icon %}<img class="icon" src="{{ summoner_icon }}" alt="Summoner Icon">{% endif %}
+    <div>
+      <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>
+      <span class="rank-badge">{{ rang }}</span>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="value win-value">{{ siege }}</div>
+      <div class="label">Siege</div>
+    </div>
+    <div class="card">
+      <div class="value loss-value">{{ niederlagen }}</div>
+      <div class="label">Niederlagen</div>
+    </div>
+    <div class="card">
+      <div class="value">{{ "%.0f"|format(siege / anzahl_spiele * 100) if anzahl_spiele else 0 }}%</div>
+      <div class="label">Winrate</div>
+    </div>
+    <div class="card">
+      <div class="value">{{ anzahl_spiele }}</div>
+      <div class="label">Spiele analysiert</div>
+    </div>
+  </div>
+
+  <h2>Übersicht</h2>
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="chart-title">Sieg / Niederlage</div>
+      <canvas id="winrateChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">KDA-Verlauf (chronologisch)</div>
+      <canvas id="kdaChart"></canvas>
+    </div>
+    {% if probleme %}
+    <div class="chart-card">
+      <div class="chart-title">Richtwert erreicht (Ø, in %)</div>
+      <canvas id="problemeChart"></canvas>
+    </div>
+    {% endif %}
+  </div>
+
+  <h2>Deine größten Verbesserungsbereiche</h2>
+  {% if probleme %}
+    {% for p in probleme %}
+    <div class="problem">
+      <div class="headline">{{ p.label }} &mdash; in {{ p.unter_anzahl }}/{{ p.total }} Spielen unter Richtwert</div>
+      <div class="stat">Schnitt {{ p.avg_wert }} statt {{ p.avg_richtwert }} ({{ p.erreicht_prozent }}% vom Richtwert)</div>
+      <div class="tipp">{{ p.tipp }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty">Keine konsistenten Schwächen erkennbar – starke Serie!</p>
+  {% endif %}
+
+  <h2>Letzte Spiele</h2>
+  <div class="match-list">
+    {% for s in spiele %}
+    <a class="match-row {{ 'win' if s.win else 'loss' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">
+
+      <div class="match-meta">
+        <div class="result">{{ "Sieg" if s.win else "Niederlage" }}</div>
+        <div class="zeit">{{ s.zeit_text }}</div>
+        <div class="dauer">{{ s.duration_seconds // 60 }} Min. {{ s.duration_seconds % 60 }} Sek.</div>
+      </div>
+
+      <div class="champ-arc-wrap">
+        <div class="champ-top">
+          <div class="champ-portrait-wrap">
+            <img class="champ-portrait" src="{{ s.champion_icon }}" alt="{{ s.champion }}" loading="lazy">
+            {% if s.champ_level %}<span class="champ-level">{{ s.champ_level }}</span>{% endif %}
+          </div>
+          <div>
+            <div class="champ-name">{{ s.champion }}</div>
+            <div class="champ-role">{{ s.role or "ARAM" }}</div>
+          </div>
+        </div>
+        <div class="ring-arc">
+          {% for r in s.ringe %}
+          <div class="ring-arc-item" style="left: {{ r.bogen_x + 6 }}px; top: {{ r.bogen_y + 23 }}px;">
+            <div class="ring-sm" style="--pct: {{ r.pct }}; --ring-color: {{ 'var(--win)' if r.gut else 'var(--loss)' }};">
+              <span>{{ r.text }}</span>
+            </div>
+            <div class="ring-label-sm">{{ r.label }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="kda-block">
+        <div class="kda-numbers">{{ s.kills }} / <span class="deaths">{{ s.deaths }}</span> / {{ s.assists }}</div>
+        <div class="kda-ratio">{{ "%.2f"|format(s.kda) }}:1 KDA</div>
+      </div>
+
+      <div class="impact-block">
+        {% if s.keystone_icon or s.secondary_icon %}
+        <div class="rune-mini-row">
+          {% if s.keystone_icon %}<img class="rune-mini" src="{{ s.keystone_icon }}" alt="">{% endif %}
+          {% if s.secondary_icon %}<img class="rune-mini rune-mini-sub" src="{{ s.secondary_icon }}" alt="">{% endif %}
+        </div>
+        {% endif %}
+        {% if s.damage_dealt %}
+        <div class="dmg-rank-badge {{ 'top3' if s.damage_rank and s.damage_rank <= 3 else '' }}">
+          {{ "%.1f"|format(s.damage_dealt / 1000) }}k Damage
+          {% if s.damage_rank %}<strong>(#{{ s.damage_rank }}/10)</strong>{% endif %}
+        </div>
+        {% endif %}
+        {% if s.gold_earned %}
+        <div class="gold-line">
+          <span class="gold-value">{{ "%.1f"|format(s.gold_earned / 1000) }}k Gold</span>
+          {% if s.gold_diff is not none %}
+            {% if s.gold_diff >= 0 %}
+            <span class="gold-diff positive">&uarr; {{ "%.1f"|format(s.gold_diff / 1000) }}k</span>
+            {% else %}
+            <span class="gold-diff negative">&darr; {{ "%.1f"|format(-s.gold_diff / 1000) }}k</span>
+            {% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="item-row-sm">
+        {% for icon in s.item_icons[:6] %}
+        <div class="item-slot-sm">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+        {% endfor %}
+        <div class="item-gap-sm"></div>
+        <div class="item-slot-sm">{% if s.item_icons[6] %}<img src="{{ s.item_icons[6] }}" alt="" loading="lazy">{% endif %}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+<script>
+  Chart.defaults.color = "#a79fcf";
+  Chart.defaults.borderColor = "rgba(150, 130, 240, 0.15)";
+  Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+  new Chart(document.getElementById("winrateChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Siege", "Niederlagen"],
+      datasets: [{
+        data: [{{ siege }}, {{ niederlagen }}],
+        backgroundColor: ["#34d399", "#f76c8a"],
+        borderColor: "#1b1440",
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      plugins: { legend: { position: "bottom" } },
+    },
+  });
+
+  new Chart(document.getElementById("kdaChart"), {
+    type: "line",
+    data: {
+      labels: {{ kda_chart.labels | tojson }},
+      datasets: [{
+        label: "KDA",
+        data: {{ kda_chart.kda | tojson }},
+        borderColor: "#4f8cff",
+        backgroundColor: "rgba(79, 140, 255, 0.15)",
+        pointBackgroundColor: {{ kda_chart.farben | tojson }},
+        pointRadius: 4,
+        tension: 0.3,
+        fill: true,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 60, minRotation: 60 } },
+        y: { beginAtZero: true },
+      },
+    },
+  });
+
+  {% if probleme %}
+  new Chart(document.getElementById("problemeChart"), {
+    type: "bar",
+    data: {
+      labels: {{ probleme | map(attribute="label") | list | tojson }},
+      datasets: [{
+        label: "% vom Richtwert",
+        data: {{ probleme | map(attribute="erreicht_prozent") | list | tojson }},
+        backgroundColor: "#8b6cf5",
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: "y",
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, suggestedMax: 100 },
+      },
+    },
+  });
+  {% endif %}
+</script>
+
+{% endif %}
+
+</div>
+
+<script>
+  (function () {
+    var overlay = document.getElementById("loadingOverlay");
+    var text = document.getElementById("loadingText");
+
+    function showLoading(msg) {
+      text.textContent = msg;
+      overlay.classList.add("active");
+    }
+
+    var suchform = document.querySelector(".search-bar");
+    if (suchform) {
+      suchform.addEventListener("submit", function () {
+        showLoading(
+          "Profil wird synchronisiert - bei neuen Profilen oder neuen Spielen kann " +
+          "das wegen Riots Rate-Limit bis zu 30 Sekunden dauern..."
+        );
+      });
+    }
+
+    document.querySelectorAll(".known-players a").forEach(function (a) {
+      a.addEventListener("click", function () {
+        showLoading("Profil wird geladen...");
+      });
+    });
+
+    document.querySelectorAll(".match-row").forEach(function (a) {
+      a.addEventListener("click", function () {
+        showLoading("Spieldetails werden geladen...");
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

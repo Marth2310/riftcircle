@@ -1,0 +1,108 @@
+import os
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()  # liest die .env-Datei ein
+
+conn = psycopg2.connect(
+    host="localhost",
+    port=5432,
+    dbname="lolanalytics",
+    user="postgres",
+    password=os.environ["DB_PASSWORD"]
+)
+cur = conn.cursor()
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS players (
+    puuid TEXT PRIMARY KEY,
+    riot_name TEXT NOT NULL,
+    riot_tag TEXT NOT NULL,
+    discord_id TEXT
+);
+""")
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS matches (
+    match_id TEXT PRIMARY KEY,
+    played_at TIMESTAMP,
+    duration_seconds INTEGER,
+    patch TEXT,
+    team_lineup JSONB,
+    gold_timeline JSONB
+);
+""")
+
+cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_lineup JSONB;")
+cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS gold_timeline JSONB;")
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS participants (
+    id SERIAL PRIMARY KEY,
+    match_id TEXT REFERENCES matches(match_id),
+    puuid TEXT REFERENCES players(puuid),
+    champion TEXT,
+    role TEXT,
+    win BOOLEAN,
+    kills INTEGER,
+    deaths INTEGER,
+    assists INTEGER,
+    cs INTEGER,
+    vision_score INTEGER,
+    gold_earned INTEGER,
+    damage_dealt INTEGER,
+    damage_taken INTEGER,
+    kill_participation REAL,
+    damage_share REAL,
+    turret_takedowns INTEGER,
+    objectives_stolen INTEGER,
+    solo_kills INTEGER,
+    items JSONB,
+    perks JSONB,
+    death_positions JSONB,
+    item_timeline JSONB,
+    champ_level INTEGER,
+    damage_rank INTEGER,
+    gold_diff INTEGER,
+    UNIQUE (match_id, puuid)
+);
+""")
+
+# Für bereits bestehende Installationen: neue Spalten nachträglich ergänzen
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_dealt INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_taken INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS kill_participation REAL;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_share REAL;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS turret_takedowns INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS objectives_stolen INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS solo_kills INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS items JSONB;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS perks JSONB;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS death_positions JSONB;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS item_timeline JSONB;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS champ_level INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_rank INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS gold_diff INTEGER;")
+
+# Falls die Tabelle schon vor dem UNIQUE-Constraint existierte (CREATE TABLE IF NOT EXISTS
+# greift dann nicht mehr): eventuelle Duplikate bereinigen und Constraint nachträglich ergänzen.
+cur.execute("""
+    DELETE FROM participants a USING participants b
+    WHERE a.id > b.id AND a.match_id = b.match_id AND a.puuid = b.puuid;
+""")
+cur.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'participants_match_id_puuid_key'
+        ) THEN
+            ALTER TABLE participants ADD CONSTRAINT participants_match_id_puuid_key UNIQUE (match_id, puuid);
+        END IF;
+    END $$;
+""")
+
+conn.commit()
+cur.close()
+conn.close()
+
+print("Tabellen wurden erfolgreich erstellt!")
