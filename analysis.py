@@ -161,16 +161,59 @@ def aggregiere(alle_vergleiche):
             "total": total,
             "unter_anzahl": len(unter),
             "unter_quote": len(unter) / total,
+            "ueber_quote": 1 - (len(unter) / total),
             "avg_wert": avg_wert,
             "avg_richtwert": avg_richtwert,
             "rel_defizit": max(0.0, (avg_richtwert - avg_wert) / avg_richtwert) if avg_richtwert else 0,
+            "rel_ueberschuss": max(0.0, (avg_wert - avg_richtwert) / avg_richtwert) if avg_richtwert else 0,
         }
     return ergebnis
+
+
+def vergleichssatz(label, avg_wert, avg_richtwert, tier):
+    """Formuliert den Elo-Vergleich als Satz, z.B. 'Dein Vision Score liegt im Schnitt
+    12% über dem Diamond-Durchschnitt.' - direkt nutzbar als Kommentar/Tipp-Text."""
+    if not avg_richtwert:
+        return f"Dein {label} lässt sich aktuell nicht mit einem {tier.title()}-Richtwert vergleichen."
+    diff_pct = round((avg_wert - avg_richtwert) / avg_richtwert * 100)
+    if diff_pct >= 0:
+        return f"Dein {label} liegt im Schnitt {diff_pct}% über dem {tier.title()}-Durchschnitt."
+    return f"Dein {label} liegt im Schnitt {abs(diff_pct)}% unter dem {tier.title()}-Durchschnitt."
 
 
 # Feste Auswahl für die Ring-Diagramme je Match-Karte (Objective-Teilnahme/Damage-Share
 # werden dort stattdessen als kompakte Textzeile gezeigt, sonst wird die Karte zu voll)
 RING_KATEGORIEN = ["kda", "cs_per_min", "vision_per_min", "kill_participation"]
+
+# Notenskala S+ bis D-: Schwelle = Mittelwert der einzelnen Elo-Quotienten (wert/richtwert)
+# über die 4 Ring-Kategorien. 1.0 = genau Elo-Durchschnitt, entspricht "A".
+NOTEN_SKALA = [
+    (1.40, "S+"), (1.25, "S"), (1.15, "S-"),
+    (1.05, "A+"), (0.95, "A"), (0.85, "A-"),
+    (0.75, "B+"), (0.65, "B"), (0.55, "B-"),
+    (0.45, "C+"), (0.35, "C"), (0.25, "C-"),
+    (0.15, "D+"), (0.05, "D"),
+]
+
+
+def berechne_note(vergleich):
+    """Leitet aus den 4 Ring-Kategorien eine Gesamt-Note S+ bis D- ab: Mittelwert der
+    einzelnen Elo-Quotienten (wert/richtwert), pro Kategorie auf 200% gedeckelt, damit ein
+    einzelner Ausreißer (z.B. ein Pentakill-KDA) nicht allein die Note verzerrt."""
+    quotienten = []
+    for key in RING_KATEGORIEN:
+        if key not in vergleich:
+            continue
+        wert, richtwert = vergleich[key]
+        if richtwert:
+            quotienten.append(min(2.0, wert / richtwert))
+    if not quotienten:
+        return "?"
+    schnitt = sum(quotienten) / len(quotienten)
+    for schwelle, note in NOTEN_SKALA:
+        if schnitt >= schwelle:
+            return note
+    return "D-"
 
 
 def ringe_fuer_match(vergleich):
@@ -211,6 +254,19 @@ def top_probleme(alle_vergleiche, limit=3):
     prioritaet = sorted(
         (item for item in aggregiert.items() if item[1]["unter_anzahl"] > 0),
         key=lambda item: (item[1]["unter_quote"], item[1]["rel_defizit"]),
+        reverse=True,
+    )
+    return prioritaet[:limit]
+
+
+def top_staerken(alle_vergleiche, limit=3):
+    """Gegenstück zu top_probleme: die (bis zu) `limit` konsistentesten Stärken - Kategorien,
+    die am häufigsten über dem Elo-Richtwert liegen, priorisiert nach Häufigkeit, dann nach
+    relativem Überschuss."""
+    aggregiert = aggregiere(alle_vergleiche)
+    prioritaet = sorted(
+        (item for item in aggregiert.items() if item[1]["ueber_quote"] > 0.5),
+        key=lambda item: (item[1]["ueber_quote"], item[1]["rel_ueberschuss"]),
         reverse=True,
     )
     return prioritaet[:limit]

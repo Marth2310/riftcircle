@@ -71,7 +71,7 @@
     gap: 12px;
     margin-bottom: 24px;
   }
-  .card, .chart-card, .problem {
+  .card, .chart-card, .problem, .strength {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -155,6 +155,21 @@
   .champ-name { font-size: 0.85rem; font-weight: 600; }
   .champ-role { color: var(--muted); font-size: 0.72rem; }
 
+  .note-badge {
+    margin-left: auto;
+    padding: 3px 11px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .note-s { background: linear-gradient(135deg, #ffe08a, var(--gold, #d4af6a)); color: #3a2a06; box-shadow: 0 0 10px rgba(212, 175, 106, 0.5); }
+  .note-a { background: rgba(52, 211, 153, 0.18); color: var(--win); border: 1px solid var(--win); }
+  .note-b { background: rgba(79, 140, 255, 0.18); color: var(--accent2); border: 1px solid var(--accent2); }
+  .note-c { background: rgba(167, 159, 207, 0.18); color: var(--muted); border: 1px solid var(--border); }
+  .note-d { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
+
   .ring-arc { position: relative; height: 235px; margin-top: 6px; }
   .ring-arc-item {
     position: absolute;
@@ -234,13 +249,15 @@
     .item-row-sm { margin-left: 0; }
   }
 
-  .problem {
+  .problem, .strength {
     border-left: 3px solid var(--accent);
     padding: 14px 18px;
     margin-bottom: 12px;
   }
-  .problem .headline { font-weight: 600; margin-bottom: 4px; }
-  .problem .stat { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
+  .strength { border-left-color: var(--win); }
+  .problem .headline, .strength .headline { font-weight: 600; margin-bottom: 4px; }
+  .strength .headline { color: var(--win); }
+  .problem .stat, .strength .stat { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
   .problem .tipp { font-size: 0.9rem; }
   .problem .tipp::before { content: "→ "; color: var(--accent2); }
 
@@ -394,13 +411,25 @@
   {% if probleme %}
     {% for p in probleme %}
     <div class="problem">
-      <div class="headline">{{ p.label }} &mdash; in {{ p.unter_anzahl }}/{{ p.total }} Spielen unter Richtwert</div>
-      <div class="stat">Schnitt {{ p.avg_wert }} statt {{ p.avg_richtwert }} ({{ p.erreicht_prozent }}% vom Richtwert)</div>
+      <div class="headline">{{ p.satz }}</div>
+      <div class="stat">{{ p.label }}: in {{ p.unter_anzahl }}/{{ p.total }} Spielen unter Richtwert (Schnitt {{ p.avg_wert }} statt {{ p.avg_richtwert }}, {{ p.erreicht_prozent }}% vom Richtwert)</div>
       <div class="tipp">{{ p.tipp }}</div>
     </div>
     {% endfor %}
   {% else %}
     <p class="empty">Keine konsistenten Schwächen erkennbar – starke Serie!</p>
+  {% endif %}
+
+  <h2>Deine Stärken</h2>
+  {% if staerken %}
+    {% for s in staerken %}
+    <div class="strength">
+      <div class="headline">{{ s.satz }}</div>
+      <div class="stat">{{ s.label }}: in {{ s.ueber_anzahl }}/{{ s.total }} Spielen über Richtwert (Schnitt {{ s.avg_wert }} statt {{ s.avg_richtwert }}, {{ s.erreicht_prozent }}% vom Richtwert)</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="empty">Noch keine konsistente Stärke über mehrere Spiele erkennbar.</p>
   {% endif %}
 
   <h2>Letzte Spiele</h2>
@@ -424,6 +453,7 @@
             <div class="champ-name">{{ s.champion }}</div>
             <div class="champ-role">{{ s.role or "ARAM" }}</div>
           </div>
+          <div class="note-badge {{ s.note_klasse }}" title="Gesamt-Note aus KDA, CS/Min, Vision/Min und Kill-Participation">{{ s.note }}</div>
         </div>
         <div class="ring-arc">
           {% for r in s.ringe %}

@@ -1,16 +1,10 @@
-import os
-import psycopg2
 from dotenv import load_dotenv
+
+from db import get_connection
 
 load_dotenv()  # liest die .env-Datei ein
 
-conn = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    dbname="lolanalytics",
-    user="postgres",
-    password=os.environ["DB_PASSWORD"]
-)
+conn = get_connection()
 cur = conn.cursor()
 
 cur.execute("""
@@ -29,11 +23,13 @@ CREATE TABLE IF NOT EXISTS matches (
     duration_seconds INTEGER,
     patch TEXT,
     team_lineup JSONB,
-    gold_timeline JSONB
+    gold_timeline JSONB,
+    timeline_extra JSONB
 );
 """)
 
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_lineup JSONB;")
+cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS timeline_extra JSONB;")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS gold_timeline JSONB;")
 
 cur.execute("""

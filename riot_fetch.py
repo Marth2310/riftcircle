@@ -181,6 +181,8 @@ def fetch_match_teams(headers, match_id):
             "vision_score": p["visionScore"],
             "gold_earned": p["goldEarned"],
             "damage_dealt": p["totalDamageDealtToChampions"],
+            "damage_taken": p["totalDamageTaken"],
+            "wards_placed": p.get("wardsPlaced", 0),
         })
 
     for seite in teams.values():

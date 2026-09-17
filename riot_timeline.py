@@ -5,34 +5,70 @@ MAP_SIZE = 14820
 
 
 def fetch_timeline_events(headers, match_id, puuid):
-    """Ein Timeline-Call liefert Death-Positionen, Item-Kaufverlauf UND den minütlichen
-    Gold-Stand aller 10 Spieler zusammen (teurer Extra-Call, daher nur einmal pro Match und
-    danach in der DB gecacht statt mehrfach separat abgefragt).
-    Gibt (deaths, item_purchases, gold_timeline) zurück - gold_timeline ist eine Liste von
-    {"minute": int, "gold": {participant_id_als_string: gesamt_gold}} pro Frame."""
+    """Ein Timeline-Call liefert alles, was wir aus der Match-Timeline brauchen, zusammen
+    (teurer Extra-Call, daher nur einmal pro Match und danach in der DB gecacht statt
+    mehrfach separat abgefragt). Gibt ein Dict zurück:
+      - deaths: eigene Tode mit Position + killer_id (für Death-Map & Zeitstrahl)
+      - eigene_kills: eigene Kills (killerId = wir) mit Position + victim_id (für Zeitstrahl)
+      - items: eigener Item-Kaufverlauf
+      - gold_timeline: minütlicher Gold-Stand aller 10 Spieler (für den Lane-Vergleich)
+      - objective_kills: alle Drachen/Herald/Baron-Kills im Match (mit Position, für
+        Tod-vor-Objective-Analyse & Zeitstrahl)
+      - alle_tode: JEDER Champion-Tod im Match, nur victim_id+timestamp (für Teamfight-Erkennung)
+      - ward_platzierungen: jede WARD_PLACED im Match, nur creator_id+timestamp (Riot liefert
+        dafür KEINE Position - Wards können daher nur zeitlich, nicht räumlich verglichen werden)
+    None, falls der Call fehlschlägt oder der Spieler im Match nicht gefunden wird."""
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline"
     resp = requests.get(url, headers=headers)
     if resp.status_code != 200:
-        return [], [], []
+        return None
     data = resp.json()
 
     participants = data.get("info", {}).get("participants", [])
     participant_id = next((p["participantId"] for p in participants if p["puuid"] == puuid), None)
     if participant_id is None:
-        return [], [], []
+        return None
 
     deaths = []
+    eigene_kills = []
     items = []
     gold_timeline = []
+    objective_kills = []
+    alle_tode = []
+    ward_platzierungen = []
+
     for frame in data.get("info", {}).get("frames", []):
         for event in frame.get("events", []):
             etype = event.get("type")
-            if etype == "CHAMPION_KILL" and event.get("victimId") == participant_id:
+            timestamp = event.get("timestamp", 0)
+
+            if etype == "CHAMPION_KILL":
+                alle_tode.append({"victim_id": event.get("victimId"), "timestamp": timestamp})
                 pos = event.get("position")
-                if pos:
-                    deaths.append({"x": pos["x"], "y": pos["y"], "timestamp": event.get("timestamp", 0)})
+                if event.get("victimId") == participant_id and pos:
+                    deaths.append({
+                        "x": pos["x"], "y": pos["y"], "timestamp": timestamp,
+                        "killer_id": event.get("killerId"),
+                    })
+                if event.get("killerId") == participant_id and pos:
+                    eigene_kills.append({
+                        "x": pos["x"], "y": pos["y"], "timestamp": timestamp,
+                        "victim_id": event.get("victimId"),
+                    })
             elif etype == "ITEM_PURCHASED" and event.get("participantId") == participant_id:
-                items.append({"itemId": event.get("itemId"), "timestamp": event.get("timestamp", 0)})
+                items.append({"itemId": event.get("itemId"), "timestamp": timestamp})
+            elif etype == "ELITE_MONSTER_KILL":
+                pos = event.get("position")
+                objective_kills.append({
+                    "monster_type": event.get("monsterType"),
+                    "monster_sub_type": event.get("monsterSubType"),
+                    "killer_team_id": event.get("killerTeamId"),
+                    "timestamp": timestamp,
+                    "x": pos["x"] if pos else None,
+                    "y": pos["y"] if pos else None,
+                })
+            elif etype == "WARD_PLACED":
+                ward_platzierungen.append({"creator_id": event.get("creatorId"), "timestamp": timestamp})
 
         pf = frame.get("participantFrames", {})
         if pf:
@@ -41,7 +77,15 @@ def fetch_timeline_events(headers, match_id, puuid):
                 "gold": {pid: info.get("totalGold", 0) for pid, info in pf.items()},
             })
 
-    return deaths, items, gold_timeline
+    return {
+        "deaths": deaths,
+        "eigene_kills": eigene_kills,
+        "items": items,
+        "gold_timeline": gold_timeline,
+        "objective_kills": objective_kills,
+        "alle_tode": alle_tode,
+        "ward_platzierungen": ward_platzierungen,
+    }
 
 
 def death_position_percent(death):

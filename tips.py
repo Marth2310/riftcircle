@@ -1,5 +1,4 @@
 import os
-import psycopg2
 from dotenv import load_dotenv
 
 from analysis import (
@@ -12,15 +11,13 @@ from analysis import (
     top_probleme,
 )
 from benchmarks import normalize_tier
+from db import get_connection
 
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
 headers = {"X-Riot-Token": API_KEY}
 
-conn = psycopg2.connect(
-    host="localhost", port=5432, dbname="lolanalytics",
-    user="postgres", password=os.environ["DB_PASSWORD"]
-)
+conn = get_connection()
 cur = conn.cursor()
 
 

@@ -1,9 +1,9 @@
 import os
 import sys
 
-import psycopg2
 from dotenv import load_dotenv
 
+from db import get_connection
 from riot_fetch import SummonerNotFound, sync_player
 
 load_dotenv()
@@ -15,10 +15,7 @@ headers = {"X-Riot-Token": API_KEY}
 RIOT_NAME = sys.argv[1] if len(sys.argv) > 1 else os.environ["RIOT_NAME"]
 RIOT_TAG = sys.argv[2] if len(sys.argv) > 2 else os.environ["RIOT_TAG"]
 
-conn = psycopg2.connect(
-    host="localhost", port=5432, dbname="lolanalytics",
-    user="postgres", password=os.environ["DB_PASSWORD"]
-)
+conn = get_connection()
 cur = conn.cursor()
 
 try:

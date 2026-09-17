@@ -1,8 +1,21 @@
-# --- Elo-Richtwerte (Community-Schätzungen, grob orientiert an Aggregator-Seiten
-#     wie U.GG/OP.GG - keine offiziellen Riot-Daten, Werte können abweichen!) ---
-# Werte = ungefährer Durchschnitt pro Minute in dieser Elo
-LANE_BENCHMARKS = {  # TOP, MIDDLE, BOTTOM
-    "IRON": {"cs": 4.0, "vision": 0.45}, "BRONZE": {"cs": 4.3, "vision": 0.48},
+# --- Elo-Richtwerte ---
+# CS/Min: KEINE offiziellen Riot-Daten, aber konkret hergeleitet aus den öffentlich
+# publizierten Rangbereichen von https://boostingmarket.com/blogs/lol-cs-per-minute-by-rank/
+# (selbst eine Synthese aus U.GG/OP.GG/League-of-Graphs-Trackern) - je Range der Mittelwert.
+# Riot-eigene Leaderboards/League-of-Graphs selbst blocken automatisierte Abfragen, daher
+# keine Primärquelle direkt einsehbar; die Werte sind also weiterhin Community-Schätzungen,
+# jetzt aber an einer konkreten, strukturierten Quelle verankert statt frei geschätzt.
+# KDA/Vision/Kill-Participation: keine belastbare rang-spezifische Tabelle gefunden (die
+# großen Stat-Seiten veröffentlichen ihre Rohdaten nicht offen) - bleiben grobe, aber in
+# der Größenordnung plausible Richtwerte, steigend mit der Elo wie überall beobachtet.
+TOP_BENCHMARKS = {
+    "IRON": {"cs": 3.5, "vision": 0.45}, "BRONZE": {"cs": 4.5, "vision": 0.48},
+    "SILVER": {"cs": 4.8, "vision": 0.54}, "GOLD": {"cs": 5.8, "vision": 0.66},
+    "PLATINUM": {"cs": 6.3, "vision": 0.72}, "EMERALD": {"cs": 6.8, "vision": 0.77},
+    "DIAMOND": {"cs": 7.3, "vision": 0.85}, "MASTER": {"cs": 8.0, "vision": 0.90},
+}
+MID_ADC_BENCHMARKS = {  # MIDDLE, BOTTOM - höhere CS-Kurve als Top (mehr Farm-Fokus/Safety)
+    "IRON": {"cs": 3.5, "vision": 0.45}, "BRONZE": {"cs": 4.5, "vision": 0.48},
     "SILVER": {"cs": 5.3, "vision": 0.54}, "GOLD": {"cs": 6.3, "vision": 0.66},
     "PLATINUM": {"cs": 7.3, "vision": 0.72}, "EMERALD": {"cs": 7.8, "vision": 0.77},
     "DIAMOND": {"cs": 8.3, "vision": 0.85}, "MASTER": {"cs": 9.0, "vision": 0.90},
@@ -42,8 +55,10 @@ def table_for_role(role):
     """Liefert die passende Rollen-Benchmark-Tabelle, oder None (z.B. ARAM)."""
     if role == "JUNGLE":
         return JUNGLE_BENCHMARKS
-    if role in ("TOP", "MIDDLE", "BOTTOM"):
-        return LANE_BENCHMARKS
+    if role == "TOP":
+        return TOP_BENCHMARKS
+    if role in ("MIDDLE", "BOTTOM"):
+        return MID_ADC_BENCHMARKS
     if role == "UTILITY":
         return SUPPORT_BENCHMARKS
     return None
