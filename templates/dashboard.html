@@ -5,39 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RiftCircle</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-  :root {
-    --bg-1: #140b2e;
-    --bg-2: #0a1730;
-    --panel: #1b1440;
-    --panel-2: #17132f;
-    --border: rgba(150, 130, 240, 0.18);
-    --text: #ece9f9;
-    --muted: #a79fcf;
-    --accent: #8b6cf5;
-    --accent2: #4f8cff;
-    --win: #34d399;
-    --loss: #f76c8a;
-    --gold: #d4af6a;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%) fixed;
-    color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 28px 16px 56px;
-  }
-  .wrap { max-width: 1080px; margin: 0 auto; }
-  .brand {
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
+  .wrap { max-width: 1080px; }
 
   .profile {
     display: flex;
@@ -330,16 +300,23 @@
 </head>
 <body>
 
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="loading-text" id="loadingText">Lädt...</div>
 </div>
 
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
 <div class="wrap">
 
-  <div class="brand">RiftCircle</div>
-
-  <form class="search-bar" method="get" action="/">
+  <form class="search-bar" method="get" action="{{ url_for('profil') }}">
     <input type="text" name="riot_id" placeholder="Summoner suchen: Name#Tag (nur Name = Versuch mit #EUW)" value="{{ riot_id_input }}">
     <button type="submit">Suchen</button>
   </form>
@@ -351,7 +328,7 @@
   {% if bekannte_spieler %}
   <div class="known-players">
     {% for sp in bekannte_spieler %}
-      <a href="{{ url_for('index', riot_id = sp.name ~ '#' ~ sp.tag) }}">{{ sp.name }}#{{ sp.tag }}</a>
+      <a href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">{{ sp.name }}#{{ sp.tag }}</a>
     {% endfor %}
   </div>
   {% endif %}
@@ -389,7 +366,7 @@
     </div>
   </div>
 
-  <h2>Übersicht</h2>
+  <h2 class="section-title">Übersicht</h2>
   <div class="chart-grid">
     <div class="chart-card">
       <div class="chart-title">Sieg / Niederlage</div>
@@ -407,7 +384,7 @@
     {% endif %}
   </div>
 
-  <h2>Deine größten Verbesserungsbereiche</h2>
+  <h2 class="section-title">Deine größten Verbesserungsbereiche</h2>
   {% if probleme %}
     {% for p in probleme %}
     <div class="problem">
@@ -420,7 +397,7 @@
     <p class="empty">Keine konsistenten Schwächen erkennbar – starke Serie!</p>
   {% endif %}
 
-  <h2>Deine Stärken</h2>
+  <h2 class="section-title">Deine Stärken</h2>
   {% if staerken %}
     {% for s in staerken %}
     <div class="strength">
@@ -432,7 +409,7 @@
     <p class="empty">Noch keine konsistente Stärke über mehrere Spiele erkennbar.</p>
   {% endif %}
 
-  <h2>Letzte Spiele</h2>
+  <h2 class="section-title">Letzte Spiele</h2>
   <div class="match-list">
     {% for s in spiele %}
     <a class="match-row {{ 'win' if s.win else 'loss' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">

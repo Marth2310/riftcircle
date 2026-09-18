@@ -79,6 +79,7 @@ cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS item_timeline JSO
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS champ_level INTEGER;")
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_rank INTEGER;")
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS gold_diff INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS skill_order JSONB;")
 
 # Falls die Tabelle schon vor dem UNIQUE-Constraint existierte (CREATE TABLE IF NOT EXISTS
 # greift dann nicht mehr): eventuelle Duplikate bereinigen und Constraint nachträglich ergänzen.

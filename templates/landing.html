@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 64px 16px 56px;
+    text-align: center;
+  }
+  .hero-splash {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Malzahar_0.jpg');
+    background-size: cover;
+    background-position: center 22%;
+    opacity: 0.16;
+    filter: blur(1px);
+    -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
+  }
+  .hero-ring {
+    position: absolute;
+    top: 8px; left: 50%;
+    width: 360px; height: 360px;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--void), var(--accent2), var(--win), var(--void-2), var(--void));
+    opacity: 0.22;
+    filter: blur(38px);
+    animation: mark-spin 14s linear infinite;
+  }
+  .hero-inner { position: relative; z-index: 1; }
+
+  .hero-orb {
+    width: 128px;
+    margin: 0 auto 20px;
+  }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(2.6rem, 8vw, 4.4rem);
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: linear-gradient(100deg, var(--text) 25%, var(--void) 90%, var(--void-2) 130%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero .tagline {
+    margin: 14px auto 0;
+    max-width: 480px;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .search-bar {
+    display: flex; gap: 8px;
+    max-width: 520px;
+    margin: 32px auto 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .search-bar input[type="text"] {
+    flex: 1; min-width: 220px;
+    padding: 13px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-bar button {
+    padding: 13px 26px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .section-label {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 44px 0 16px;
+  }
+
+  .avatar-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+  .avatar-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    width: 84px;
+    text-align: center;
+  }
+  .avatar-chip .circle {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: #0a0818;
+    box-shadow: 0 8px 20px rgba(10, 6, 30, 0.4);
+    transition: transform 0.15s;
+  }
+  .avatar-chip:hover .circle { transform: translateY(-3px) scale(1.05); }
+  .avatar-chip .name {
+    font-size: 0.76rem;
+    color: var(--muted);
+    line-height: 1.25;
+    word-break: break-word;
+  }
+  .avatar-chip:hover .name { color: var(--text); }
+
+  .nav-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .nav-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+    transition: transform 0.15s, border-color 0.15s;
+    overflow: hidden;
+  }
+  .nav-card.active:hover { transform: translateY(-3px); border-color: var(--void); }
+  .nav-card .nav-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    background: conic-gradient(var(--void), var(--accent2));
+    margin-bottom: 14px;
+  }
+  .nav-card .nav-title { font-weight: 700; font-size: 1.02rem; margin-bottom: 6px; }
+  .nav-card .nav-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+  .nav-card.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .nav-card.disabled .nav-icon { background: var(--panel-2); border: 1px solid var(--border); }
+  .soon-badge {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: rgba(139, 108, 245, 0.18);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<div class="hero">
+  <div class="hero-splash"></div>
+  <div class="hero-ring"></div>
+  <div class="hero-inner">
+    <div class="void-orb hero-orb">
+      <img src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="Malzahar hält eine Void-Kugel">
+    </div>
+    <h1>RiftCircle</h1>
+    <p class="tagline">Deine League-of-Legends-Postgame-Analyse - Muster über mehrere Spiele, Richtwert-Vergleiche und Details zu jedem Match, im Kreis.</p>
+
+    <form class="search-bar" method="get" action="{{ url_for('profil') }}">
+      <input type="text" name="riot_id" placeholder="Summoner suchen: Name#Tag">
+      <button type="submit">Suchen</button>
+    </form>
+  </div>
+</div>
+
+<div class="wrap">
+
+  {% if bekannte_spieler %}
+  <div class="section-label">Bekannte Profile</div>
+  <div class="avatar-grid">
+    {% for sp in bekannte_spieler %}
+    <a class="avatar-chip" href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">
+      <div class="circle" style="background: {{ sp.farbe }};">{{ sp.name[0] | upper }}</div>
+      <div class="name">{{ sp.name }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Noch kein Profil gespeichert - suche oben nach einem Summoner (Name#Tag).</p>
+  {% endif %}
+
+  <div class="section-label">Wohin möchtest du?</div>
+  <div class="nav-cards">
+    <a class="nav-card active" href="{{ url_for('profil') }}">
+      <div class="nav-icon">◎</div>
+      <div class="nav-title">Profile &amp; Matches</div>
+      <div class="nav-desc">Postgame-Analysen, Richtwert-Vergleiche und Match-Details für getrackte Accounts ansehen.</div>
+    </a>
+    <a class="nav-card active" href="{{ url_for('champions') }}">
+      <div class="nav-icon">◑</div>
+      <div class="nav-title">Champion-Datenbank</div>
+      <div class="nav-desc">Winrate, meistgebaute Items und Skill-Prioritäten für jeden Champion - berechnet aus getrackten Spielen.</div>
+    </a>
+    <div class="nav-card disabled" title="Kommt später">
+      <span class="soon-badge">Bald verfügbar</span>
+      <div class="nav-icon">◈</div>
+      <div class="nav-title">Freunde &amp; Achievements</div>
+      <div class="nav-desc">Über Discord verbinden und die Erfolge deiner Freunde im selben Kreis sehen.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    var suchform = document.querySelector(".search-bar");
+    if (suchform) {
+      suchform.addEventListener("submit", function () {
+        var btn = suchform.querySelector("button");
+        btn.textContent = "Lädt...";
+        btn.disabled = true;
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

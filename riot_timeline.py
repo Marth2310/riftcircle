@@ -17,6 +17,8 @@ def fetch_timeline_events(headers, match_id, puuid):
       - alle_tode: JEDER Champion-Tod im Match, nur victim_id+timestamp (für Teamfight-Erkennung)
       - ward_platzierungen: jede WARD_PLACED im Match, nur creator_id+timestamp (Riot liefert
         dafür KEINE Position - Wards können daher nur zeitlich, nicht räumlich verglichen werden)
+      - skill_order: eigene Skill-Level-Ups in Reihenfolge (1=Q, 2=W, 3=E, 4=R), nur "NORMAL"
+        (kein EVOLVE), für die Champion-Datenbank (Skill-Prioritäten)
     None, falls der Call fehlschlägt oder der Spieler im Match nicht gefunden wird."""
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline"
     resp = requests.get(url, headers=headers)
@@ -36,6 +38,7 @@ def fetch_timeline_events(headers, match_id, puuid):
     objective_kills = []
     alle_tode = []
     ward_platzierungen = []
+    skill_order = []
 
     for frame in data.get("info", {}).get("frames", []):
         for event in frame.get("events", []):
@@ -69,6 +72,11 @@ def fetch_timeline_events(headers, match_id, puuid):
                 })
             elif etype == "WARD_PLACED":
                 ward_platzierungen.append({"creator_id": event.get("creatorId"), "timestamp": timestamp})
+            elif (
+                etype == "SKILL_LEVEL_UP" and event.get("participantId") == participant_id
+                and event.get("levelUpType") == "NORMAL"
+            ):
+                skill_order.append(event.get("skillSlot"))
 
         pf = frame.get("participantFrames", {})
         if pf:
@@ -85,6 +93,7 @@ def fetch_timeline_events(headers, match_id, puuid):
         "objective_kills": objective_kills,
         "alle_tode": alle_tode,
         "ward_platzierungen": ward_platzierungen,
+        "skill_order": skill_order,
     }
 
 

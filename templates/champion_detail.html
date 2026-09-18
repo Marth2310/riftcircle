@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ champ.name }} - Champion-Datenbank | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .wrap { max-width: 860px; }
+
+  .champ-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .champ-head img { width: 84px; height: 84px; border-radius: 16px; border: 1px solid var(--border); }
+  .champ-head h1 { margin: 0; font-size: 1.5rem; }
+  .champ-head .title { color: var(--muted); font-style: italic; font-size: 0.9rem; margin-top: 2px; }
+  .champ-head .tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .champ-head .tag-pill {
+    font-size: 0.7rem; font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .source-note { color: var(--muted); font-size: 0.8rem; margin: 10px 0 20px; }
+
+  h2 { font-size: 0.95rem; margin: 0 0 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+
+  .winrate-ring {
+    --pct: 0;
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    background: conic-gradient(var(--win) calc(var(--pct) * 1%), var(--loss) 0);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .winrate-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--panel); }
+  .winrate-ring span { position: relative; font-size: 1.25rem; font-weight: 800; }
+
+  .stat-mini { display: flex; flex-direction: column; gap: 2px; }
+  .stat-mini .value { font-size: 1.15rem; font-weight: 700; }
+  .stat-mini .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  .item-hint { color: var(--muted); font-size: 0.82rem; margin: -4px 0 14px; }
+  .item-hint.boots-hint { margin: 18px 0 10px; }
+  .item-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+  .item-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 68px; }
+  .item-cell img { width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); }
+  .item-cell.core img { border-color: var(--gold); box-shadow: 0 0 10px rgba(212, 175, 106, 0.4); }
+  .item-cell .pct { font-size: 0.78rem; font-weight: 700; }
+  .item-cell.core .pct { color: var(--gold); }
+  .item-cell .count { color: var(--muted); font-size: 0.68rem; }
+
+  .order-row { margin-bottom: 14px; }
+  .order-row:last-child { margin-bottom: 0; }
+  .order-row .order-label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 6px; }
+  .order-row .order-label strong { font-weight: 700; }
+  .order-row .order-label span { color: var(--muted); }
+  .order-bar-track { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .order-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--void)); }
+
+  .empty-panel { text-align: center; color: var(--muted); padding: 32px 20px; }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+
+  <a class="back-link" href="{{ url_for('champions') }}">&larr; Zurück zur Champion-Datenbank</a>
+
+  <div class="panel">
+    <div class="champ-head">
+      <img src="{{ champ.icon }}" alt="{{ champ.name }}">
+      <div>
+        <h1>{{ champ.name }}</h1>
+        <div class="title">{{ champ.title }}</div>
+        <div class="tags">
+          {% for tag in champ.tags %}<span class="tag-pill">{{ tag }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not stats %}
+  <div class="panel empty-panel">
+    Noch keine gespeicherten Spiele mit {{ champ.name }} in RiftCircle.<br>
+    Sobald ein getrackter Spieler dieses Match spielt, erscheinen hier automatisch Statistiken.
+  </div>
+  {% else %}
+
+  <p class="source-note">Aus {{ stats.total_games }} in RiftCircle getrackten Spiel{{ "en" if stats.total_games != 1 else "" }} - keine globale Meta-Statistik.</p>
+
+  <div class="panel">
+    <h2>Übersicht</h2>
+    <div class="stat-row">
+      <div class="winrate-ring" style="--pct: {{ stats.winrate }};"><span>{{ stats.winrate }}%</span></div>
+      <div class="stat-mini">
+        <div class="value">{{ stats.wins }} / {{ stats.total_games - stats.wins }}</div>
+        <div class="label">Siege / Niederlagen</div>
+      </div>
+      <div class="stat-mini">
+        <div class="value">{{ stats.avg_kills }} / {{ stats.avg_deaths }} / {{ stats.avg_assists }}</div>
+        <div class="label">Ø Kills / Deaths / Assists</div>
+      </div>
+      <div class="stat-mini">
+        <div class="value">{{ stats.avg_kda }}:1</div>
+        <div class="label">Ø KDA</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Core-Items</h2>
+    {% if top_items %}
+    <p class="item-hint">Die 1-2 Items, die in den meisten Spielen mit {{ champ.name }} gebaut wurden.</p>
+    <div class="item-grid">
+      {% for it in top_items[:2] %}
+      <div class="item-cell core">
+        <img src="{{ it.icon }}" alt="" loading="lazy">
+        <div class="pct">{{ it.pct }}%</div>
+        <div class="count">{{ it.count }}x</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-panel">Noch keine Item-Daten.</p>
+    {% endif %}
+  </div>
+
+  {% if top_items[2:] or top_boots %}
+  <div class="panel">
+    <h2>Situativ (je nach Spielverlauf)</h2>
+    <p class="item-hint">Kommen seltener und uneinheitlicher vor als die Core-Items - eher eine Auswahl je nach Gegner-Team und Spielstand als eine feste Reihenfolge.</p>
+    <div class="item-grid">
+      {% for it in top_items[2:] %}
+      <div class="item-cell">
+        <img src="{{ it.icon }}" alt="" loading="lazy">
+        <div class="pct">{{ it.pct }}%</div>
+        <div class="count">{{ it.count }}x</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if top_boots %}
+    <p class="item-hint boots-hint">Schuhe:</p>
+    <div class="item-grid">
+      {% for it in top_boots %}
+      <div class="item-cell">
+        <img src="{{ it.icon }}" alt="" loading="lazy">
+        <div class="pct">{{ it.pct }}%</div>
+        <div class="count">{{ it.count }}x</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    <h2>Skill-Prioritäten</h2>
+    {% if stats.top_orders %}
+    <p class="item-hint">Reihenfolge, in der Q/W/E in den getrackten Spielen zuerst maximiert wurden (R folgt eigenen Regeln).</p>
+    {% for o in stats.top_orders %}
+    <div class="order-row">
+      <div class="order-label"><strong>{{ o.order }}</strong><span>{{ o.pct }}% ({{ o.count }} Spiel{{ "e" if o.count != 1 else "" }})</span></div>
+      <div class="order-bar-track"><div class="order-bar-fill" style="width: {{ o.pct }}%;"></div></div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty-panel">Noch keine Skill-Order-Daten - wird ergänzt, sobald ein Match mit diesem Champion im Detail angeschaut wurde.</p>
+    {% endif %}
+  </div>
+
+  {% endif %}
+
+</div>
+
+</body>
+</html>

@@ -19,6 +19,7 @@ from analysis import (
     vergleichssatz,
 )
 from benchmarks import normalize_tier
+from champion_stats import berechne_champion_stats, get_all_champions, get_champion_by_key
 from db import get_connection
 from champion_mobility import hat_escape
 from riot_assets import (
@@ -360,8 +361,116 @@ def relative_zeit(played_at):
     return f"vor {tage} Tag{'en' if tage != 1 else ''}"
 
 
+AVATAR_FARBEN = ["var(--void)", "var(--accent2)", "var(--win)", "var(--gold)", "var(--void-2)", "var(--accent)"]
+
+
 @app.route("/")
-def index():
+def landing():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT riot_name, riot_tag FROM players ORDER BY riot_name;")
+    bekannte_spieler = [
+        {
+            "name": n,
+            "tag": t,
+            # Deterministische Pseudo-Zufallsfarbe je Spielername für die Avatar-Chips
+            # auf der Startseite - kein extra API-Call für ein echtes Profilbild nötig.
+            "farbe": AVATAR_FARBEN[sum(ord(c) for c in n) % len(AVATAR_FARBEN)],
+        }
+        for n, t in cur.fetchall()
+    ]
+    cur.close()
+    conn.close()
+    return render_template("landing.html", bekannte_spieler=bekannte_spieler)
+
+
+CHAMPION_SORTIERUNGEN = {
+    "name": ("Name (A-Z)", lambda c: c["name"], False),
+    "spiele_desc": ("Meiste Spiele", lambda c: c["anzahl_spiele"], True),
+    "spiele_asc": ("Wenigste Spiele", lambda c: c["anzahl_spiele"], False),
+    "winrate_desc": ("Höchste Winrate", lambda c: c["winrate"], True),
+    "winrate_asc": ("Niedrigste Winrate", lambda c: c["winrate"], False),
+}
+
+
+@app.route("/champions")
+def champions():
+    suche = request.args.get("q", "").strip().lower()
+    sortierung = request.args.get("sort", "name")
+    if sortierung not in CHAMPION_SORTIERUNGEN:
+        sortierung = "name"
+    alle_champions = get_all_champions()
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END) FROM participants GROUP BY champion;"
+    )
+    gespielt = {champ: (anzahl, siege) for champ, anzahl, siege in cur.fetchall()}
+    cur.close()
+    conn.close()
+
+    champs = []
+    for c in alle_champions:
+        anzahl, siege = gespielt.get(c["key"], (0, 0))
+        champs.append({
+            **c,
+            "anzahl_spiele": anzahl,
+            "winrate": round(siege / anzahl * 100) if anzahl else None,
+        })
+    if suche:
+        champs = [c for c in champs if suche in c["name"].lower()]
+
+    # Champions ohne getrackte Spiele haben keine sinnvolle Spiele-/Winrate-Kennzahl - bei
+    # "meiste/wenigste Spiele" bzw. "Winrate" landen sie immer am Ende statt (bei "wenigste")
+    # nutzlos ganz vorne, da sie alle bei 0 gleichauf lägen.
+    _, sort_key, reverse = CHAMPION_SORTIERUNGEN[sortierung]
+    if sortierung in ("spiele_asc", "winrate_desc", "winrate_asc", "spiele_desc"):
+        mit_daten = [c for c in champs if c["anzahl_spiele"] > 0]
+        ohne_daten = [c for c in champs if c["anzahl_spiele"] == 0]
+        mit_daten.sort(key=sort_key, reverse=reverse)
+        champs = mit_daten + sorted(ohne_daten, key=lambda c: c["name"])
+    else:
+        champs.sort(key=sort_key, reverse=reverse)
+
+    return render_template(
+        "champions.html", champions=champs, suche=suche,
+        sortierung=sortierung, sortierungen=CHAMPION_SORTIERUNGEN,
+    )
+
+
+@app.route("/champion/<key>")
+def champion_detail(key):
+    champ = get_champion_by_key(key)
+    if champ is None:
+        abort(404)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    stats = berechne_champion_stats(cur, key)
+    cur.close()
+    conn.close()
+
+    ddragon_version = get_ddragon_version()
+    top_items = []
+    top_boots = []
+    if stats:
+        top_items = [
+            {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
+            for it in stats["top_items"]
+        ]
+        top_boots = [
+            {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
+            for it in stats["top_boots"]
+        ]
+
+    return render_template(
+        "champion_detail.html", champ=champ, stats=stats, top_items=top_items, top_boots=top_boots
+    )
+
+
+@app.route("/profil")
+def profil():
     riot_id_input = request.args.get("riot_id", "").strip()
     fehler = None
     puuid = None
@@ -516,7 +625,8 @@ def match_detail(match_id):
     cur.execute("""
         SELECT p.champion, p.role, p.kills, p.deaths, p.assists, p.cs, p.vision_score,
                m.duration_seconds, p.win, p.items, p.perks, p.death_positions, p.item_timeline,
-               m.team_lineup, m.gold_timeline, m.timeline_extra, pl.riot_name, pl.riot_tag
+               m.team_lineup, m.gold_timeline, m.timeline_extra, pl.riot_name, pl.riot_tag,
+               p.skill_order
         FROM participants p
         JOIN matches m ON p.match_id = m.match_id
         JOIN players pl ON p.puuid = pl.puuid
@@ -531,16 +641,17 @@ def match_detail(match_id):
 
     (champion, role, kills, deaths, assists, cs, vision, duration, win,
      items, perks, death_positions, item_timeline, team_lineup, gold_timeline, timeline_extra,
-     riot_name, riot_tag) = row
+     riot_name, riot_tag, skill_order) = row
 
     # Timeline (Todes-Positionen + eigene Kills + Item-Kaufverlauf + Gold-Verlauf +
-    # Objective-Kills + alle Tode + Ward-Platzierungen) ist ein separater, teurer API-Call -
-    # nur bei der ersten Detailansicht dieses Matches holen, danach in der DB gecacht.
-    # "eigene_kills" fehlt in älteren Caches (vor der Zeitstrahl-Erweiterung) - gilt dann
-    # ebenfalls als veraltet, damit der Zeitstrahl automatisch nachgeladen wird.
+    # Objective-Kills + alle Tode + Ward-Platzierungen + Skill-Order) ist ein separater,
+    # teurer API-Call - nur bei der ersten Detailansicht dieses Matches holen, danach in der
+    # DB gecacht. "eigene_kills" fehlt in älteren Caches (vor der Zeitstrahl-Erweiterung),
+    # skill_order fehlt in Caches vor der Champion-Datenbank - beides gilt dann als veraltet,
+    # damit automatisch nachgeladen wird.
     if (
         death_positions is None or item_timeline is None or gold_timeline is None
-        or timeline_extra is None or "eigene_kills" not in timeline_extra
+        or timeline_extra is None or "eigene_kills" not in timeline_extra or skill_order is None
     ):
         tl = fetch_timeline_events(headers, match_id, puuid)
         if tl:
@@ -551,17 +662,26 @@ def match_detail(match_id):
                 "ward_platzierungen": tl["ward_platzierungen"],
                 "eigene_kills": tl["eigene_kills"],
             }
+            skill_order = tl["skill_order"]
+            cur.execute(
+                "UPDATE participants SET death_positions = %s, item_timeline = %s, skill_order = %s "
+                "WHERE match_id = %s AND puuid = %s;",
+                (json.dumps(death_positions), json.dumps(item_timeline), json.dumps(skill_order), match_id, puuid)
+            )
+            cur.execute(
+                "UPDATE matches SET gold_timeline = %s, timeline_extra = %s WHERE match_id = %s;",
+                (json.dumps(gold_timeline), json.dumps(timeline_extra), match_id)
+            )
+            conn.commit()
         else:
-            death_positions, item_timeline, gold_timeline, timeline_extra = [], [], [], {}
-        cur.execute(
-            "UPDATE participants SET death_positions = %s, item_timeline = %s WHERE match_id = %s AND puuid = %s;",
-            (json.dumps(death_positions), json.dumps(item_timeline), match_id, puuid)
-        )
-        cur.execute(
-            "UPDATE matches SET gold_timeline = %s, timeline_extra = %s WHERE match_id = %s;",
-            (json.dumps(gold_timeline), json.dumps(timeline_extra), match_id)
-        )
-        conn.commit()
+            # API-Call fehlgeschlagen (z.B. abgelaufener Dev-Key, der alle 24h neu generiert
+            # werden muss) - NICHT die eventuell schon gespeicherten guten Werte in der DB mit
+            # leeren Platzhaltern überschreiben, nur für DIESE Anzeige sinnvolle Fallbacks setzen.
+            death_positions = death_positions or []
+            item_timeline = item_timeline or []
+            gold_timeline = gold_timeline or []
+            timeline_extra = timeline_extra or {}
+            skill_order = skill_order or []
 
     # Team-Aufstellung (alle 10 Spieler) ist match-weit, nicht pro Spieler - einmal pro
     # Match cachen statt bei jedem Betrachter neu von der Riot-API zu holen. Ältere Caches

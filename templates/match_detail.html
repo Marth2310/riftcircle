@@ -5,40 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ champion }} - Postgame | RiftCircle</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
-  :root {
-    --bg-1: #140b2e;
-    --bg-2: #0a1730;
-    --panel: #1b1440;
-    --panel-2: #17132f;
-    --border: rgba(150, 130, 240, 0.18);
-    --text: #ece9f9;
-    --muted: #a79fcf;
-    --accent: #8b6cf5;
-    --accent2: #4f8cff;
-    --win: #34d399;
-    --loss: #f76c8a;
-    --gold: #d4af6a;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%) fixed;
-    color: var(--text);
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 28px 16px 56px;
-  }
-  .wrap { max-width: 960px; margin: 0 auto; }
-
-  .back-link {
-    display: inline-block;
-    color: var(--muted);
-    text-decoration: none;
-    font-size: 0.85rem;
-    margin-bottom: 16px;
-  }
-  .back-link:hover { color: var(--text); }
+  .wrap { max-width: 960px; }
 
   .tab-nav {
     display: flex;
@@ -61,15 +30,6 @@
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
-
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
-  }
 
   .head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .head img.champ { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--border); }
@@ -398,14 +358,23 @@
 </head>
 <body>
 
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="loading-text" id="loadingText">Lädt...</div>
 </div>
 
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
 <div class="wrap">
 
-  <a class="back-link" href="{{ url_for('index', riot_id = riot_name ~ '#' ~ riot_tag) }}">&larr; Zurück zu {{ riot_name }}#{{ riot_tag }}</a>
+  <a class="back-link" href="{{ url_for('profil', riot_id = riot_name ~ '#' ~ riot_tag) }}">&larr; Zurück zu {{ riot_name }}#{{ riot_tag }}</a>
 
   <div class="panel">
     <div class="head">
@@ -492,7 +461,7 @@
         <div class="team-col-title blue">Blaue Seite</div>
         {% for p in teams["100"] %}
         <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
-           href="{{ url_for('index', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
+           href="{{ url_for('profil', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
           <div class="player-row-top">
             <div class="p-rank {{ 'mvp' if p.ist_mvp else '' }} {{ 'ace' if p.ist_ace else '' }}">{{ p.rang }}</div>
             <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
@@ -523,7 +492,7 @@
         <div class="team-col-title red">Rote Seite</div>
         {% for p in teams["200"] %}
         <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
-           href="{{ url_for('index', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
+           href="{{ url_for('profil', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
           <div class="player-row-top">
             <div class="p-rank {{ 'mvp' if p.ist_mvp else '' }} {{ 'ace' if p.ist_ace else '' }}">{{ p.rang }}</div>
             <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">

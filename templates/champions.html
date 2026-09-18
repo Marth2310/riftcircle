@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Champion-Datenbank | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .page-head { text-align: center; margin: 4px 0 28px; }
+  .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
+  .page-head p { color: var(--muted); font-size: 0.9rem; max-width: 560px; margin: 0 auto; }
+
+  .champ-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 560px;
+    margin: 20px auto 28px;
+  }
+  .champ-search {
+    flex: 1;
+    min-width: 220px;
+    padding: 11px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .champ-search::placeholder { color: var(--muted); }
+  .champ-sort {
+    padding: 11px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .champ-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .champ-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 10px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .champ-card:hover { transform: translateY(-3px); border-color: var(--void); }
+  .champ-card img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--border); }
+  .champ-card .name { font-weight: 700; font-size: 0.88rem; }
+  .champ-card .tags { color: var(--muted); font-size: 0.7rem; }
+  .champ-card .badge-row { display: flex; gap: 5px; }
+  .champ-card .games-badge {
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(139, 108, 245, 0.16);
+    color: var(--accent);
+  }
+  .champ-card .games-badge.none { background: var(--panel-2); color: var(--muted); font-weight: 500; }
+  .champ-card .winrate-badge {
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+  }
+  .champ-card .winrate-badge.good { background: rgba(52, 211, 153, 0.16); color: var(--win); }
+  .champ-card .winrate-badge.bad { background: rgba(247, 108, 138, 0.16); color: var(--loss); }
+
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+
+  <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
+
+  <div class="page-head">
+    <h1>Champion-Datenbank</h1>
+    <p>Winrate, meistgebaute Items und Skill-Prioritäten - berechnet aus den Spielen, die
+       bereits über RiftCircle getrackt wurden. Wächst mit der Zeit, keine globale Meta-Statistik.</p>
+  </div>
+
+  <form class="champ-controls" method="get" action="{{ url_for('champions') }}">
+    <input type="text" class="champ-search" id="champSearch" name="q" placeholder="Champion suchen..." value="{{ suche }}">
+    <select class="champ-sort" name="sort" onchange="this.form.submit()">
+      {% for key, (label, _, _) in sortierungen.items() %}
+      <option value="{{ key }}" {{ "selected" if key == sortierung else "" }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="champ-grid" id="champGrid">
+    {% for c in champions %}
+    <a class="champ-card" href="{{ url_for('champion_detail', key=c.key) }}" data-name="{{ c.name|lower }}">
+      <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+      <div class="name">{{ c.name }}</div>
+      <div class="tags">{{ c.tags|join(" / ") }}</div>
+      {% if c.anzahl_spiele %}
+      <div class="badge-row">
+        <div class="games-badge">{{ c.anzahl_spiele }} Spiel{{ "e" if c.anzahl_spiele != 1 else "" }}</div>
+        <div class="winrate-badge {{ 'good' if c.winrate >= 50 else 'bad' }}">{{ c.winrate }}%</div>
+      </div>
+      {% else %}
+      <div class="games-badge none">Keine Daten</div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  <p class="empty" id="champEmpty" hidden>Kein Champion gefunden.</p>
+
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById("champSearch");
+    var cards = Array.prototype.slice.call(document.querySelectorAll(".champ-card"));
+    var empty = document.getElementById("champEmpty");
+
+    input.addEventListener("input", function () {
+      var q = input.value.trim().toLowerCase();
+      var sichtbar = 0;
+      cards.forEach(function (card) {
+        var match = card.dataset.name.indexOf(q) !== -1;
+        card.hidden = !match;
+        if (match) sichtbar++;
+      });
+      empty.hidden = sichtbar !== 0;
+    });
+  })();
+</script>
+
+</body>
+</html>
