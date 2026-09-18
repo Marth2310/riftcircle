@@ -19,7 +19,12 @@ from analysis import (
     vergleichssatz,
 )
 from benchmarks import normalize_tier
-from champion_stats import berechne_champion_stats, get_all_champions, get_champion_by_key
+from champion_stats import (
+    berechne_champion_stats,
+    get_all_champions,
+    get_champion_by_key,
+    get_champion_by_numeric_id,
+)
 from db import get_connection
 from champion_mobility import hat_escape
 from riot_assets import (
@@ -28,9 +33,10 @@ from riot_assets import (
     get_ddragon_version,
     get_summoner_icon_id,
     item_icon_url,
+    random_champion_splash_url,
     summoner_icon_url,
 )
-from riot_fetch import SummonerNotFound, fetch_match_teams, sync_player
+from riot_fetch import SummonerNotFound, fetch_match_teams, get_top_mastery_champion_id, sync_player
 from riot_runes import build_rune_display, keystone_and_secondary_icons
 from riot_timeline import death_position_percent, fetch_timeline_events, format_game_time
 from rollen_tipps import tipps_fuer_rolle
@@ -364,11 +370,18 @@ def relative_zeit(played_at):
 AVATAR_FARBEN = ["var(--void)", "var(--accent2)", "var(--win)", "var(--gold)", "var(--void-2)", "var(--accent)"]
 
 
+@app.route("/riot.txt")
+def riot_verification():
+    """Domain-Verifizierung für die Riot-Production-API-Key-Bewerbung - der Verifizierungscode
+    muss unter https://riftcircle.com/riot.txt erreichbar sein, nichts weiter im Response."""
+    return "08e82a1c-c99b-47d6-b243-f819bd38890e", 200, {"Content-Type": "text/plain"}
+
+
 @app.route("/")
 def landing():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT riot_name, riot_tag FROM players ORDER BY riot_name;")
+    cur.execute("SELECT riot_name, riot_tag FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name;")
     bekannte_spieler = [
         {
             "name": n,
@@ -504,13 +517,15 @@ def profil():
             else:
                 fehler = str(e)
     else:
-        cur.execute("SELECT puuid FROM players ORDER BY riot_name LIMIT 1;")
+        cur.execute("SELECT puuid FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name LIMIT 1;")
         row = cur.fetchone()
         if row:
             puuid = row[0]
 
-    # Bereits getrackte Profile für den Schnellzugriff im Dashboard
-    cur.execute("SELECT riot_name, riot_tag FROM players ORDER BY riot_name;")
+    # Bereits getrackte Profile für den Schnellzugriff im Dashboard - Meta-Sample-Accounts
+    # (Challenger/Grandmaster-Harvest für die Champion-Datenbank) tauchen hier nicht auf,
+    # das sind keine echten getrackten Freunde-Profile.
+    cur.execute("SELECT riot_name, riot_tag FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name;")
     bekannte_spieler = [{"name": n, "tag": t} for n, t in cur.fetchall()]
 
     if puuid is None:
@@ -538,6 +553,14 @@ def profil():
 
     ddragon_version = get_ddragon_version()
     profile_icon_id = get_summoner_icon_id(puuid, headers)
+
+    # Highest-Mastery-Champion als transparenter Profil-Hintergrund, mit zufälligem Skin bei
+    # jedem Seitenaufruf. Fällt auf den zuletzt gespielten Champion zurück, falls die Mastery-
+    # API fehlschlägt oder (bei brandneuen Accounts) noch keine Mastery-Punkte existieren.
+    mastery_champion_id = get_top_mastery_champion_id(puuid, headers)
+    mastery_champion = get_champion_by_numeric_id(mastery_champion_id) if mastery_champion_id else None
+    hero_champion = mastery_champion["key"] if mastery_champion else (rows[0][1] if rows else None)
+    hero_splash = random_champion_splash_url(hero_champion) if hero_champion else None
 
     spiele = []
     alle_vergleiche = []
@@ -606,6 +629,7 @@ def profil():
         riot_tag=riot_tag,
         rang=anzeige_rang,
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
+        hero_splash=hero_splash,
         anzahl_spiele=len(spiele),
         siege=siege,
         niederlagen=len(spiele) - siege,

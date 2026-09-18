@@ -4,31 +4,52 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RiftCircle</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
   .wrap { max-width: 1080px; }
 
   .profile {
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 24px;
     margin-bottom: 24px;
+    padding: 28px 32px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
   }
+  .profile::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--hero-splash);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.28;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 35%, #000 70%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 35%, #000 70%, transparent 100%);
+    pointer-events: none;
+  }
+  .profile > * { position: relative; }
   .profile img.icon {
-    width: 64px; height: 64px;
+    width: 96px; height: 96px;
+    flex-shrink: 0;
     border-radius: 50%;
-    border: 2px solid var(--accent);
-    box-shadow: 0 0 0 4px rgba(139, 108, 245, 0.15);
+    border: 3px solid var(--accent);
+    box-shadow: 0 0 0 5px rgba(139, 108, 245, 0.15);
   }
-  .profile h1 { font-size: 1.4rem; margin: 0; }
+  .profile h1 { font-size: 2rem; margin: 0; }
   .profile .tag { color: var(--muted); font-weight: 400; }
   .rank-badge {
     display: inline-block;
-    margin-top: 4px;
-    padding: 3px 12px;
+    margin-top: 8px;
+    padding: 5px 16px;
     border-radius: 999px;
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.02em;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
@@ -339,7 +360,7 @@
   {% endif %}
 {% else %}
 
-  <div class="profile">
+  <div class="profile" style="{{ '--hero-splash: url(\'' ~ hero_splash ~ '\');' if hero_splash else '' }}">
     {% if summoner_icon %}<img class="icon" src="{{ summoner_icon }}" alt="Summoner Icon">{% endif %}
     <div>
       <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>

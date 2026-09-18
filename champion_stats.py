@@ -35,6 +35,7 @@ def get_all_champions():
             (
                 {
                     "key": c["id"],
+                    "numeric_key": c["key"],
                     "name": c["name"],
                     "title": c["title"],
                     "tags": c["tags"],
@@ -46,6 +47,11 @@ def get_all_champions():
         )
         _champion_liste_cache = (version, champions)
     return _champion_liste_cache[1]
+
+
+def get_champion_by_numeric_id(numeric_id):
+    """championId (z.B. aus der Mastery-API, int) -> Champion-Key (z.B. "Kaisa")."""
+    return next((c for c in get_all_champions() if c["numeric_key"] == str(numeric_id)), None)
 
 
 def get_champion_by_key(key):

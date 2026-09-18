@@ -12,9 +12,14 @@ CREATE TABLE IF NOT EXISTS players (
     puuid TEXT PRIMARY KEY,
     riot_name TEXT NOT NULL,
     riot_tag TEXT NOT NULL,
-    discord_id TEXT
+    discord_id TEXT,
+    is_meta_sample BOOLEAN DEFAULT FALSE
 );
 """)
+# Meta-Sample-Accounts (z.B. Challenger/Grandmaster-Harvest für die Champion-Datenbank, siehe
+# harvest_meta.py) sind keine echten getrackten Profile und sollen nirgends im "bekannte
+# Spieler"-Schnellzugriff auftauchen.
+cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS is_meta_sample BOOLEAN DEFAULT FALSE;")
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS matches (

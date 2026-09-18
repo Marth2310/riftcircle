@@ -1,8 +1,14 @@
+import random
+
 import requests
 
 # Data Dragon Patch-Version wird nur einmal pro Prozess-Laufzeit abgefragt (ändert sich max.
 # alle paar Wochen mit einem neuen Patch) statt bei jedem Dashboard-Aufruf neu.
 _ddragon_version_cache = None
+
+# champion_key -> (version, [skin_num, ...]) - nur "Basis"-Skins (keine Chromas, die haben
+# ohnehin kein eigenes Splash-Art und liefern 403 - siehe Namensfilter unten).
+_champion_skins_cache = {}
 
 
 def get_ddragon_version():
@@ -18,9 +24,33 @@ def champion_icon_url(champion, version=None):
     return f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{champion}.png"
 
 
-def champion_splash_url(champion):
+def champion_splash_url(champion, skin_num=0):
     """Splash-Art (Skin 0 = Standard-Skin, als .jpg) - nicht patch-versioniert, für Hintergrundbilder."""
-    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/splash/{champion}_0.jpg"
+    return f"https://ddragon.leagueoflegends.com/cdn/img/champion/splash/{champion}_{skin_num}.jpg"
+
+
+def _get_base_skin_numbers(champion):
+    """Skin-Nummern eines Champions OHNE Chromas - Chromas (z.B. "Bullet Angel Kai'Sa
+    (Ruby)") teilen sich das Splash-Art ihres Basis-Skins und liefern unter ihrer eigenen
+    Nummer einen 403, taugen also nicht für zufällige Hintergrundbilder."""
+    version = get_ddragon_version()
+    cached = _champion_skins_cache.get(champion)
+    if cached is None or cached[0] != version:
+        url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion/{champion}.json"
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            return [0]
+        skins = resp.json()["data"][champion]["skins"]
+        nums = [s["num"] for s in skins if "(" not in s["name"]] or [0]
+        _champion_skins_cache[champion] = (version, nums)
+    return _champion_skins_cache[champion][1]
+
+
+def random_champion_splash_url(champion):
+    """Zufälliges Splash-Art unter den Basis-Skins eines Champions - für den transparenten
+    Profil-Hintergrund, der bei jedem Seitenaufruf einen anderen Skin desselben Champions zeigt."""
+    skin_num = random.choice(_get_base_skin_numbers(champion))
+    return champion_splash_url(champion, skin_num)
 
 
 def item_icon_url(item_id, version=None):
