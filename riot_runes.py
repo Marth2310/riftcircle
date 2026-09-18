@@ -1,5 +1,7 @@
 import requests
 
+from riot_assets import REQUEST_TIMEOUT
+
 # Data Dragon liefert die Rune-Bäume über runesReforged.json, aber NICHT die Stat-Shards
 # (die kleinen +Stats-Bonusse) - deren IDs/Icons/Zeilen sind seit Jahren stabil und hier
 # fest hinterlegt (bestätigt über https://darkintaqt.com/blog/perk-ids).
@@ -31,7 +33,7 @@ def get_rune_trees(version):
     if version in _tree_cache:
         return _tree_cache[version]
     url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/runesReforged.json"
-    trees = requests.get(url).json()
+    trees = requests.get(url, timeout=REQUEST_TIMEOUT).json()
     by_id = {tree["id"]: tree for tree in trees}
     _tree_cache[version] = by_id
     return by_id

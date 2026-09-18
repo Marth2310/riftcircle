@@ -3,6 +3,8 @@ import time
 
 import requests
 
+from riot_assets import REQUEST_TIMEOUT
+
 
 class SummonerNotFound(Exception):
     """Riot-Account wurde nicht gefunden, oder seine Spiele konnten nicht geladen werden
@@ -90,7 +92,7 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     Gibt (puuid, anzahl_neu_gespeicherter_matches) zurück.
     """
     url = f"https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_name}/{riot_tag}"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     account = resp.json()
     if resp.status_code != 200 or "puuid" not in account:
         raise SummonerNotFound(f"{riot_name}#{riot_tag} wurde nicht gefunden.")
@@ -100,7 +102,7 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     # als EUW/Europe (z.B. KR, NA) liefern hier eine leere oder ungültige Liste - dann
     # lieber eine klare Fehlermeldung als einen kaputten/leeren Spieler-Eintrag in der DB.
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?count={anzahl_matches}"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     match_ids = resp.json()
     if resp.status_code != 200 or not isinstance(match_ids, list) or len(match_ids) == 0:
         raise SummonerNotFound(
@@ -129,7 +131,7 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
 
     for match_id in neue_match_ids:
         url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}"
-        match_data = requests.get(url, headers=headers).json()
+        match_data = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
         info = match_data["info"]
 
         cur.execute("""
@@ -156,7 +158,7 @@ def fetch_match_teams(headers, match_id):
     """Holt alle 10 Spieler eines Matches (für die Team-Aufstellung in der Detailansicht) -
     live von der Match-API, wird nicht dauerhaft für alle Spieler in der DB gepflegt."""
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     if resp.status_code != 200:
         return None
 
@@ -193,7 +195,7 @@ def get_top_mastery_champion_id(puuid, headers):
     Profil-Hintergrund. None, falls der Call fehlschlägt oder der Spieler noch keine
     Mastery-Punkte hat (z.B. brandneuer Account)."""
     url = f"https://euw1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count=1"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     if resp.status_code != 200:
         return None
     daten = resp.json()

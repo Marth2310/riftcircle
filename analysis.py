@@ -2,6 +2,7 @@ import math
 
 import requests
 
+from riot_assets import REQUEST_TIMEOUT
 from benchmarks import (
     DAMAGE_SHARE_MIN_NON_SUPPORT,
     KDA_BENCHMARKS,
@@ -30,7 +31,7 @@ MATCH_QUERY = """
 def get_player_tier(puuid, headers):
     """Holt den aktuellen Solo/Duo-Rang des Spielers direkt über die PUUID."""
     url = f"https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
-    entries = requests.get(url, headers=headers).json()
+    entries = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
 
     for entry in entries:
         if entry["queueType"] == "RANKED_SOLO_5x5":

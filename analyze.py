@@ -10,6 +10,7 @@ from benchmarks import (
     table_for_role,
 )
 from db import get_connection
+from riot_assets import REQUEST_TIMEOUT
 
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
@@ -21,7 +22,7 @@ cur = conn.cursor()
 def get_player_tier(puuid):
     """Holt den aktuellen Solo/Duo-Rang des Spielers direkt über die PUUID."""
     url = f"https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
-    entries = requests.get(url, headers=headers).json()
+    entries = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
 
     for entry in entries:
         if entry["queueType"] == "RANKED_SOLO_5x5":

@@ -2,6 +2,11 @@ import random
 
 import requests
 
+# Timeout für alle Riot-/Data-Dragon-Calls: ohne das wartet requests im Zweifel unbegrenzt -
+# bei nur einem Gunicorn-Worker (siehe Procfile) reicht dann ein einziger hängender Call, um
+# die komplette App für alle einzufrieren (genau das ist am 2026-09-18 live passiert).
+REQUEST_TIMEOUT = 10
+
 # Data Dragon Patch-Version wird nur einmal pro Prozess-Laufzeit abgefragt (ändert sich max.
 # alle paar Wochen mit einem neuen Patch) statt bei jedem Dashboard-Aufruf neu.
 _ddragon_version_cache = None
@@ -14,7 +19,9 @@ _champion_skins_cache = {}
 def get_ddragon_version():
     global _ddragon_version_cache
     if _ddragon_version_cache is None:
-        versions = requests.get("https://ddragon.leagueoflegends.com/api/versions.json").json()
+        versions = requests.get(
+            "https://ddragon.leagueoflegends.com/api/versions.json", timeout=REQUEST_TIMEOUT
+        ).json()
         _ddragon_version_cache = versions[0]
     return _ddragon_version_cache
 
@@ -37,7 +44,7 @@ def _get_base_skin_numbers(champion):
     cached = _champion_skins_cache.get(champion)
     if cached is None or cached[0] != version:
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion/{champion}.json"
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=REQUEST_TIMEOUT)
         if resp.status_code != 200:
             return [0]
         skins = resp.json()["data"][champion]["skins"]
@@ -64,7 +71,7 @@ def item_icon_url(item_id, version=None):
 def get_summoner_icon_id(puuid, headers):
     """Holt die Profile-Icon-ID des Spielers über die Summoner-v4-API."""
     url = f"https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/{puuid}"
-    data = requests.get(url, headers=headers).json()
+    data = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
     return data.get("profileIconId")
 
 

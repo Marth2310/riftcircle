@@ -1,6 +1,6 @@
 import requests
 
-from riot_assets import get_ddragon_version
+from riot_assets import REQUEST_TIMEOUT, get_ddragon_version
 
 # Alle Champions aus Data Dragon - einmal pro Patch-Version gecacht, wie get_ddragon_version()
 # in riot_assets.py. Anders als bei get_champion_tips (Riot liefert keine Meta-Statistiken),
@@ -19,7 +19,7 @@ def _get_item_tags():
     version = get_ddragon_version()
     if _item_tags_cache is None or _item_tags_cache[0] != version:
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/item.json"
-        data = requests.get(url).json()["data"]
+        data = requests.get(url, timeout=REQUEST_TIMEOUT).json()["data"]
         tags = {int(iid): set(info.get("tags", [])) for iid, info in data.items()}
         _item_tags_cache = (version, tags)
     return _item_tags_cache[1]
@@ -30,7 +30,7 @@ def get_all_champions():
     version = get_ddragon_version()
     if _champion_liste_cache is None or _champion_liste_cache[0] != version:
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json"
-        data = requests.get(url).json()["data"]
+        data = requests.get(url, timeout=REQUEST_TIMEOUT).json()["data"]
         champions = sorted(
             (
                 {

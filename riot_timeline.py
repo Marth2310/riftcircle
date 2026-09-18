@@ -1,5 +1,7 @@
 import requests
 
+from riot_assets import REQUEST_TIMEOUT
+
 # Ungefähre Ausdehnung der Summoner's-Rift-Weltkoordinaten (quadratische Karte).
 MAP_SIZE = 14820
 
@@ -21,7 +23,7 @@ def fetch_timeline_events(headers, match_id, puuid):
         (kein EVOLVE), für die Champion-Datenbank (Skill-Prioritäten)
     None, falls der Call fehlschlägt oder der Spieler im Match nicht gefunden wird."""
     url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline"
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     if resp.status_code != 200:
         return None
     data = resp.json()

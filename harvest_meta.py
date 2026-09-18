@@ -19,6 +19,7 @@ import requests
 from dotenv import load_dotenv
 
 from db import get_connection
+from riot_assets import REQUEST_TIMEOUT
 from riot_fetch import speichere_participant
 
 load_dotenv()
@@ -35,7 +36,7 @@ def _get(url, retries=3):
     """GET mit einfachem Retry bei 429 (Rate-Limit) oder 5xx - bei einem ~30-90 Minuten
     laufenden Harvest ist ein gelegentlicher Hänger sonst der Abbruchgrund."""
     for versuch in range(retries):
-        resp = requests.get(url, headers=headers)
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         if resp.status_code == 429:
             wartezeit = int(resp.headers.get("Retry-After", 5))
             print(f"  Rate-Limit erreicht, warte {wartezeit}s...")
