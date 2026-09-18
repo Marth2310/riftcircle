@@ -274,6 +274,7 @@
     font-weight: 600;
     cursor: pointer;
   }
+  .known-players-label { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
   .known-players { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
   .known-players a {
     text-decoration: none;
@@ -346,9 +347,10 @@
     <div class="error-msg">{{ fehler }}</div>
   {% endif %}
 
-  {% if bekannte_spieler %}
+  {% if zuletzt_gesehen %}
+  <div class="known-players-label">Zuletzt gesehen</div>
   <div class="known-players">
-    {% for sp in bekannte_spieler %}
+    {% for sp in zuletzt_gesehen %}
       <a href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">{{ sp.name }}#{{ sp.tag }}</a>
     {% endfor %}
   </div>
@@ -356,7 +358,7 @@
 
 {% if kein_spieler %}
   {% if not fehler %}
-    <p class="empty">Noch kein Profil gespeichert. Suche oben nach einem Summoner (Name#Tag).</p>
+    <p class="empty">Noch kein Profil angeschaut. Suche oben nach einem Summoner (Name#Tag).</p>
   {% endif %}
 {% else %}
 

@@ -1,9 +1,10 @@
 import json
 import os
+import urllib.parse
 from datetime import datetime
 
 from dotenv import load_dotenv
-from flask import Flask, abort, render_template, request
+from flask import Flask, abort, make_response, render_template, request
 
 from analysis import (
     ANZAHL_MATCHES,
@@ -369,6 +370,53 @@ def relative_zeit(played_at):
 
 AVATAR_FARBEN = ["var(--void)", "var(--accent2)", "var(--win)", "var(--gold)", "var(--void-2)", "var(--accent)"]
 
+ZULETZT_GESEHEN_COOKIE = "zuletzt_gesehen"
+MAX_ZULETZT_GESEHEN = 10
+
+
+def _lese_zuletzt_gesehen():
+    """Zuletzt von DIESEM Browser gesuchte Profile - rein über ein Cookie, keine Server-
+    Session/Login nötig. Jeder Besucher sieht nur seine eigene Liste (vorher war "bekannte
+    Spieler" global für alle sichtbar - das war explizit nicht gewünscht).
+    Der Cookie-Wert ist selbst URL-kodiert (statt Werkzeug/dem Client das Quoting des rohen
+    JSON überlassen - manche HTTP-Clients verschlucken sich an verschachtelten
+    Anführungszeichen in einem gequoteten Cookie-Wert)."""
+    roh = request.cookies.get(ZULETZT_GESEHEN_COOKIE)
+    if not roh:
+        return []
+    try:
+        daten = json.loads(urllib.parse.unquote(roh))
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(daten, list):
+        return []
+    return [e for e in daten if isinstance(e, dict) and {"puuid", "name", "tag"} <= e.keys()][:MAX_ZULETZT_GESEHEN]
+
+
+def _mit_farbe(eintraege):
+    return [
+        {**e, "farbe": AVATAR_FARBEN[sum(ord(c) for c in e["name"]) % len(AVATAR_FARBEN)]}
+        for e in eintraege
+    ]
+
+
+def _neue_zuletzt_gesehen_liste(puuid, riot_name, riot_tag):
+    """Aktuell angesehenes Profil ganz nach vorne (dedupliziert per puuid), auf
+    MAX_ZULETZT_GESEHEN begrenzt. Reine Berechnung (kein Response nötig), damit sich die neue
+    Liste sowohl fürs Rendern als auch fürs Cookie-Schreiben wiederverwenden lässt."""
+    bisherige = [e for e in _lese_zuletzt_gesehen() if e["puuid"] != puuid]
+    return ([{"puuid": puuid, "name": riot_name, "tag": riot_tag}] + bisherige)[:MAX_ZULETZT_GESEHEN]
+
+
+def _cookie_setzen(resp, liste):
+    """Ein Jahr gültig, httponly (Server-only, kein JS-Zugriff nötig)."""
+    resp.set_cookie(
+        ZULETZT_GESEHEN_COOKIE, urllib.parse.quote(json.dumps(liste)),
+        max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
+    )
+    return resp
+    return resp
+
 
 @app.route("/riot.txt")
 def riot_verification():
@@ -379,22 +427,8 @@ def riot_verification():
 
 @app.route("/")
 def landing():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT riot_name, riot_tag FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name;")
-    bekannte_spieler = [
-        {
-            "name": n,
-            "tag": t,
-            # Deterministische Pseudo-Zufallsfarbe je Spielername für die Avatar-Chips
-            # auf der Startseite - kein extra API-Call für ein echtes Profilbild nötig.
-            "farbe": AVATAR_FARBEN[sum(ord(c) for c in n) % len(AVATAR_FARBEN)],
-        }
-        for n, t in cur.fetchall()
-    ]
-    cur.close()
-    conn.close()
-    return render_template("landing.html", bekannte_spieler=bekannte_spieler)
+    zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
+    return render_template("landing.html", zuletzt_gesehen=zuletzt_gesehen)
 
 
 CHAMPION_SORTIERUNGEN = {
@@ -517,16 +551,14 @@ def profil():
             else:
                 fehler = str(e)
     else:
-        cur.execute("SELECT puuid FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name LIMIT 1;")
-        row = cur.fetchone()
-        if row:
-            puuid = row[0]
+        # Kein Suchbegriff: auf das zuletzt von DIESEM Browser angesehene Profil zurückfallen
+        # (statt eines global letzten Profils aus der DB - jeder Besucher soll nur sein
+        # eigenes zuletzt gesehenes Profil sehen, nicht das irgendeines anderen Nutzers).
+        zg = _lese_zuletzt_gesehen()
+        if zg:
+            puuid = zg[0]["puuid"]
 
-    # Bereits getrackte Profile für den Schnellzugriff im Dashboard - Meta-Sample-Accounts
-    # (Challenger/Grandmaster-Harvest für die Champion-Datenbank) tauchen hier nicht auf,
-    # das sind keine echten getrackten Freunde-Profile.
-    cur.execute("SELECT riot_name, riot_tag FROM players WHERE is_meta_sample = FALSE ORDER BY riot_name;")
-    bekannte_spieler = [{"name": n, "tag": t} for n, t in cur.fetchall()]
+    zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
 
     if puuid is None:
         cur.close()
@@ -536,7 +568,7 @@ def profil():
             kein_spieler=True,
             fehler=fehler,
             riot_id_input=riot_id_input,
-            bekannte_spieler=bekannte_spieler,
+            zuletzt_gesehen=zuletzt_gesehen,
         )
 
     cur.execute("SELECT riot_name, riot_tag FROM players WHERE puuid = %s;", (puuid,))
@@ -618,12 +650,17 @@ def profil():
         "farben": ["#34d399" if s["win"] else "#f76c8a" for s in chronologisch],
     }
 
-    return render_template(
+    # Aktuelles Profil ganz nach vorne in die "Zuletzt gesehen"-Liste DIESES Browsers -
+    # direkt fürs Rendern wiederverwendet, damit es sofort oben auftaucht statt erst beim
+    # nächsten Request.
+    neue_liste = _neue_zuletzt_gesehen_liste(puuid, riot_name, riot_tag)
+
+    resp = make_response(render_template(
         "dashboard.html",
         kein_spieler=False,
         fehler=fehler,
         riot_id_input=riot_id_input,
-        bekannte_spieler=bekannte_spieler,
+        zuletzt_gesehen=_mit_farbe(neue_liste),
         puuid=puuid,
         riot_name=riot_name,
         riot_tag=riot_tag,
@@ -637,7 +674,8 @@ def profil():
         probleme=probleme,
         staerken=staerken,
         kda_chart=kda_chart,
-    )
+    ))
+    return _cookie_setzen(resp, neue_liste)
 
 
 @app.route("/match/<match_id>")

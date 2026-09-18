@@ -206,10 +206,10 @@
 
 <div class="wrap">
 
-  {% if bekannte_spieler %}
-  <div class="section-label">Bekannte Profile</div>
+  {% if zuletzt_gesehen %}
+  <div class="section-label">Zuletzt gesehen</div>
   <div class="avatar-grid">
-    {% for sp in bekannte_spieler %}
+    {% for sp in zuletzt_gesehen %}
     <a class="avatar-chip" href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">
       <div class="circle" style="background: {{ sp.farbe }};">{{ sp.name[0] | upper }}</div>
       <div class="name">{{ sp.name }}</div>
@@ -217,7 +217,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="empty">Noch kein Profil gespeichert - suche oben nach einem Summoner (Name#Tag).</p>
+  <p class="empty">Noch kein Profil angeschaut - suche oben nach einem Summoner (Name#Tag).</p>
   {% endif %}
 
   <div class="section-label">Wohin möchtest du?</div>
