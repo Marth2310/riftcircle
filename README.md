@@ -1,18 +1,18 @@
-# LoL Analytics
+# RiftCircle
 
 Ein persönliches League-of-Legends-Stats-Dashboard: holt Matchdaten über die Riot-API,
-speichert sie in Postgres und zeigt sie in einem lokalen Flask-Dashboard an — mit
+speichert sie in Postgres und zeigt sie in einem Flask-Dashboard an — mit
 Elo-Richtwert-Vergleichen, Musteranalyse über mehrere Spiele, Postgame-Details
-(Items, Runen, Death-Map, Team-Aufstellung, Lane-Vergleich) und mehr.
+(Items, Runen, Death-Map & Zeitstrahl, Team-/Lane-Vergleich, MVP/ACE, Rollen-Tipps) und mehr.
 
-## Setup
+## Setup (lokal)
 
 1. Postgres-Datenbank `lolanalytics` anlegen (lokal, Standardport 5432).
 2. Dependencies installieren:
    ```
    python -m venv venv
    source venv/bin/activate
-   pip install psycopg2-binary requests python-dotenv flask
+   pip install -r requirements.txt
    ```
 3. `.env.example` nach `.env` kopieren und ausfüllen:
    - `DB_PASSWORD` – dein Postgres-Passwort
@@ -33,6 +33,13 @@ Elo-Richtwert-Vergleichen, Musteranalyse über mehrere Spiele, Postgame-Details
    python dashboard.py
    ```
    Dann `http://127.0.0.1:5050` im Browser öffnen.
+
+## Deployment
+
+Vorbereitet für PaaS-Hosting (Render/Railway): `Procfile` (Gunicorn), `requirements.txt`,
+zentrale DB-Verbindung über `db.py` (nutzt `DATABASE_URL`, falls gesetzt). Fürs Live-
+Deployment zusätzlich `RIOT_API_KEY` als **Production Key** (nicht Development Key) sowie
+`FLASK_DEBUG=0` setzen.
 
 ## Hinweise
 
