@@ -65,9 +65,16 @@ def table_for_role(role):
 
 
 def normalize_tier(tier):
-    """Bildet CHALLENGER/GRANDMASTER auf MASTER ab, da die Tabellen dort enden."""
+    """Bildet CHALLENGER/GRANDMASTER auf MASTER ab (Tabellen enden dort oben) und WOOD auf
+    IRON (Riot hat diese Stufe unterhalb Iron nachträglich eingeführt, unten in den
+    Tabellen gibt es sie nicht). Jeder andere unbekannte/zukünftige Tier-Name fällt sicher
+    auf IRON zurück, statt beim Tabellen-Lookup mit KeyError abzustürzen."""
     if tier in ("GRANDMASTER", "CHALLENGER"):
         return "MASTER"
+    if tier == "WOOD":
+        return "IRON"
+    if tier not in KDA_BENCHMARKS:
+        return "IRON"
     return tier
 
 

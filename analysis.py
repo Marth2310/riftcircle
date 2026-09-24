@@ -29,12 +29,21 @@ MATCH_QUERY = """
 
 
 def get_player_tier(puuid, headers):
-    """Holt den aktuellen Solo/Duo-Rang des Spielers direkt über die PUUID."""
+    """Holt den aktuellen Solo/Duo-Rang des Spielers direkt über die PUUID. Gibt (None, None)
+    zurück statt abzustürzen, wenn der Call fehlschlägt (z.B. abgelaufener Dev-Key) - Riot
+    liefert dann ein Fehler-Objekt statt einer Liste, worüber zu iterieren einen TypeError
+    wirft. "RANKED_SOLO_5x5" wird als Teilstring geprüft, nicht exakt - Riot benennt die
+    Solo-Queue je nach Season/Event gelegentlich um (z.B. "JADE_RANKED_SOLO_5x5")."""
     url = f"https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
-    entries = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    if resp.status_code != 200:
+        return None, None
+    entries = resp.json()
+    if not isinstance(entries, list):
+        return None, None
 
     for entry in entries:
-        if entry["queueType"] == "RANKED_SOLO_5x5":
+        if "RANKED_SOLO_5x5" in entry.get("queueType", ""):
             return entry["tier"], entry["rank"]
     return None, None
 

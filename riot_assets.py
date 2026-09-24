@@ -8,8 +8,11 @@ import requests
 REQUEST_TIMEOUT = 10
 
 # Data Dragon Patch-Version wird nur einmal pro Prozess-Laufzeit abgefragt (ändert sich max.
-# alle paar Wochen mit einem neuen Patch) statt bei jedem Dashboard-Aufruf neu.
+# alle paar Wochen mit einem neuen Patch) statt bei jedem Dashboard-Aufruf neu. Fallback-Wert
+# für den (seltenen) Fall, dass Data Dragon selbst mal kurz nicht erreichbar ist - ohne den
+# würde JEDE Seite abstürzen, weil praktisch jede Icon-/Splash-URL eine Version braucht.
 _ddragon_version_cache = None
+_FALLBACK_VERSION = "14.19.1"
 
 # champion_key -> (version, [skin_num, ...]) - nur "Basis"-Skins (keine Chromas, die haben
 # ohnehin kein eigenes Splash-Art und liefern 403 - siehe Namensfilter unten).
@@ -19,10 +22,14 @@ _champion_skins_cache = {}
 def get_ddragon_version():
     global _ddragon_version_cache
     if _ddragon_version_cache is None:
-        versions = requests.get(
-            "https://ddragon.leagueoflegends.com/api/versions.json", timeout=REQUEST_TIMEOUT
-        ).json()
-        _ddragon_version_cache = versions[0]
+        try:
+            resp = requests.get(
+                "https://ddragon.leagueoflegends.com/api/versions.json", timeout=REQUEST_TIMEOUT
+            )
+            versions = resp.json()
+            _ddragon_version_cache = versions[0] if isinstance(versions, list) and versions else _FALLBACK_VERSION
+        except (requests.RequestException, ValueError):
+            _ddragon_version_cache = _FALLBACK_VERSION
     return _ddragon_version_cache
 
 

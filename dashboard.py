@@ -569,7 +569,21 @@ def profil():
         )
 
     cur.execute("SELECT riot_name, riot_tag FROM players WHERE puuid = %s;", (puuid,))
-    riot_name, riot_tag = cur.fetchone()
+    row = cur.fetchone()
+    if row is None:
+        # Puuid aus dem Cookie/Fallback verweist auf keinen (mehr) existierenden Spieler
+        # (z.B. nach einem DB-Reset) - sauber auf den leeren Zustand zurückfallen statt
+        # beim Entpacken von None abzustürzen.
+        cur.close()
+        conn.close()
+        return render_template(
+            "dashboard.html",
+            kein_spieler=True,
+            fehler=fehler,
+            riot_id_input=riot_id_input,
+            zuletzt_gesehen=zuletzt_gesehen,
+        )
+    riot_name, riot_tag = row
 
     tier, rank = get_player_tier(puuid, headers)
     anzeige_rang = f"{tier} {rank}" if tier else "Unranked"

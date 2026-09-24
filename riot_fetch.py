@@ -131,8 +131,15 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
 
     for match_id in neue_match_ids:
         url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}"
-        match_data = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT).json()
-        info = match_data["info"]
+        resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        if resp.status_code != 200:
+            # Einzelner Match-Call fehlgeschlagen (z.B. abgelaufener Key mitten im Sync,
+            # oder ein 404 für eine inzwischen ungültige Match-ID) - diesen Match überspringen
+            # statt den ganzen Sync (und damit die Seite) abstürzen zu lassen. Bleibt in
+            # "bereits_gespeichert" fehlend, wird beim nächsten Sync erneut versucht.
+            time.sleep(1.2)
+            continue
+        info = resp.json()["info"]
 
         cur.execute("""
             INSERT INTO matches (match_id, played_at, duration_seconds, patch)
