@@ -67,7 +67,7 @@ def _seite_tracken(response):
     werden). Nur erfolgreiche GET-Seitenaufrufe zählen, keine Formular-POSTs, kein Static,
     keine Bots, und die Statistikseite selbst zählt sich nicht mit."""
     if (ANALYTICS_SECRET and request.method == "GET" and response.status_code == 200
-            and request.endpoint not in (None, "static", "seite_statistik")):
+            and request.endpoint not in (None, "static", "seite_statistik", "favicon")):
         user_agent = (request.headers.get("User-Agent") or "").lower()
         if not any(wort in user_agent for wort in BOT_USER_AGENT_WOERTER):
             besucher_hash = hashlib.sha256(
@@ -520,6 +520,11 @@ def _meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon="🛡️"):
         max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
     )
     return resp
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return app.send_static_file("favicon.ico")
 
 
 @app.route("/riot.txt")
