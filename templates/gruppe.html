@@ -214,8 +214,10 @@
   }
   .vergleich-bar button.ready { opacity: 1; pointer-events: auto; }
 
-  .member-active { color: var(--muted); font-size: 0.62rem; margin-top: -4px; }
+  .member-link { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: inherit; }
+  .member-active { color: var(--muted); font-size: 0.68rem; }
 
+  .vorschlaege-label { color: var(--muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin: 18px 0 8px; }
   .vorschlaege-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
   .vorschlag-chip {
     display: inline-flex; align-items: center; gap: 5px;
@@ -230,7 +232,8 @@
   .vorschlag-chip:hover { color: var(--text); border-color: var(--accent); }
   .vorschlag-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  .danger-zone { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border); text-align: center; }
+  .danger-zone { text-align: center; }
+  .danger-zone .panel-hint { color: var(--muted); font-size: 0.82rem; margin: 0 0 12px; }
   .danger-btn {
     background: none;
     border: 1px solid var(--loss);
@@ -241,6 +244,34 @@
     cursor: pointer;
   }
   .danger-btn:hover { background: rgba(247, 108, 138, 0.12); }
+
+  /* Spiele-Filter über "Letzte Spiele" - Mitglied/Rolle/Sortierung, rein clientseitig */
+  .feed-filters { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; }
+  .filter-group { display: flex; flex-direction: column; gap: 7px; }
+  .filter-label { color: var(--muted); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .filter-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .filter-chip:hover { color: var(--text); border-color: var(--accent); }
+  .filter-chip.active { color: #0a0818; background: linear-gradient(90deg, var(--accent), var(--void)); border-color: transparent; font-weight: 700; }
+  .filter-select {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -290,6 +321,44 @@
     </span>
   </p>
 
+  <div class="panel">
+    <h2 class="section-title">Mitglieder</h2>
+    {% if mitglieder %}
+    <div class="avatar-grid">
+      {% for m in mitglieder %}
+      <div class="avatar-chip member-cell">
+        <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
+          <button type="submit" class="member-remove" title="Entfernen">&times;</button>
+        </form>
+        <a class="member-link" href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
+          <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+          <div class="name">{{ m.name }}</div>
+          {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
+    {% endif %}
+
+    {% if vorschlaege %}
+    <div class="vorschlaege-label">Schnellauswahl aus deinem Verlauf</div>
+    <div class="vorschlaege-row">
+      {% for v in vorschlaege %}
+      <button type="button" class="vorschlag-chip" data-riotid="{{ v.name }}#{{ v.tag }}">
+        <span class="dot" style="background: {{ v.farbe }};"></span>{{ v.name }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
+      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name#Tag" required>
+      <button type="submit">Hinzufügen</button>
+    </form>
+  </div>
+
   {% if wochenrangliste %}
   <div class="panel">
     <h2 class="section-title">Diese Woche</h2>
@@ -330,7 +399,7 @@
   {% endif %}
 
   {% macro spiel_karte(f) %}
-  <div class="feed-card-wrap">
+  <div class="feed-card-wrap" data-puuid="{{ f.puuid }}" data-role="{{ f.role or '' }}" data-kda="{{ f.kda }}">
     <label class="feed-card-select" title="Für Vergleich auswählen">
       <input type="checkbox" class="vergleich-check"
              data-match="{{ f.match_id }}" data-puuid="{{ f.puuid }}"
@@ -363,56 +432,49 @@
   <div class="panel">
     <h2 class="section-title">Letzte Spiele</h2>
     {% if feed %}
-    <div class="card-grid">
+    <div class="feed-filters">
+      <div class="filter-group">
+        <span class="filter-label">Mitglied</span>
+        <div class="filter-chips" id="memberFilters">
+          {% for m in mitglieder %}
+          <button type="button" class="filter-chip" data-filter-type="member" data-value="{{ m.puuid }}">
+            <span class="dot" style="background: {{ m.farbe }};"></span>{{ m.name }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Rolle</span>
+        <div class="filter-chips" id="roleFilters">
+          {% for wert, label in rollen_liste %}
+          <button type="button" class="filter-chip" data-filter-type="role" data-value="{{ wert }}">{{ label }}</button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Sortierung</span>
+        <select id="feedSort" class="filter-select">
+          <option value="neu">Neueste zuerst</option>
+          <option value="kda_best">Beste KDA zuerst</option>
+          <option value="kda_worst">Schlechteste KDA zuerst</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-grid" id="feedGrid">
       {% for f in feed %}{{ spiel_karte(f) }}{% endfor %}
     </div>
+    <p class="empty" id="feedEmpty" style="display: none;">Keine Spiele mit diesem Filter.</p>
     {% else %}
     <p class="empty">Noch keine Spiele - füg Mitglieder hinzu, die schon Spiele in RiftCircle getrackt haben.</p>
     {% endif %}
   </div>
 
-  <div class="panel">
-    <h2 class="section-title">Mitglieder</h2>
-    {% if mitglieder %}
-    <div class="avatar-grid">
-      {% for m in mitglieder %}
-      <div class="avatar-chip member-cell">
-        <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
-          <button type="submit" class="member-remove" title="Entfernen">&times;</button>
-        </form>
-        <a href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
-          <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
-          <div class="name">{{ m.name }}</div>
-          {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
-        </a>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
-    {% endif %}
-
-    {% if vorschlaege %}
-    <div class="vorschlaege-row">
-      {% for v in vorschlaege %}
-      <button type="button" class="vorschlag-chip" data-riotid="{{ v.name }}#{{ v.tag }}">
-        <span class="dot" style="background: {{ v.farbe }};"></span>{{ v.name }}
-      </button>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
-      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name#Tag" required>
-      <button type="submit">Hinzufügen</button>
+  <div class="panel danger-zone">
+    <p class="panel-hint">Löscht die Gruppe inkl. aller Mitglieder unwiderruflich für alle, die den Link haben.</p>
+    <form method="post" action="{{ url_for('gruppe_loeschen', gruppe_id=gruppe_id) }}"
+          onsubmit="return confirm('Gruppe „{{ gruppe_name }}“ inkl. aller Mitglieder unwiderruflich löschen?');">
+      <button type="submit" class="danger-btn">Gruppe löschen</button>
     </form>
-
-    <div class="danger-zone">
-      <form method="post" action="{{ url_for('gruppe_loeschen', gruppe_id=gruppe_id) }}"
-            onsubmit="return confirm('Gruppe „{{ gruppe_name }}“ inkl. aller Mitglieder unwiderruflich löschen?');">
-        <button type="submit" class="danger-btn">Gruppe löschen</button>
-      </form>
-    </div>
   </div>
 
 </div>
@@ -489,6 +551,70 @@
         addMemberInput.focus();
       });
     });
+
+    // Spiele-Filter (Mitglied/Rolle) + Sortierung (KDA) für "Letzte Spiele" - komplett
+    // clientseitig, alle nötigen Daten stecken schon als data-* in den Karten.
+    var feedGrid = document.getElementById("feedGrid");
+    if (feedGrid) {
+      var karten = Array.prototype.slice.call(feedGrid.querySelectorAll(".feed-card-wrap"));
+      var feedEmpty = document.getElementById("feedEmpty");
+      var aktivesMitglied = null;
+      var aktiveRollen = [];
+
+      function wendeFilterAn() {
+        var sichtbar = 0;
+        karten.forEach(function (karte) {
+          var passtMitglied = !aktivesMitglied || karte.dataset.puuid === aktivesMitglied;
+          var passtRolle = aktiveRollen.length === 0 || aktiveRollen.indexOf(karte.dataset.role) !== -1;
+          var zeigen = passtMitglied && passtRolle;
+          karte.style.display = zeigen ? "" : "none";
+          if (zeigen) sichtbar++;
+        });
+        feedEmpty.style.display = sichtbar === 0 ? "block" : "none";
+      }
+
+      document.querySelectorAll('#memberFilters .filter-chip').forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          var wert = chip.getAttribute("data-value");
+          if (aktivesMitglied === wert) {
+            aktivesMitglied = null;
+            chip.classList.remove("active");
+          } else {
+            document.querySelectorAll('#memberFilters .filter-chip').forEach(function (c) { c.classList.remove("active"); });
+            aktivesMitglied = wert;
+            chip.classList.add("active");
+          }
+          wendeFilterAn();
+        });
+      });
+
+      document.querySelectorAll('#roleFilters .filter-chip').forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          var wert = chip.getAttribute("data-value");
+          var idx = aktiveRollen.indexOf(wert);
+          if (idx === -1) {
+            aktiveRollen.push(wert);
+            chip.classList.add("active");
+          } else {
+            aktiveRollen.splice(idx, 1);
+            chip.classList.remove("active");
+          }
+          wendeFilterAn();
+        });
+      });
+
+      document.getElementById("feedSort").addEventListener("change", function (e) {
+        var modus = e.target.value;
+        var sortiert = karten.slice();
+        if (modus === "kda_best") {
+          sortiert.sort(function (a, b) { return parseFloat(b.dataset.kda) - parseFloat(a.dataset.kda); });
+        } else if (modus === "kda_worst") {
+          sortiert.sort(function (a, b) { return parseFloat(a.dataset.kda) - parseFloat(b.dataset.kda); });
+        }
+        // "neu" = ursprüngliche Reihenfolge, die schon chronologisch vom Server kommt
+        sortiert.forEach(function (karte) { feedGrid.appendChild(karte); });
+      });
+    }
 
     // Zwei Spiele für den direkten Vergleich auswählen
     var ausgewaehlt = [];

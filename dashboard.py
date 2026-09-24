@@ -583,6 +583,13 @@ def gruppe_erstellen():
 
 GRUPPEN_FEED_LIMIT = 40
 
+# Anzeige-Reihenfolge/Labels für den Rollen-Filter in der Gruppen-Ansicht
+ROLLEN_LISTE = [
+    ("TOP", "Top"), ("JUNGLE", "Jungle"), ("MIDDLE", "Mid"),
+    ("BOTTOM", "Bot"), ("UTILITY", "Support"),
+]
+ROLLEN_LABEL = dict(ROLLEN_LISTE)
+
 
 def baue_gruppen_feed(cur, mitglied_puuids):
     """Letzte Spiele ALLER Gruppenmitglieder, chronologisch gemischt (nicht pro Mitglied
@@ -627,7 +634,8 @@ def baue_gruppen_feed(cur, mitglied_puuids):
             "match_id": match_id, "puuid": puuid, "riot_name": riot_name, "riot_tag": riot_tag,
             "champion": champion, "champion_icon": champion_icon_url(champion, ddragon_version),
             "champion_splash": champion_splash_url(champion),
-            "role": role, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+            "role": role, "role_label": ROLLEN_LABEL.get(role, "ARAM"),
+            "win": win, "kills": kills, "deaths": deaths, "assists": assists,
             "kda": round(kda, 2), "cs": cs, "damage_dealt": damage_dealt,
             "zeit_text": relative_zeit(played_at), "dauer_min": duration_seconds // 60,
             "achievement": bestes_achievement(achievement_zeile),
@@ -723,7 +731,7 @@ def gruppe_ansehen(gruppe_id):
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, wochenrangliste=wochenrangliste,
-        gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege,
+        gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
