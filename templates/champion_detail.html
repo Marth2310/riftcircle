@@ -70,6 +70,26 @@
 
   .empty-panel { text-align: center; color: var(--muted); padding: 32px 20px; }
 
+  /* Zufälliger Skin als Hintergrund der ganzen Seite, nach unten ausgeblendet. Panels hier
+     leicht durchsichtig, damit der Skin auch hinter den Inhalten noch durchscheint. */
+  .champ-bg {
+    position: fixed;
+    inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%);
+  }
+  .panel {
+    background: rgba(27, 20, 64, 0.8);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
   .rune-tab-title { display: inline-flex; align-items: center; gap: 6px; }
   .rune-tab-title img { width: 22px; height: 22px; }
   .rune-tab-title img.rune-tab-sub { width: 15px; height: 15px; margin-left: -10px; margin-top: 12px; }
@@ -81,6 +101,7 @@
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
 <div class="void-glow void-glow-3"></div>
+<div class="champ-bg" style="--splash: url('{{ hintergrund_splash }}');"></div>
 
 <a class="site-header" href="{{ url_for('landing') }}">
   <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">

@@ -634,7 +634,15 @@ def champion_detail(key):
             runen_varianten.append({**v, "runen": runen, "keystone": keystone})
         stats["runen_varianten"] = runen_varianten
 
-    return render_template("champion_detail.html", champ=champ, stats=stats)
+    # Zufälliger Skin als Seitenhintergrund - bei Data-Dragon-Problemen einfach der Standard-Skin
+    try:
+        hintergrund_splash = random_champion_splash_url(key)
+    except Exception:
+        hintergrund_splash = champion_splash_url(key)
+
+    return render_template(
+        "champion_detail.html", champ=champ, stats=stats, hintergrund_splash=hintergrund_splash,
+    )
 
 
 GRUPPEN_ICONS = ["🛡️", "⚔️", "🔥", "🐉", "👑", "🎯", "💀", "🏆", "⚡", "🌙", "🦂", "🩸"]
