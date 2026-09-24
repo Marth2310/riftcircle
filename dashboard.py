@@ -499,21 +499,18 @@ def champion_detail(key):
     conn.close()
 
     ddragon_version = get_ddragon_version()
-    top_items = []
-    top_boots = []
     if stats:
-        top_items = [
-            {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
-            for it in stats["top_items"]
-        ]
-        top_boots = [
-            {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
-            for it in stats["top_boots"]
-        ]
+        for build in stats["builds"]:
+            build["top_items"] = [
+                {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
+                for it in build["top_items"]
+            ]
+            build["top_boots"] = [
+                {**it, "icon": item_icon_url(it["item_id"], ddragon_version)}
+                for it in build["top_boots"]
+            ]
 
-    return render_template(
-        "champion_detail.html", champ=champ, stats=stats, top_items=top_items, top_boots=top_boots
-    )
+    return render_template("champion_detail.html", champ=champ, stats=stats)
 
 
 @app.route("/profil")

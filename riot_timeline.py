@@ -99,6 +99,32 @@ def fetch_timeline_events(headers, match_id, puuid):
     }
 
 
+def fetch_all_skill_orders(headers, match_id):
+    """Skill-Level-Up-Reihenfolge ALLER 10 Teilnehmer eines Matches in einem einzigen
+    Timeline-Call - für den Skill-Order-Backfill der massen-geharvesteten Matches (dort
+    wurde die teure Timeline beim ursprünglichen Harvest bewusst übersprungen, siehe
+    harvest_meta.py). Gibt {puuid: [skill_slots]} zurück, None falls der Call fehlschlägt."""
+    url = f"https://europe.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline"
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    if resp.status_code != 200:
+        return None
+    data = resp.json()
+
+    participant_puuids = {
+        p["participantId"]: p["puuid"] for p in data.get("info", {}).get("participants", [])
+    }
+    ergebnisse = {puuid: [] for puuid in participant_puuids.values()}
+
+    for frame in data.get("info", {}).get("frames", []):
+        for event in frame.get("events", []):
+            if event.get("type") == "SKILL_LEVEL_UP" and event.get("levelUpType") == "NORMAL":
+                puuid = participant_puuids.get(event.get("participantId"))
+                if puuid:
+                    ergebnisse[puuid].append(event.get("skillSlot"))
+
+    return ergebnisse
+
+
 def death_position_percent(death):
     """Normalisiert eine Weltkoordinate auf 0-100% für die Anzeige, Y gespiegelt, damit die
     blaue Basis unten-links liegt (wie auf der In-Game-Minimap)."""

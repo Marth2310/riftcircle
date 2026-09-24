@@ -46,6 +46,9 @@
 
   .item-hint { color: var(--muted); font-size: 0.82rem; margin: -4px 0 14px; }
   .item-hint.boots-hint { margin: 18px 0 10px; }
+  .build-tab-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-top: 10px; padding-bottom: 10px; }
+  .build-tab-meta { color: var(--muted); font-size: 0.68rem; font-weight: 500; }
+  .build-tab-btn.active .build-tab-meta { color: var(--accent2); }
   .item-grid { display: flex; gap: 14px; flex-wrap: wrap; }
   .item-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 68px; }
   .item-cell img { width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); }
@@ -122,50 +125,61 @@
   </div>
 
   <div class="panel">
-    <h2>Core-Items</h2>
-    {% if top_items %}
-    <p class="item-hint">Die 1-2 Items, die in den meisten Spielen mit {{ champ.name }} gebaut wurden.</p>
-    <div class="item-grid">
-      {% for it in top_items[:2] %}
-      <div class="item-cell core">
-        <img src="{{ it.icon }}" alt="" loading="lazy">
-        <div class="pct">{{ it.pct }}%</div>
-        <div class="count">{{ it.count }}x</div>
-      </div>
+    <h2>Item-Builds</h2>
+    {% if stats.builds %}
+    <p class="item-hint">Spiele werden anhand ihrer 2 teuersten fertigen Items gruppiert - Champions mit mehreren beliebten Strategien (Crit/Lethality/Bruiser/AP/...) haben eben nicht immer dieselben Core-Items.</p>
+    <div class="tab-nav">
+      {% for b in stats.builds %}
+      <button class="tab-btn build-tab-btn {{ 'active' if loop.first else '' }}" data-tab="build{{ loop.index0 }}">
+        {{ b.label }}<span class="build-tab-meta">{{ b.winrate }}% &middot; {{ b.games }} Sp.</span>
+      </button>
       {% endfor %}
     </div>
-    {% else %}
-    <p class="empty-panel">Noch keine Item-Daten.</p>
-    {% endif %}
-  </div>
 
-  {% if top_items[2:] or top_boots %}
-  <div class="panel">
-    <h2>Situativ (je nach Spielverlauf)</h2>
-    <p class="item-hint">Kommen seltener und uneinheitlicher vor als die Core-Items - eher eine Auswahl je nach Gegner-Team und Spielstand als eine feste Reihenfolge.</p>
-    <div class="item-grid">
-      {% for it in top_items[2:] %}
-      <div class="item-cell">
-        <img src="{{ it.icon }}" alt="" loading="lazy">
-        <div class="pct">{{ it.pct }}%</div>
-        <div class="count">{{ it.count }}x</div>
+    {% for b in stats.builds %}
+    <div data-tabgroup="build{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
+      <p class="item-hint">Core-Items dieses Builds ({{ b.winrate }}% Winrate, {{ b.games }} Spiel{{ "e" if b.games != 1 else "" }}):</p>
+      <div class="item-grid">
+        {% for it in b.top_items[:2] %}
+        <div class="item-cell core">
+          <img src="{{ it.icon }}" alt="" loading="lazy">
+          <div class="pct">{{ it.pct }}%</div>
+          <div class="count">{{ it.count }}x</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
-    {% if top_boots %}
-    <p class="item-hint boots-hint">Schuhe:</p>
-    <div class="item-grid">
-      {% for it in top_boots %}
-      <div class="item-cell">
-        <img src="{{ it.icon }}" alt="" loading="lazy">
-        <div class="pct">{{ it.pct }}%</div>
-        <div class="count">{{ it.count }}x</div>
+
+      {% if b.top_items[2:] %}
+      <p class="item-hint boots-hint">Situativ:</p>
+      <div class="item-grid">
+        {% for it in b.top_items[2:] %}
+        <div class="item-cell">
+          <img src="{{ it.icon }}" alt="" loading="lazy">
+          <div class="pct">{{ it.pct }}%</div>
+          <div class="count">{{ it.count }}x</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      {% endif %}
+
+      {% if b.top_boots %}
+      <p class="item-hint boots-hint">Schuhe:</p>
+      <div class="item-grid">
+        {% for it in b.top_boots %}
+        <div class="item-cell">
+          <img src="{{ it.icon }}" alt="" loading="lazy">
+          <div class="pct">{{ it.pct }}%</div>
+          <div class="count">{{ it.count }}x</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty-panel">Noch nicht genug Spiele für eine Build-Aufschlüsselung (mindestens {{ 3 }} Spiele mit derselben Item-Kombination nötig).</p>
     {% endif %}
   </div>
-  {% endif %}
 
   <div class="panel">
     <h2>Skill-Prioritäten</h2>
@@ -185,6 +199,22 @@
   {% endif %}
 
 </div>
+
+<script>
+  (function () {
+    document.querySelectorAll(".build-tab-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var tab = btn.getAttribute("data-tab");
+        document.querySelectorAll(".build-tab-btn").forEach(function (b) {
+          b.classList.toggle("active", b === btn);
+        });
+        document.querySelectorAll("[data-tabgroup]").forEach(function (panel) {
+          panel.hidden = panel.getAttribute("data-tabgroup") !== tab;
+        });
+      });
+    });
+  })();
+</script>
 
 </body>
 </html>

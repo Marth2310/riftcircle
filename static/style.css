@@ -124,3 +124,27 @@ h2.section-title::before {
   margin-bottom: 16px;
 }
 .back-link:hover { color: var(--text); }
+
+/* Tab-Nav - geteilt zwischen Match-Detail (Übersicht/Team/Karte/Tipps) und Champion-
+   Datenbank (Build-Varianten: Crit/Lethality/Bruiser/...) */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
