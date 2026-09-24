@@ -785,6 +785,7 @@ def gruppe_ansehen(gruppe_id):
             zuletzt_aktiv[f["puuid"]] = f["zeit_text"]
     for m in mitglieder:
         m["zuletzt_aktiv"] = zuletzt_aktiv.get(m["puuid"])
+    mitglieder = _mit_summoner_icons(mitglieder)
 
     # Schnellauswahl beim Mitglied-Hinzufügen: eigene "Zuletzt gesehen"-Profile, die noch
     # nicht in der Gruppe sind.

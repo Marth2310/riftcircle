@@ -331,7 +331,11 @@
           <button type="submit" class="member-remove" title="Entfernen">&times;</button>
         </form>
         <a class="member-link" href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
+          {% if m.icon_url %}
+          <div class="circle has-icon" style="background: {{ m.farbe }};"><img src="{{ m.icon_url }}" alt=""></div>
+          {% else %}
           <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+          {% endif %}
           <div class="name">{{ m.name }}</div>
           {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
         </a>
