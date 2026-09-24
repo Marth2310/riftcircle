@@ -6,7 +6,7 @@ from analysis import (
     KATEGORIEN,
     MATCH_QUERY,
     format_wert,
-    get_player_tier,
+    get_player_ranks,
     match_metrics,
     top_probleme,
 )
@@ -37,10 +37,15 @@ def formatiere_top_problem(key, stats):
 # --- Rang einmal abfragen ---
 cur.execute("SELECT puuid FROM players LIMIT 1;")
 puuid = cur.fetchone()[0]
-tier, rank = get_player_tier(puuid, headers)
+ranks = get_player_ranks(puuid, headers)
+solo_rang = ranks["solo"]
+tier = solo_rang["tier"] if solo_rang else None
 
-if tier:
-    print(f"Aktueller Rang: {tier} {rank}\n")
+if solo_rang:
+    print(f"Aktueller Rang (Solo/Duo): {solo_rang['tier']} {solo_rang['rank']}")
+    if ranks["flex"]:
+        print(f"Aktueller Rang (Flex): {ranks['flex']['tier']} {ranks['flex']['rank']}")
+    print()
 else:
     print("Kein Solo/Duo-Rang gefunden (unranked oder zu wenig Spiele)\n")
     tier = "GOLD"  # Fallback, falls unranked

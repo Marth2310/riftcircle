@@ -28,24 +28,37 @@ MATCH_QUERY = """
 """
 
 
-def get_player_tier(puuid, headers):
-    """Holt den aktuellen Solo/Duo-Rang des Spielers direkt über die PUUID. Gibt (None, None)
-    zurück statt abzustürzen, wenn der Call fehlschlägt (z.B. abgelaufener Dev-Key) - Riot
-    liefert dann ein Fehler-Objekt statt einer Liste, worüber zu iterieren einen TypeError
-    wirft. "RANKED_SOLO_5x5" wird als Teilstring geprüft, nicht exakt - Riot benennt die
-    Solo-Queue je nach Season/Event gelegentlich um (z.B. "JADE_RANKED_SOLO_5x5")."""
+def get_player_ranks(puuid, headers):
+    """Holt Solo/Duo- UND Flex-Rang des Spielers direkt über die PUUID - als
+    {"solo": {...} oder None, "flex": {...} oder None}, je mit tier/rank/lp/wins/losses.
+
+    WICHTIG: exakter Abgleich auf "RANKED_SOLO_5x5"/"RANKED_FLEX_SR", kein Teilstring-Check.
+    Riot liefert im selben Response teils ZUSÄTZLICHE, komplett eigenständige Einträge mit
+    abweichendem Präfix (z.B. "JADE_RANKED_SOLO_5x5") - das ist NICHT derselbe Rang, sondern
+    ein eigener Extra-Modus mit eigenem, unabhängigem Tier (in freier Wildbahn beobachtet:
+    "JADE_RANKED_SOLO_5x5" = WOOD IV, während die echte "RANKED_SOLO_5x5" im selben Response
+    DIAMOND IV war). Ein Teilstring-Match hätte hier den falschen Rang gezeigt. TFT-Warteschlangen
+    ("RANKED_TFT*") kommen über denselben Endpunkt, werden hier ignoriert - League, nicht TFT."""
     url = f"https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}"
     resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    ranks = {"solo": None, "flex": None}
     if resp.status_code != 200:
-        return None, None
+        return ranks
     entries = resp.json()
     if not isinstance(entries, list):
-        return None, None
+        return ranks
 
     for entry in entries:
-        if "RANKED_SOLO_5x5" in entry.get("queueType", ""):
-            return entry["tier"], entry["rank"]
-    return None, None
+        eintrag = {
+            "tier": entry.get("tier"), "rank": entry.get("rank"),
+            "lp": entry.get("leaguePoints", 0),
+            "wins": entry.get("wins", 0), "losses": entry.get("losses", 0),
+        }
+        if entry.get("queueType") == "RANKED_SOLO_5x5":
+            ranks["solo"] = eintrag
+        elif entry.get("queueType") == "RANKED_FLEX_SR":
+            ranks["flex"] = eintrag
+    return ranks
 
 
 def match_metrics(row, tier):

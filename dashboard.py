@@ -14,7 +14,7 @@ from analysis import (
     MATCH_QUERY,
     berechne_note,
     format_wert,
-    get_player_tier,
+    get_player_ranks,
     match_metrics,
     ringe_fuer_match,
     top_probleme,
@@ -906,9 +906,15 @@ def profil():
         )
     riot_name, riot_tag = row
 
-    tier, rank = get_player_tier(puuid, headers)
-    anzeige_rang = f"{tier} {rank}" if tier else "Unranked"
-    tier = normalize_tier(tier) if tier else "GOLD"
+    # Solo/Duo und Flex getrennt anzeigen (nicht TFT, nicht die separaten "JADE_..."-o.ä.
+    # Event-Warteschlangen, die Riot manchmal zusätzlich im selben Response mitschickt - siehe
+    # get_player_ranks() für Details). Die Richtwert-Vergleiche unten bleiben bewusst an
+    # Solo/Duo verankert (der übliche Elo-Referenzpunkt), Flex ist rein informativ.
+    ranks = get_player_ranks(puuid, headers)
+    solo_rang, flex_rang = ranks["solo"], ranks["flex"]
+    anzeige_rang_solo = f"{solo_rang['tier']} {solo_rang['rank']}" if solo_rang else "Unranked"
+    anzeige_rang_flex = f"{flex_rang['tier']} {flex_rang['rank']}" if flex_rang else "Unranked"
+    tier = normalize_tier(solo_rang["tier"]) if solo_rang else "GOLD"
 
     cur.execute(MATCH_QUERY, (puuid, ANZAHL_MATCHES))
     rows = cur.fetchall()
@@ -998,7 +1004,8 @@ def profil():
         puuid=puuid,
         riot_name=riot_name,
         riot_tag=riot_tag,
-        rang=anzeige_rang,
+        rang_solo=anzeige_rang_solo,
+        rang_flex=anzeige_rang_flex,
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
         hero_splash=hero_splash,
         anzahl_spiele=len(spiele),

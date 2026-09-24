@@ -44,9 +44,11 @@
   }
   .profile h1 { font-size: 2rem; margin: 0; }
   .profile .tag { color: var(--muted); font-weight: 400; }
+  .rank-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .rank-badge {
-    display: inline-block;
-    margin-top: 8px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
     padding: 5px 16px;
     border-radius: 999px;
     font-size: 0.9rem;
@@ -55,6 +57,8 @@
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     color: #0a0818;
   }
+  .rank-badge .rank-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; }
+  .rank-badge.flex { background: linear-gradient(90deg, var(--void), var(--void-2)); }
 
   .cards {
     display: grid;
@@ -375,7 +379,10 @@
     {% if summoner_icon %}<img class="icon" src="{{ summoner_icon }}" alt="Summoner Icon">{% endif %}
     <div>
       <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>
-      <span class="rank-badge">{{ rang }}</span>
+      <div class="rank-badges">
+        <span class="rank-badge"><span class="rank-label">Solo/Duo</span> {{ rang_solo }}</span>
+        <span class="rank-badge flex"><span class="rank-label">Flex</span> {{ rang_flex }}</span>
+      </div>
     </div>
   </div>
 
