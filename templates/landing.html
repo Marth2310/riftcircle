@@ -96,39 +96,6 @@
     margin: 44px 0 16px;
   }
 
-  .avatar-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 16px;
-  }
-  .avatar-chip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    width: 84px;
-    text-align: center;
-  }
-  .avatar-chip .circle {
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800;
-    font-size: 1.2rem;
-    color: #0a0818;
-    box-shadow: 0 8px 20px rgba(10, 6, 30, 0.4);
-    transition: transform 0.15s;
-  }
-  .avatar-chip:hover .circle { transform: translateY(-3px) scale(1.05); }
-  .avatar-chip .name {
-    font-size: 0.76rem;
-    color: var(--muted);
-    line-height: 1.25;
-    word-break: break-word;
-  }
-  .avatar-chip:hover .name { color: var(--text); }
 
   .nav-cards {
     display: grid;
@@ -219,6 +186,19 @@
   {% else %}
   <p class="empty">Noch kein Profil angeschaut - suche oben nach einem Summoner (Name#Tag).</p>
   {% endif %}
+
+  <div class="section-label">Meine Gruppen</div>
+  {% if meine_gruppen %}
+  <div class="known-players">
+    {% for g in meine_gruppen %}
+      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{{ g.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
+    <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
+    <button type="submit">Anlegen</button>
+  </form>
 
   <div class="section-label">Wohin möchtest du?</div>
   <div class="nav-cards">

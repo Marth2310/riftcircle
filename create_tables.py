@@ -86,6 +86,25 @@ cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_rank INTEG
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS gold_diff INTEGER;")
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS skill_order JSONB;")
 
+# Gruppen ("Community & Rivalen") - per Link teilbar, kein Login nötig: wer die Gruppen-ID
+# kennt, kann sie sehen und Mitglieder verwalten (bewusst einfach gehalten, passend zum Rest
+# der App ohne Nutzerkonten).
+cur.execute("""
+CREATE TABLE IF NOT EXISTS gruppen (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    erstellt_am TIMESTAMP DEFAULT now()
+);
+""")
+cur.execute("""
+CREATE TABLE IF NOT EXISTS gruppen_mitglieder (
+    gruppe_id TEXT REFERENCES gruppen(id) ON DELETE CASCADE,
+    puuid TEXT REFERENCES players(puuid),
+    hinzugefuegt_am TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (gruppe_id, puuid)
+);
+""")
+
 # Falls die Tabelle schon vor dem UNIQUE-Constraint existierte (CREATE TABLE IF NOT EXISTS
 # greift dann nicht mehr): eventuelle Duplikate bereinigen und Constraint nachträglich ergänzen.
 cur.execute("""

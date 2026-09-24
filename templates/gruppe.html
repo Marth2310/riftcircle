@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ gruppe_name }} - Gruppe | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .page-head { text-align: center; margin: 4px 0 8px; }
+  .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
+
+  .share-hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    max-width: 480px;
+    margin: 0 auto 28px;
+  }
+  .share-link-row {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 12px auto 0;
+  }
+  .share-link-row input {
+    flex: 1;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .share-link-row button {
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .share-link-row button:hover { border-color: var(--accent); }
+
+  .member-cell { position: relative; }
+  .member-remove {
+    position: absolute;
+    top: -4px; right: 4px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .member-remove:hover { color: var(--loss); border-color: var(--loss); }
+
+  .add-member-form {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 28px auto 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .add-member-form input {
+    flex: 1;
+    min-width: 200px;
+    padding: 11px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .add-member-form input::placeholder { color: var(--muted); }
+  .add-member-form button {
+    padding: 11px 22px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+
+  <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
+
+  <div class="page-head">
+    <h1>{{ gruppe_name }}</h1>
+  </div>
+
+  <p class="share-hint">
+    Diesen Link mit Freunden teilen, damit sie dieselbe Gruppe sehen und Mitglieder eintragen können - kein Login nötig, wer den Link hat, hat Zugriff.
+    <span class="share-link-row">
+      <input type="text" id="shareLink" readonly value="">
+      <button type="button" id="copyBtn">Kopieren</button>
+    </span>
+  </p>
+
+  {% if mitglieder %}
+  <div class="avatar-grid">
+    {% for m in mitglieder %}
+    <div class="avatar-chip member-cell">
+      <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
+        <button type="submit" class="member-remove" title="Entfernen">&times;</button>
+      </form>
+      <a href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
+        <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+        <div class="name">{{ m.name }}</div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
+  {% endif %}
+
+  <form class="add-member-form" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
+    <input type="text" name="riot_id" placeholder="Profil hinzufügen: Name#Tag" required>
+    <button type="submit">Hinzufügen</button>
+  </form>
+
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById("shareLink");
+    input.value = window.location.href;
+
+    document.getElementById("copyBtn").addEventListener("click", function () {
+      input.select();
+      navigator.clipboard.writeText(input.value).then(function () {
+        var btn = document.getElementById("copyBtn");
+        var alt = "Kopiert!";
+        var original = btn.textContent;
+        btn.textContent = alt;
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      }).catch(function () {});
+    });
+  })();
+</script>
+
+</body>
+</html>

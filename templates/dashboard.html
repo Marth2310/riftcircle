@@ -274,18 +274,6 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .known-players-label { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-  .known-players { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-  .known-players a {
-    text-decoration: none;
-    color: var(--muted);
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 0.8rem;
-  }
-  .known-players a:hover { color: var(--text); border-color: var(--accent); }
   .error-msg {
     background: rgba(247, 108, 138, 0.12);
     border: 1px solid var(--loss);
@@ -355,6 +343,19 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  {% if meine_gruppen %}
+  <div class="known-players-label">Meine Gruppen</div>
+  <div class="known-players">
+    {% for g in meine_gruppen %}
+      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{{ g.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
+    <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
+    <button type="submit">Anlegen</button>
+  </form>
 
 {% if kein_spieler %}
   {% if not fehler %}

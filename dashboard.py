@@ -1,10 +1,11 @@
 import json
 import os
+import secrets
 import urllib.parse
 from datetime import datetime
 
 from dotenv import load_dotenv
-from flask import Flask, abort, make_response, render_template, request
+from flask import Flask, abort, make_response, redirect, render_template, request, url_for
 
 from analysis import (
     ANZAHL_MATCHES,
@@ -415,6 +416,36 @@ def _cookie_setzen(resp, liste):
         max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
     )
     return resp
+
+
+MEINE_GRUPPEN_COOKIE = "meine_gruppen"
+MAX_MEINE_GRUPPEN = 20
+
+
+def _lese_meine_gruppen():
+    """Gruppen, die DIESER Browser erstellt oder besucht hat - genau wie zuletzt_gesehen rein
+    übers Cookie. Die Gruppe selbst lebt in der DB und ist über ihre ID für jeden mit dem Link
+    sichtbar (Community/Rivalen-Gedanke, kein Login) - das Cookie merkt sich nur, welche
+    Gruppen-Links DIESER Browser kennt, für den Schnellzugriff auf Startseite/Profil."""
+    roh = request.cookies.get(MEINE_GRUPPEN_COOKIE)
+    if not roh:
+        return []
+    try:
+        daten = json.loads(urllib.parse.unquote(roh))
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(daten, list):
+        return []
+    return [e for e in daten if isinstance(e, dict) and {"id", "name"} <= e.keys()][:MAX_MEINE_GRUPPEN]
+
+
+def _meine_gruppen_cookie_setzen(resp, gruppe_id, name):
+    bisherige = [e for e in _lese_meine_gruppen() if e["id"] != gruppe_id]
+    neu = ([{"id": gruppe_id, "name": name}] + bisherige)[:MAX_MEINE_GRUPPEN]
+    resp.set_cookie(
+        MEINE_GRUPPEN_COOKIE, urllib.parse.quote(json.dumps(neu)),
+        max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
+    )
     return resp
 
 
@@ -428,7 +459,8 @@ def riot_verification():
 @app.route("/")
 def landing():
     zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
-    return render_template("landing.html", zuletzt_gesehen=zuletzt_gesehen)
+    meine_gruppen = _lese_meine_gruppen()
+    return render_template("landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen)
 
 
 CHAMPION_SORTIERUNGEN = {
@@ -513,6 +545,99 @@ def champion_detail(key):
     return render_template("champion_detail.html", champ=champ, stats=stats)
 
 
+@app.route("/gruppen/neu", methods=["POST"])
+def gruppe_erstellen():
+    """Erstellt eine neue, per Link teilbare Gruppe ("Community & Rivalen") - kein Login
+    nötig, wer den Link zur Gruppe kennt, kann sie sehen und Mitglieder verwalten."""
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("landing"))
+
+    gruppe_id = secrets.token_urlsafe(6)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO gruppen (id, name) VALUES (%s, %s);", (gruppe_id, name))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    resp = make_response(redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id)))
+    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name)
+
+
+@app.route("/gruppe/<gruppe_id>")
+def gruppe_ansehen(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM gruppen WHERE id = %s;", (gruppe_id,))
+    row = cur.fetchone()
+    if row is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    name = row[0]
+
+    cur.execute("""
+        SELECT pl.puuid, pl.riot_name, pl.riot_tag
+        FROM gruppen_mitglieder gm JOIN players pl ON gm.puuid = pl.puuid
+        WHERE gm.gruppe_id = %s
+        ORDER BY gm.hinzugefuegt_am;
+    """, (gruppe_id,))
+    mitglieder = _mit_farbe([{"puuid": p, "name": n, "tag": t} for p, n, t in cur.fetchall()])
+    cur.close()
+    conn.close()
+
+    resp = make_response(render_template(
+        "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, mitglieder=mitglieder
+    ))
+    # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
+    # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
+    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name)
+
+
+@app.route("/gruppe/<gruppe_id>/mitglied", methods=["POST"])
+def gruppe_mitglied_hinzufuegen(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM gruppen WHERE id = %s;", (gruppe_id,))
+    if cur.fetchone() is None:
+        cur.close()
+        conn.close()
+        abort(404)
+
+    riot_id_input = request.form.get("riot_id", "").strip()
+    if riot_id_input and "#" in riot_id_input:
+        name, tag = riot_id_input.rsplit("#", 1)
+        name, tag = name.strip(), tag.strip()
+        try:
+            puuid, _ = sync_player(cur, conn, headers, name, tag)
+            cur.execute(
+                "INSERT INTO gruppen_mitglieder (gruppe_id, puuid) VALUES (%s, %s) "
+                "ON CONFLICT DO NOTHING;",
+                (gruppe_id, puuid)
+            )
+            conn.commit()
+        except SummonerNotFound:
+            pass  # Stiller Fehlschlag - die Gruppe zeigt einfach weiterhin nur die gültigen Mitglieder
+
+    cur.close()
+    conn.close()
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/mitglied/<puuid>/entfernen", methods=["POST"])
+def gruppe_mitglied_entfernen(gruppe_id, puuid):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM gruppen_mitglieder WHERE gruppe_id = %s AND puuid = %s;", (gruppe_id, puuid)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
 @app.route("/profil")
 def profil():
     riot_id_input = request.args.get("riot_id", "").strip()
@@ -556,6 +681,7 @@ def profil():
             puuid = zg[0]["puuid"]
 
     zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
+    meine_gruppen = _lese_meine_gruppen()
 
     if puuid is None:
         cur.close()
@@ -566,6 +692,7 @@ def profil():
             fehler=fehler,
             riot_id_input=riot_id_input,
             zuletzt_gesehen=zuletzt_gesehen,
+            meine_gruppen=meine_gruppen,
         )
 
     cur.execute("SELECT riot_name, riot_tag FROM players WHERE puuid = %s;", (puuid,))
@@ -582,6 +709,7 @@ def profil():
             fehler=fehler,
             riot_id_input=riot_id_input,
             zuletzt_gesehen=zuletzt_gesehen,
+            meine_gruppen=meine_gruppen,
         )
     riot_name, riot_tag = row
 
@@ -672,6 +800,7 @@ def profil():
         fehler=fehler,
         riot_id_input=riot_id_input,
         zuletzt_gesehen=_mit_farbe(neue_liste),
+        meine_gruppen=meine_gruppen,
         puuid=puuid,
         riot_name=riot_name,
         riot_tag=riot_tag,

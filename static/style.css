@@ -148,3 +148,76 @@ h2.section-title::before {
 }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+/* Avatar-Chips - geteilt zwischen Startseite (Zuletzt gesehen) und Gruppen-Ansicht (Mitglieder) */
+.avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+.avatar-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  width: 84px;
+  text-align: center;
+}
+.avatar-chip .circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #0a0818;
+  box-shadow: 0 8px 20px rgba(10, 6, 30, 0.4);
+  transition: transform 0.15s;
+}
+.avatar-chip:hover .circle { transform: translateY(-3px) scale(1.05); }
+.avatar-chip .name {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.avatar-chip:hover .name { color: var(--text); }
+
+/* Pill-Liste - geteilt zwischen Profil-Seite (Zuletzt gesehen als Reiter) und Startseite
+   (Meine Gruppen), plus dazugehöriges kleines Formular zum Anlegen einer neuen Gruppe */
+.known-players-label { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.known-players { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; align-items: center; }
+.known-players a {
+  text-decoration: none;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+.known-players a:hover { color: var(--text); border-color: var(--accent); }
+
+.gruppe-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.gruppe-form input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.gruppe-form input::placeholder { color: var(--muted); }
+.gruppe-form button {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(90deg, var(--accent), var(--void));
+  color: #0a0818;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
