@@ -99,9 +99,11 @@ cur.execute("""
 CREATE TABLE IF NOT EXISTS gruppen (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    icon TEXT DEFAULT '🛡️',
     erstellt_am TIMESTAMP DEFAULT now()
 );
 """)
+cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '🛡️';")
 cur.execute("""
 CREATE TABLE IF NOT EXISTS gruppen_mitglieder (
     gruppe_id TEXT REFERENCES gruppen(id) ON DELETE CASCADE,

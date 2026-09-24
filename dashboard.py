@@ -437,12 +437,16 @@ def _lese_meine_gruppen():
         return []
     if not isinstance(daten, list):
         return []
-    return [e for e in daten if isinstance(e, dict) and {"id", "name"} <= e.keys()][:MAX_MEINE_GRUPPEN]
+    # "icon" fehlt in Cookies von vor dieser Erweiterung - Default-Schild als Fallback statt
+    # eines kaputten leeren Icons.
+    return [
+        {"icon": "🛡️", **e} for e in daten if isinstance(e, dict) and {"id", "name"} <= e.keys()
+    ][:MAX_MEINE_GRUPPEN]
 
 
-def _meine_gruppen_cookie_setzen(resp, gruppe_id, name):
+def _meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon="🛡️"):
     bisherige = [e for e in _lese_meine_gruppen() if e["id"] != gruppe_id]
-    neu = ([{"id": gruppe_id, "name": name}] + bisherige)[:MAX_MEINE_GRUPPEN]
+    neu = ([{"id": gruppe_id, "name": name, "icon": icon}] + bisherige)[:MAX_MEINE_GRUPPEN]
     resp.set_cookie(
         MEINE_GRUPPEN_COOKIE, urllib.parse.quote(json.dumps(neu)),
         max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
@@ -461,7 +465,10 @@ def riot_verification():
 def landing():
     zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
     meine_gruppen = _lese_meine_gruppen()
-    return render_template("landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen)
+    return render_template(
+        "landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen,
+        gruppen_icons=GRUPPEN_ICONS,
+    )
 
 
 CHAMPION_SORTIERUNGEN = {
@@ -546,6 +553,9 @@ def champion_detail(key):
     return render_template("champion_detail.html", champ=champ, stats=stats)
 
 
+GRUPPEN_ICONS = ["🛡️", "⚔️", "🔥", "🐉", "👑", "🎯", "💀", "🏆", "⚡", "🌙", "🦂", "🩸"]
+
+
 @app.route("/gruppen/neu", methods=["POST"])
 def gruppe_erstellen():
     """Erstellt eine neue, per Link teilbare Gruppe ("Community & Rivalen") - kein Login
@@ -553,17 +563,20 @@ def gruppe_erstellen():
     name = request.form.get("name", "").strip()
     if not name:
         return redirect(url_for("landing"))
+    icon = request.form.get("icon", "").strip()
+    if icon not in GRUPPEN_ICONS:
+        icon = GRUPPEN_ICONS[0]
 
     gruppe_id = secrets.token_urlsafe(6)
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO gruppen (id, name) VALUES (%s, %s);", (gruppe_id, name))
+    cur.execute("INSERT INTO gruppen (id, name, icon) VALUES (%s, %s, %s);", (gruppe_id, name, icon))
     conn.commit()
     cur.close()
     conn.close()
 
     resp = make_response(redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id)))
-    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name)
+    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon)
 
 
 GRUPPEN_FEED_LIMIT = 40
@@ -580,7 +593,8 @@ def baue_gruppen_feed(cur, mitglied_puuids):
     ddragon_version = get_ddragon_version()
     cur.execute("""
         SELECT p.match_id, p.puuid, pl.riot_name, pl.riot_tag, p.champion, p.role, p.win,
-               p.kills, p.deaths, p.assists, p.damage_rank, p.objectives_stolen, p.solo_kills,
+               p.kills, p.deaths, p.assists, p.cs, p.damage_dealt, p.damage_rank,
+               p.objectives_stolen, p.solo_kills,
                p.penta_kills, p.quadra_kills, p.triple_kills, p.double_kills,
                m.played_at, m.duration_seconds
         FROM participants p
@@ -594,20 +608,25 @@ def baue_gruppen_feed(cur, mitglied_puuids):
     feed = []
     for row in cur.fetchall():
         (match_id, puuid, riot_name, riot_tag, champion, role, win, kills, deaths, assists,
-         damage_rank, objectives_stolen, solo_kills, penta, quadra, triple, double,
+         cs, damage_dealt, damage_rank, objectives_stolen, solo_kills, penta, quadra, triple, double,
          played_at, duration_seconds) = row
 
         achievement_zeile = {
             "champion": champion, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
-            "damage_rank": damage_rank, "objectives_stolen": objectives_stolen or 0,
+            "damage_dealt": damage_dealt or 0, "damage_rank": damage_rank,
+            "objectives_stolen": objectives_stolen or 0,
             "solo_kills": solo_kills or 0, "penta_kills": penta or 0, "quadra_kills": quadra or 0,
             "triple_kills": triple or 0, "double_kills": double or 0,
         }
 
+        kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
+
         feed.append({
             "match_id": match_id, "puuid": puuid, "riot_name": riot_name, "riot_tag": riot_tag,
             "champion": champion, "champion_icon": champion_icon_url(champion, ddragon_version),
+            "champion_splash": champion_splash_url(champion),
             "role": role, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+            "kda": round(kda, 2), "cs": cs, "damage_dealt": damage_dealt,
             "zeit_text": relative_zeit(played_at), "dauer_min": duration_seconds // 60,
             "achievement": bestes_achievement(achievement_zeile),
         })
@@ -618,13 +637,14 @@ def baue_gruppen_feed(cur, mitglied_puuids):
 def gruppe_ansehen(gruppe_id):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT name FROM gruppen WHERE id = %s;", (gruppe_id,))
+    cur.execute("SELECT name, icon FROM gruppen WHERE id = %s;", (gruppe_id,))
     row = cur.fetchone()
     if row is None:
         cur.close()
         conn.close()
         abort(404)
-    name = row[0]
+    name, icon = row
+    icon = icon or "🛡️"
 
     cur.execute("""
         SELECT pl.puuid, pl.riot_name, pl.riot_tag
@@ -642,12 +662,12 @@ def gruppe_ansehen(gruppe_id):
     conn.close()
 
     resp = make_response(render_template(
-        "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, mitglieder=mitglieder,
-        feed=feed, achievement_feed=achievement_feed,
+        "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
+        feed=feed, achievement_feed=achievement_feed, gruppen_icons=GRUPPEN_ICONS,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
-    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name)
+    return _meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon)
 
 
 @app.route("/gruppe/<gruppe_id>/mitglied", methods=["POST"])
@@ -748,6 +768,7 @@ def profil():
             riot_id_input=riot_id_input,
             zuletzt_gesehen=zuletzt_gesehen,
             meine_gruppen=meine_gruppen,
+            gruppen_icons=GRUPPEN_ICONS,
         )
 
     cur.execute("SELECT riot_name, riot_tag FROM players WHERE puuid = %s;", (puuid,))
@@ -765,6 +786,7 @@ def profil():
             riot_id_input=riot_id_input,
             zuletzt_gesehen=zuletzt_gesehen,
             meine_gruppen=meine_gruppen,
+            gruppen_icons=GRUPPEN_ICONS,
         )
     riot_name, riot_tag = row
 
@@ -856,6 +878,7 @@ def profil():
         riot_id_input=riot_id_input,
         zuletzt_gesehen=_mit_farbe(neue_liste),
         meine_gruppen=meine_gruppen,
+        gruppen_icons=GRUPPEN_ICONS,
         puuid=puuid,
         riot_name=riot_name,
         riot_tag=riot_tag,

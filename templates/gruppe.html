@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <style>
   .page-head { text-align: center; margin: 4px 0 8px; }
+  .page-head .gruppe-icon { font-size: 2.4rem; line-height: 1; margin-bottom: 4px; }
   .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
 
   .share-hint {
@@ -90,48 +91,63 @@
 
   .empty { color: var(--muted); text-align: center; padding: 24px; }
 
-  .achievement-list { display: flex; flex-direction: column; gap: 10px; }
-  .achievement-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: var(--panel-2);
+  /* Spiel-Karten - "unsere Optik": abgerundete quadratische Karten statt Listenzeilen,
+     mit Champion-Splash als dezentem Hintergrund, geteilt zwischen Achievements & Feed */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .feed-card {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px;
+    padding: 16px 10px 12px;
+    border-radius: 16px;
+    background: var(--panel);
     border: 1px solid var(--border);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.15s, transform 0.15s;
+    border-top: 3px solid var(--border);
+    text-decoration: none; color: inherit;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s;
+    text-align: center;
   }
-  .achievement-row:hover { border-color: var(--gold); transform: translateX(2px); }
-  .achievement-champ { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--gold); flex-shrink: 0; }
-  .achievement-icon { font-size: 1.3rem; flex-shrink: 0; }
-  .achievement-text { font-size: 0.88rem; min-width: 0; }
-  .achievement-text strong { color: var(--gold); }
-  .achievement-meta { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
-
-  .feed-list { display: flex; flex-direction: column; gap: 8px; }
-  .feed-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border-left: 3px solid var(--border);
-    background: var(--panel-2);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.15s;
-    flex-wrap: wrap;
+  .feed-card:hover { transform: translateY(-3px); }
+  .feed-card.win { border-top-color: var(--win); }
+  .feed-card.loss { border-top-color: var(--loss); }
+  .feed-card.has-achievement { border-color: var(--gold); box-shadow: 0 0 14px rgba(212, 175, 106, 0.25); }
+  .feed-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 18%;
+    opacity: 0.14;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 60%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 60%);
+    pointer-events: none;
   }
-  .feed-row.win { border-left-color: var(--win); }
-  .feed-row.loss { border-left-color: var(--loss); }
-  .feed-row:hover { border-color: var(--accent); }
-  .feed-champ { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
-  .feed-main { flex: 1; min-width: 120px; }
-  .feed-name { font-size: 0.88rem; font-weight: 700; }
-  .feed-champ-name { color: var(--muted); font-weight: 400; margin-left: 6px; font-size: 0.8rem; }
-  .feed-meta { color: var(--muted); font-size: 0.76rem; margin-top: 2px; }
-  .feed-achievement-badge { font-size: 1.1rem; flex-shrink: 0; }
-  .feed-result { font-size: 0.78rem; font-weight: 700; flex-shrink: 0; white-space: nowrap; margin-left: auto; }
-  .feed-row.win .feed-result { color: var(--win); }
-  .feed-row.loss .feed-result { color: var(--loss); }
+  .feed-card > * { position: relative; }
+  .feed-card-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 0 4px rgba(212, 175, 106, 0.7));
+  }
+  .feed-card-champ { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--border); }
+  .feed-card.win .feed-card-champ { border-color: var(--win); }
+  .feed-card.loss .feed-card-champ { border-color: var(--loss); }
+  .feed-card-name { font-weight: 700; font-size: 0.85rem; margin-top: 4px; }
+  .feed-card-champ-name { color: var(--muted); font-size: 0.7rem; }
+  .feed-card-kda { font-size: 0.82rem; font-weight: 700; margin-top: 4px; }
+  .feed-card-kda .deaths { color: var(--loss); }
+  .feed-card-stats { color: var(--muted); font-size: 0.68rem; }
+  .feed-card-achievement-text {
+    font-size: 0.68rem;
+    color: var(--gold);
+    line-height: 1.35;
+    margin-top: 4px;
+  }
+  .feed-card-time { color: var(--muted); font-size: 0.66rem; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -150,6 +166,7 @@
   <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
 
   <div class="page-head">
+    <div class="gruppe-icon">{{ gruppe_icon }}</div>
     <h1>{{ gruppe_name }}</h1>
   </div>
 
@@ -161,20 +178,26 @@
     </span>
   </p>
 
+  {% macro spiel_karte(f) %}
+  <a class="feed-card {{ 'win' if f.win else 'loss' }} {{ 'has-achievement' if f.achievement else '' }}"
+     href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
+     style="--splash: url('{{ f.champion_splash }}');">
+    {% if f.achievement %}<div class="feed-card-badge">{{ f.achievement.icon }}</div>{% endif %}
+    <img class="feed-card-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
+    <div class="feed-card-name">{{ f.riot_name }}</div>
+    <div class="feed-card-champ-name">{{ f.champion }}</div>
+    <div class="feed-card-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</div>
+    <div class="feed-card-stats">{{ f.kda }}:1 KDA &middot; {{ "%.1f"|format(f.damage_dealt / 1000) }}k Schaden</div>
+    {% if f.achievement %}<div class="feed-card-achievement-text">{{ f.achievement.text }}</div>{% endif %}
+    <div class="feed-card-time">{{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
+  </a>
+  {% endmacro %}
+
   {% if achievement_feed %}
   <div class="panel">
     <h2 class="section-title">Achievements</h2>
-    <div class="achievement-list">
-      {% for f in achievement_feed %}
-      <a class="achievement-row" href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}">
-        <img class="achievement-champ" src="{{ f.champion_icon }}" alt="">
-        <div class="achievement-icon">{{ f.achievement.icon }}</div>
-        <div class="achievement-text">
-          <strong>{{ f.riot_name }}</strong> - {{ f.achievement.text }}
-          <div class="achievement-meta">{{ f.zeit_text }}</div>
-        </div>
-      </a>
-      {% endfor %}
+    <div class="card-grid">
+      {% for f in achievement_feed %}{{ spiel_karte(f) }}{% endfor %}
     </div>
   </div>
   {% endif %}
@@ -182,18 +205,8 @@
   <div class="panel">
     <h2 class="section-title">Letzte Spiele</h2>
     {% if feed %}
-    <div class="feed-list">
-      {% for f in feed %}
-      <a class="feed-row {{ 'win' if f.win else 'loss' }}" href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}">
-        <img class="feed-champ" src="{{ f.champion_icon }}" alt="">
-        <div class="feed-main">
-          <span class="feed-name">{{ f.riot_name }}<span class="feed-champ-name">{{ f.champion }}</span></span>
-          <div class="feed-meta">{{ f.kills }}/{{ f.deaths }}/{{ f.assists }} &middot; {{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
-        </div>
-        {% if f.achievement %}<div class="feed-achievement-badge" title="{{ f.achievement.text }}">{{ f.achievement.icon }}</div>{% endif %}
-        <div class="feed-result">{{ "Sieg" if f.win else "Niederlage" }}</div>
-      </a>
-      {% endfor %}
+    <div class="card-grid">
+      {% for f in feed %}{{ spiel_karte(f) }}{% endfor %}
     </div>
     {% else %}
     <p class="empty">Noch keine Spiele - füg Mitglieder hinzu, die schon Spiele in RiftCircle getrackt haben.</p>
@@ -237,9 +250,8 @@
       input.select();
       navigator.clipboard.writeText(input.value).then(function () {
         var btn = document.getElementById("copyBtn");
-        var alt = "Kopiert!";
         var original = btn.textContent;
-        btn.textContent = alt;
+        btn.textContent = "Kopiert!";
         setTimeout(function () { btn.textContent = original; }, 1500);
       }).catch(function () {});
     });

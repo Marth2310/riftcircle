@@ -189,14 +189,25 @@
 
   <div class="section-label">Meine Gruppen</div>
   {% if meine_gruppen %}
-  <div class="known-players">
+  <div class="group-grid">
     {% for g in meine_gruppen %}
-      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{{ g.name }}</a>
+    <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+      <div class="group-card-icon">{{ g.icon }}</div>
+      <div class="group-card-name">{{ g.name }}</div>
+    </a>
     {% endfor %}
   </div>
   {% endif %}
   <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
-    <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
+    <div class="gruppe-form-row">
+      <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
+    </div>
+    <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
+    <div class="icon-picker">
+      {% for icon in gruppen_icons %}
+      <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
+      {% endfor %}
+    </div>
     <button type="submit">Anlegen</button>
   </form>
 
@@ -232,6 +243,15 @@
         btn.disabled = true;
       });
     }
+
+    var iconInput = document.getElementById("gruppeIconInput");
+    document.querySelectorAll(".icon-choice").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".icon-choice").forEach(function (b) { b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        iconInput.value = btn.getAttribute("data-icon");
+      });
+    });
   })();
 </script>
 

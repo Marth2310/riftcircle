@@ -44,7 +44,7 @@ ACHIEVEMENT_DEFINITIONEN = [
         "icon": "💥",
         "prioritaet": 40,
         "pruefung": lambda r: r["damage_rank"] == 1 and r["win"],
-        "text": lambda r: f"Meister Schaden & Sieg mit {r['champion']}",
+        "text": lambda r: f"{r['damage_dealt']:,}".replace(",", ".") + f" Schaden (Platz 1) & Sieg mit {r['champion']}",
     },
     {
         "id": "solo_kills",

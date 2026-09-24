@@ -199,8 +199,15 @@ h2.section-title::before {
 }
 .known-players a:hover { color: var(--text); border-color: var(--accent); }
 
-.gruppe-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
-.gruppe-form input {
+.gruppe-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 440px;
+  margin-bottom: 24px;
+}
+.gruppe-form-row { display: flex; gap: 8px; }
+.gruppe-form input[type="text"] {
   flex: 1;
   min-width: 180px;
   padding: 8px 14px;
@@ -211,7 +218,7 @@ h2.section-title::before {
   font-size: 0.85rem;
 }
 .gruppe-form input::placeholder { color: var(--muted); }
-.gruppe-form button {
+.gruppe-form button[type="submit"] {
   padding: 8px 18px;
   border-radius: 999px;
   border: none;
@@ -220,4 +227,37 @@ h2.section-title::before {
   font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
+  align-self: flex-start;
 }
+
+/* Icon-Picker beim Gruppe-Anlegen */
+.icon-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+.icon-picker button {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 1.05rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.icon-picker button:hover { border-color: var(--accent); transform: translateY(-1px); }
+.icon-picker button.selected { border-color: var(--gold); background: rgba(212, 175, 106, 0.18); }
+
+/* Große Gruppen-Karten auf der Startseite - besser sichtbar/auffindbar als die reine Pill-Liste */
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.group-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px;
+  padding: 22px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  transition: transform 0.15s, border-color 0.15s;
+  text-align: center;
+}
+.group-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.group-card .group-card-icon { font-size: 2.2rem; line-height: 1; }
+.group-card .group-card-name { font-weight: 700; font-size: 0.92rem; }
