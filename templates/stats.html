@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statistiken | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 8px; }
+  .stat-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+  .stat-card .n { font-size: 1.6rem; font-weight: 800; }
+  .stat-card .lbl { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .stat-card .sub { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
+
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; margin: 22px 0 4px; }
+  .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+  .chart-bar { width: 100%; max-width: 28px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), var(--void)); min-height: 2px; }
+  .chart-day { color: var(--muted); font-size: 0.62rem; white-space: nowrap; }
+
+  .top-liste { display: flex; flex-direction: column; gap: 6px; }
+  .top-zeile { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 8px; background: var(--panel-2); font-size: 0.82rem; }
+  .top-zeile .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .top-zeile .n { color: var(--muted); font-size: 0.78rem; flex-shrink: 0; }
+  .top-zeile .bar-track { width: 60px; height: 5px; border-radius: 3px; background: rgba(150,130,240,0.14); overflow: hidden; flex-shrink: 0; }
+  .top-zeile .bar-fill { height: 100%; background: var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+
+  <div class="page-head" style="text-align: center; margin: 4px 0 24px;">
+    <h1 style="margin: 0; font-size: 1.6rem;">Statistiken</h1>
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Überblick</h2>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="n">{{ gesamt_views }}</div>
+        <div class="lbl">Aufrufe gesamt</div>
+        <div class="sub">{{ gesamt_besucher }} Besucher</div>
+      </div>
+      <div class="stat-card">
+        <div class="n">{{ views_30t }}</div>
+        <div class="lbl">Letzte 30 Tage</div>
+        <div class="sub">{{ besucher_30t }} Besucher</div>
+      </div>
+      <div class="stat-card">
+        <div class="n">{{ views_7t }}</div>
+        <div class="lbl">Letzte 7 Tage</div>
+        <div class="sub">{{ besucher_7t }} Besucher</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Letzte 14 Tage</h2>
+    {% if tagesverlauf %}
+    <div class="chart">
+      {% for t in tagesverlauf %}
+      <div class="chart-col">
+        <div class="chart-bar" style="height: {{ (t.views / max_views * 100) | round(1) }}%;" title="{{ t.tag }}: {{ t.views }} Aufrufe, {{ t.besucher }} Besucher"></div>
+        <div class="chart-day">{{ t.tag }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Daten.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Meistbesuchte Seiten (30 Tage)</h2>
+    {% if top_seiten %}
+    <div class="top-liste">
+      {% set spitze = top_seiten[0].views %}
+      {% for s in top_seiten %}
+      <div class="top-zeile">
+        <span class="path">{{ s.path }}</span>
+        <div class="bar-track"><div class="bar-fill" style="width: {{ (s.views / spitze * 100) | round(1) }}%;"></div></div>
+        <span class="n">{{ s.views }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Daten.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+</body>
+</html>

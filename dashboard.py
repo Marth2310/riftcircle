@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import secrets
@@ -49,8 +50,42 @@ from wochenrueckblick import berechne_score
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
 headers = {"X-Riot-Token": API_KEY}
+# Schaltet /stats/<secret> frei und salzt den Besucher-Hash - ohne gesetztes Secret bleibt
+# Tracking einfach aus (z.B. lokal, wenn man sich damit nicht beschäftigen will).
+ANALYTICS_SECRET = os.environ.get("ANALYTICS_SECRET", "")
 
 app = Flask(__name__)
+
+
+BOT_USER_AGENT_WOERTER = ("bot", "spider", "crawler", "slurp", "bingpreview", "facebookexternalhit")
+
+
+@app.after_request
+def _seite_tracken(response):
+    """Loggt echte Seitenaufrufe fürs eigene Statistik-Dashboard - keine rohe IP, nur ein
+    gesalzener Hash aus IP+User-Agent (kann nicht ohne das Secret auf die IP zurückgerechnet
+    werden). Nur erfolgreiche GET-Seitenaufrufe zählen, keine Formular-POSTs, kein Static,
+    keine Bots, und die Statistikseite selbst zählt sich nicht mit."""
+    if (ANALYTICS_SECRET and request.method == "GET" and response.status_code == 200
+            and request.endpoint not in (None, "static", "seite_statistik")):
+        user_agent = (request.headers.get("User-Agent") or "").lower()
+        if not any(wort in user_agent for wort in BOT_USER_AGENT_WOERTER):
+            besucher_hash = hashlib.sha256(
+                (ANALYTICS_SECRET + (request.remote_addr or "") + user_agent).encode()
+            ).hexdigest()[:16]
+            try:
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO page_views (path, visitor_hash) VALUES (%s, %s);",
+                    (request.path, besucher_hash),
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+            except Exception:
+                pass  # Tracking darf nie eine echte Seite kaputt machen
+    return response
 
 
 
@@ -1227,6 +1262,69 @@ def match_detail(match_id):
         teams=teams,
         lane_vergleich=lane_vergleich,
         rollen_tipps=rollen_tipps,
+    )
+
+
+@app.route("/stats/<key>")
+def seite_statistik(key):
+    """Eigenes Statistik-Dashboard - kein Login, wie bei den Gruppen schützt nur ein
+    unerratbares Secret in der URL den Zugriff (falsches/fehlendes Secret -> 404, verrät also
+    nicht mal, dass die Route existiert)."""
+    if not ANALYTICS_SECRET or not secrets.compare_digest(key, ANALYTICS_SECRET):
+        abort(404)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*), COUNT(DISTINCT visitor_hash) FROM page_views;")
+    gesamt_views, gesamt_besucher = cur.fetchone()
+
+    cur.execute("""
+        SELECT COUNT(*), COUNT(DISTINCT visitor_hash) FROM page_views
+        WHERE created_at >= now() - interval '7 days';
+    """)
+    views_7t, besucher_7t = cur.fetchone()
+
+    cur.execute("""
+        SELECT COUNT(*), COUNT(DISTINCT visitor_hash) FROM page_views
+        WHERE created_at >= now() - interval '30 days';
+    """)
+    views_30t, besucher_30t = cur.fetchone()
+
+    cur.execute("""
+        SELECT path, COUNT(*) AS n
+        FROM page_views
+        WHERE created_at >= now() - interval '30 days'
+        GROUP BY path
+        ORDER BY n DESC
+        LIMIT 12;
+    """)
+    top_seiten = [{"path": p, "views": n} for p, n in cur.fetchall()]
+
+    # Alle letzten 14 Tage inkl. Tage ganz ohne Aufrufe (sonst hat der Balken-Chart Lücken)
+    cur.execute("""
+        SELECT d::date,
+               COUNT(pv.id) AS views,
+               COUNT(DISTINCT pv.visitor_hash) AS besucher
+        FROM generate_series(
+            (now() - interval '13 days')::date, now()::date, interval '1 day'
+        ) d
+        LEFT JOIN page_views pv ON date_trunc('day', pv.created_at) = d
+        GROUP BY d
+        ORDER BY d;
+    """)
+    tagesverlauf = [{"tag": t.strftime("%d.%m."), "views": v, "besucher": b} for t, v, b in cur.fetchall()]
+    max_views = max([t["views"] for t in tagesverlauf] + [1])
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "stats.html",
+        gesamt_views=gesamt_views, gesamt_besucher=gesamt_besucher,
+        views_7t=views_7t, besucher_7t=besucher_7t,
+        views_30t=views_30t, besucher_30t=besucher_30t,
+        top_seiten=top_seiten, tagesverlauf=tagesverlauf, max_views=max_views,
     )
 
 

@@ -113,6 +113,18 @@ CREATE TABLE IF NOT EXISTS gruppen_mitglieder (
 );
 """)
 
+# Seitenaufrufe fürs eigene Statistik-Dashboard (/stats/<secret>) - visitor_hash ist ein
+# gesalzener Hash aus IP+User-Agent, nie die rohe IP selbst, siehe dashboard.py.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS page_views (
+    id SERIAL PRIMARY KEY,
+    path TEXT NOT NULL,
+    visitor_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT now()
+);
+""")
+cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views (created_at);")
+
 # Falls die Tabelle schon vor dem UNIQUE-Constraint existierte (CREATE TABLE IF NOT EXISTS
 # greift dann nicht mehr): eventuelle Duplikate bereinigen und Constraint nachträglich ergänzen.
 cur.execute("""
