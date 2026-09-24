@@ -439,6 +439,37 @@ def _mit_farbe(eintraege):
     ]
 
 
+def _mit_summoner_icons(eintraege):
+    """Hängt je Eintrag die URL des vom Spieler gewählten Profil-Icons an ("icon_url", sonst
+    None -> Template fällt auf den Anfangsbuchstaben zurück). Die Icon-ID liegt in players;
+    fehlt sie noch (Profil seit Einführung nicht mehr angesehen), wird sie einmalig bei Riot
+    nachgeholt und gespeichert."""
+    if not eintraege:
+        return eintraege
+    conn = get_connection()
+    cur = conn.cursor()
+    puuids = [e["puuid"] for e in eintraege]
+    cur.execute("SELECT puuid, profile_icon_id FROM players WHERE puuid = ANY(%s);", (puuids,))
+    icon_ids = dict(cur.fetchall())
+    for puuid in puuids:
+        if puuid in icon_ids and icon_ids[puuid] is None:
+            try:
+                icon_ids[puuid] = get_summoner_icon_id(puuid, headers)
+            except Exception:
+                continue
+            if icon_ids[puuid] is not None:
+                cur.execute("UPDATE players SET profile_icon_id = %s WHERE puuid = %s;", (icon_ids[puuid], puuid))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    version = get_ddragon_version()
+    return [
+        {**e, "icon_url": summoner_icon_url(icon_ids[e["puuid"]], version) if icon_ids.get(e["puuid"]) else None}
+        for e in eintraege
+    ]
+
+
 def _neue_zuletzt_gesehen_liste(puuid, riot_name, riot_tag):
     """Aktuell angesehenes Profil ganz nach vorne (dedupliziert per puuid), auf
     MAX_ZULETZT_GESEHEN begrenzt. Reine Berechnung (kein Response nötig), damit sich die neue
@@ -500,7 +531,7 @@ def riot_verification():
 
 @app.route("/")
 def landing():
-    zuletzt_gesehen = _mit_farbe(_lese_zuletzt_gesehen())
+    zuletzt_gesehen = _mit_summoner_icons(_mit_farbe(_lese_zuletzt_gesehen()))
     meine_gruppen = _lese_meine_gruppen()
     return render_template(
         "landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen,
@@ -995,11 +1026,15 @@ def profil():
 
     cur.execute(MATCH_QUERY, (puuid, ANZAHL_MATCHES))
     rows = cur.fetchall()
+
+    profile_icon_id = get_summoner_icon_id(puuid, headers)
+    if profile_icon_id is not None:
+        cur.execute("UPDATE players SET profile_icon_id = %s WHERE puuid = %s;", (profile_icon_id, puuid))
+        conn.commit()
     cur.close()
     conn.close()
 
     ddragon_version = get_ddragon_version()
-    profile_icon_id = get_summoner_icon_id(puuid, headers)
 
     # Highest-Mastery-Champion als transparenter Profil-Hintergrund, mit zufälligem Skin bei
     # jedem Seitenaufruf. Fällt auf den zuletzt gespielten Champion zurück, falls die Mastery-

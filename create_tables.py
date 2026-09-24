@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS players (
 # harvest_meta.py) sind keine echten getrackten Profile und sollen nirgends im "bekannte
 # Spieler"-Schnellzugriff auftauchen.
 cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS is_meta_sample BOOLEAN DEFAULT FALSE;")
+# Vom Spieler gewähltes Profil-Icon (für Avatare in "Zuletzt gesehen" o.ä.) - wird bei jedem
+# Profilaufruf aktualisiert.
+cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS profile_icon_id INTEGER;")
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS matches (

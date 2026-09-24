@@ -13,6 +13,7 @@
   --win: #34d399;
   --loss: #f76c8a;
   --gold: #d4af6a;
+  --teal: #3dd6c6;
 }
 * { box-sizing: border-box; }
 html { background: var(--bg-1); }
@@ -176,6 +177,8 @@ h2.section-title::before {
   transition: transform 0.15s;
 }
 .avatar-chip:hover .circle { transform: translateY(-3px) scale(1.05); }
+.avatar-chip .circle.has-icon { padding: 3px; }
+.avatar-chip .circle.has-icon img { width: 100%; height: 100%; border-radius: 50%; display: block; object-fit: cover; }
 .avatar-chip .name {
   font-size: 0.76rem;
   color: var(--muted);
@@ -247,18 +250,20 @@ h2.section-title::before {
 
 /* Große Gruppen-Karten auf der Startseite - besser sichtbar/auffindbar als die reine Pill-Liste */
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
+/* Gruppen haben bewusst einen eigenen Türkis-Ton, damit sie sich von den violetten Panels
+   absetzen - bleibt aber im kühlen Void-Spektrum (neben Blau/Violett), beißt sich also nicht. */
 .group-card {
   display: flex; flex-direction: column; align-items: center;
   gap: 8px;
   padding: 22px 14px;
   border-radius: 16px;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(61, 214, 198, 0.16), var(--panel) 70%);
+  border: 1px solid rgba(61, 214, 198, 0.35);
   text-decoration: none; color: inherit;
-  transition: transform 0.15s, border-color 0.15s;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   text-align: center;
 }
-.group-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.group-card:hover { transform: translateY(-3px); border-color: var(--teal); box-shadow: 0 8px 22px rgba(61, 214, 198, 0.18); }
 .group-card .group-card-icon { font-size: 2.2rem; line-height: 1; }
 .group-card .group-card-name { font-weight: 700; font-size: 0.92rem; }
 

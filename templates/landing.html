@@ -87,53 +87,65 @@
   }
 
   .section-label {
-    text-align: center;
     color: var(--muted);
     font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin: 44px 0 16px;
+    margin: 0 0 16px;
   }
 
-
-  .nav-cards {
+  /* Zweispaltig: links alle Bereiche als große Kacheln, rechts die persönlichen Listen.
+     Unter ~860px untereinander (Kacheln dann oben, zweispaltig nebeneinander). */
+  .landing-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
+    grid-template-columns: 300px 1fr;
+    gap: 36px;
+    align-items: start;
+    margin-top: 12px;
   }
+  .side-nav { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 14px; }
+  .landing-main section + section { margin-top: 44px; }
+  .landing-main .avatar-grid { justify-content: flex-start; }
+
   .nav-card {
+    --tile: var(--void);
     position: relative;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 22px 20px;
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 20px 18px;
+    border-radius: 18px;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--tile) 20%, transparent), var(--panel) 72%);
+    border: 1px solid color-mix(in srgb, var(--tile) 38%, transparent);
     text-decoration: none;
     color: inherit;
     box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
-    transition: transform 0.15s, border-color 0.15s;
-    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   }
-  .nav-card.active:hover { transform: translateY(-3px); border-color: var(--void); }
+  .nav-card.active:hover {
+    transform: translateX(4px);
+    border-color: var(--tile);
+    box-shadow: 0 8px 26px color-mix(in srgb, var(--tile) 25%, transparent);
+  }
+  .nav-card.tile-profil { --tile: var(--void); }
+  .nav-card.tile-champions { --tile: var(--accent2); }
+  .nav-card.tile-gruppen { --tile: var(--teal); }
+  .nav-card.tile-freunde { --tile: var(--muted); }
   .nav-card .nav-icon {
-    width: 42px; height: 42px;
-    border-radius: 50%;
+    width: 52px; height: 52px;
+    flex-shrink: 0;
+    border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem;
-    background: conic-gradient(var(--void), var(--accent2));
-    margin-bottom: 14px;
+    font-size: 1.6rem;
+    color: #0a0818;
+    background: var(--tile);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--tile) 35%, transparent);
   }
-  .nav-card .nav-title { font-weight: 700; font-size: 1.02rem; margin-bottom: 6px; }
-  .nav-card .nav-desc { color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
-  .nav-card.disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-  .nav-card.disabled .nav-icon { background: var(--panel-2); border: 1px solid var(--border); }
+  .nav-card .nav-title { font-weight: 800; font-size: 1.1rem; margin: 2px 0 6px; }
+  .nav-card .nav-desc { color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+  .nav-card.disabled { cursor: not-allowed; opacity: 0.55; }
   .soon-badge {
-    position: absolute;
-    top: 16px; right: 16px;
+    display: inline-block;
+    margin-top: 8px;
     background: rgba(139, 108, 245, 0.18);
     border: 1px solid var(--accent);
     color: var(--accent);
@@ -143,6 +155,14 @@
     letter-spacing: 0.04em;
     padding: 3px 9px;
     border-radius: 999px;
+  }
+
+  #gruppen .gruppe-form button[type="submit"] { background: linear-gradient(90deg, var(--teal), var(--accent2)); }
+  #gruppen { scroll-margin-top: 20px; }
+
+  @media (max-width: 860px) {
+    .landing-layout { grid-template-columns: 1fr; gap: 40px; }
+    .side-nav { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   }
 
   .empty { color: var(--muted); text-align: center; padding: 24px; }
@@ -171,65 +191,88 @@
   </div>
 </div>
 
-<div class="wrap">
+<div class="wrap landing-layout">
 
-  {% if zuletzt_gesehen %}
-  <div class="section-label">Zuletzt gesehen</div>
-  <div class="avatar-grid">
-    {% for sp in zuletzt_gesehen %}
-    <a class="avatar-chip" href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">
-      <div class="circle" style="background: {{ sp.farbe }};">{{ sp.name[0] | upper }}</div>
-      <div class="name">{{ sp.name }}</div>
-    </a>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="empty">Noch kein Profil angeschaut - suche oben nach einem Summoner (Name#Tag).</p>
-  {% endif %}
-
-  <div class="section-label">Meine Gruppen</div>
-  {% if meine_gruppen %}
-  <div class="group-grid">
-    {% for g in meine_gruppen %}
-    <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
-      <div class="group-card-icon">{{ g.icon }}</div>
-      <div class="group-card-name">{{ g.name }}</div>
-    </a>
-    {% endfor %}
-  </div>
-  {% endif %}
-  <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
-    <div class="gruppe-form-row">
-      <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
-    </div>
-    <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
-    <div class="icon-picker">
-      {% for icon in gruppen_icons %}
-      <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
-      {% endfor %}
-    </div>
-    <button type="submit">Anlegen</button>
-  </form>
-
-  <div class="section-label">Wohin möchtest du?</div>
-  <div class="nav-cards">
-    <a class="nav-card active" href="{{ url_for('profil') }}">
+  <nav class="side-nav" aria-label="Bereiche">
+    <div class="section-label">Was möchtest du tun?</div>
+    <a class="nav-card active tile-profil" href="{{ url_for('profil') }}">
       <div class="nav-icon">◎</div>
-      <div class="nav-title">Profile &amp; Matches</div>
-      <div class="nav-desc">Postgame-Analysen, Richtwert-Vergleiche und Match-Details für getrackte Accounts ansehen.</div>
+      <div>
+        <div class="nav-title">Profile &amp; Matches</div>
+        <div class="nav-desc">Postgame-Analysen, Richtwert-Vergleiche und Match-Details.</div>
+      </div>
     </a>
-    <a class="nav-card active" href="{{ url_for('champions') }}">
+    <a class="nav-card active tile-champions" href="{{ url_for('champions') }}">
       <div class="nav-icon">◑</div>
-      <div class="nav-title">Champion-Datenbank</div>
-      <div class="nav-desc">Winrate, meistgebaute Items und Skill-Prioritäten für jeden Champion - berechnet aus getrackten Spielen.</div>
+      <div>
+        <div class="nav-title">Champion-Datenbank</div>
+        <div class="nav-desc">Winrate, Items und Skill-Prioritäten für jeden Champion.</div>
+      </div>
     </a>
-    <div class="nav-card disabled" title="Kommt später">
-      <span class="soon-badge">Bald verfügbar</span>
+    <a class="nav-card active tile-gruppen" href="#gruppen">
+      <div class="nav-icon">⚑</div>
+      <div>
+        <div class="nav-title">Gruppen</div>
+        <div class="nav-desc">Squad oder Rivalen anlegen, Spiele gemeinsam verfolgen, Wochen-Rangliste.</div>
+      </div>
+    </a>
+    <div class="nav-card disabled tile-freunde" title="Kommt später">
       <div class="nav-icon">◈</div>
-      <div class="nav-title">Freunde &amp; Achievements</div>
-      <div class="nav-desc">Über Discord verbinden und die Erfolge deiner Freunde im selben Kreis sehen.</div>
+      <div>
+        <div class="nav-title">Freunde &amp; Discord</div>
+        <div class="nav-desc">Über Discord verbinden und Erfolge im selben Kreis sehen.</div>
+        <span class="soon-badge">Bald verfügbar</span>
+      </div>
     </div>
-  </div>
+  </nav>
+
+  <main class="landing-main">
+    <section>
+      <div class="section-label">Zuletzt gesehen</div>
+      {% if zuletzt_gesehen %}
+      <div class="avatar-grid">
+        {% for sp in zuletzt_gesehen %}
+        <a class="avatar-chip" href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">
+          {% if sp.icon_url %}
+          <div class="circle has-icon" style="background: {{ sp.farbe }};"><img src="{{ sp.icon_url }}" alt=""></div>
+          {% else %}
+          <div class="circle" style="background: {{ sp.farbe }};">{{ sp.name[0] | upper }}</div>
+          {% endif %}
+          <div class="name">{{ sp.name }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty" style="text-align: left; padding: 0;">Noch kein Profil angeschaut - suche oben nach einem Summoner (Name#Tag).</p>
+      {% endif %}
+    </section>
+
+    <section id="gruppen">
+      <div class="section-label">Meine Gruppen</div>
+      {% if meine_gruppen %}
+      <div class="group-grid">
+        {% for g in meine_gruppen %}
+        <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+          <div class="group-card-icon">{{ g.icon }}</div>
+          <div class="group-card-name">{{ g.name }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
+        <div class="gruppe-form-row">
+          <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
+        </div>
+        <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
+        <div class="icon-picker">
+          {% for icon in gruppen_icons %}
+          <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
+          {% endfor %}
+        </div>
+        <button type="submit">Anlegen</button>
+      </form>
+    </section>
+  </main>
 
 </div>
 
