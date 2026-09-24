@@ -89,6 +89,49 @@
   }
 
   .empty { color: var(--muted); text-align: center; padding: 24px; }
+
+  .achievement-list { display: flex; flex-direction: column; gap: 10px; }
+  .achievement-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .achievement-row:hover { border-color: var(--gold); transform: translateX(2px); }
+  .achievement-champ { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--gold); flex-shrink: 0; }
+  .achievement-icon { font-size: 1.3rem; flex-shrink: 0; }
+  .achievement-text { font-size: 0.88rem; min-width: 0; }
+  .achievement-text strong { color: var(--gold); }
+  .achievement-meta { color: var(--muted); font-size: 0.72rem; margin-top: 2px; }
+
+  .feed-list { display: flex; flex-direction: column; gap: 8px; }
+  .feed-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border-left: 3px solid var(--border);
+    background: var(--panel-2);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s;
+    flex-wrap: wrap;
+  }
+  .feed-row.win { border-left-color: var(--win); }
+  .feed-row.loss { border-left-color: var(--loss); }
+  .feed-row:hover { border-color: var(--accent); }
+  .feed-champ { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+  .feed-main { flex: 1; min-width: 120px; }
+  .feed-name { font-size: 0.88rem; font-weight: 700; }
+  .feed-champ-name { color: var(--muted); font-weight: 400; margin-left: 6px; font-size: 0.8rem; }
+  .feed-meta { color: var(--muted); font-size: 0.76rem; margin-top: 2px; }
+  .feed-achievement-badge { font-size: 1.1rem; flex-shrink: 0; }
+  .feed-result { font-size: 0.78rem; font-weight: 700; flex-shrink: 0; white-space: nowrap; margin-left: auto; }
+  .feed-row.win .feed-result { color: var(--win); }
+  .feed-row.loss .feed-result { color: var(--loss); }
 </style>
 </head>
 <body>
@@ -118,28 +161,70 @@
     </span>
   </p>
 
-  {% if mitglieder %}
-  <div class="avatar-grid">
-    {% for m in mitglieder %}
-    <div class="avatar-chip member-cell">
-      <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
-        <button type="submit" class="member-remove" title="Entfernen">&times;</button>
-      </form>
-      <a href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
-        <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
-        <div class="name">{{ m.name }}</div>
+  {% if achievement_feed %}
+  <div class="panel">
+    <h2 class="section-title">Achievements</h2>
+    <div class="achievement-list">
+      {% for f in achievement_feed %}
+      <a class="achievement-row" href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}">
+        <img class="achievement-champ" src="{{ f.champion_icon }}" alt="">
+        <div class="achievement-icon">{{ f.achievement.icon }}</div>
+        <div class="achievement-text">
+          <strong>{{ f.riot_name }}</strong> - {{ f.achievement.text }}
+          <div class="achievement-meta">{{ f.zeit_text }}</div>
+        </div>
       </a>
+      {% endfor %}
     </div>
-    {% endfor %}
   </div>
-  {% else %}
-  <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
   {% endif %}
 
-  <form class="add-member-form" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
-    <input type="text" name="riot_id" placeholder="Profil hinzufügen: Name#Tag" required>
-    <button type="submit">Hinzufügen</button>
-  </form>
+  <div class="panel">
+    <h2 class="section-title">Letzte Spiele</h2>
+    {% if feed %}
+    <div class="feed-list">
+      {% for f in feed %}
+      <a class="feed-row {{ 'win' if f.win else 'loss' }}" href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}">
+        <img class="feed-champ" src="{{ f.champion_icon }}" alt="">
+        <div class="feed-main">
+          <span class="feed-name">{{ f.riot_name }}<span class="feed-champ-name">{{ f.champion }}</span></span>
+          <div class="feed-meta">{{ f.kills }}/{{ f.deaths }}/{{ f.assists }} &middot; {{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
+        </div>
+        {% if f.achievement %}<div class="feed-achievement-badge" title="{{ f.achievement.text }}">{{ f.achievement.icon }}</div>{% endif %}
+        <div class="feed-result">{{ "Sieg" if f.win else "Niederlage" }}</div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Spiele - füg Mitglieder hinzu, die schon Spiele in RiftCircle getrackt haben.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Mitglieder</h2>
+    {% if mitglieder %}
+    <div class="avatar-grid">
+      {% for m in mitglieder %}
+      <div class="avatar-chip member-cell">
+        <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
+          <button type="submit" class="member-remove" title="Entfernen">&times;</button>
+        </form>
+        <a href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
+          <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+          <div class="name">{{ m.name }}</div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
+    {% endif %}
+
+    <form class="add-member-form" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
+      <input type="text" name="riot_id" placeholder="Profil hinzufügen: Name#Tag" required>
+      <button type="submit">Hinzufügen</button>
+    </form>
+  </div>
 
 </div>
 

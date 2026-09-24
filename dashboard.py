@@ -7,6 +7,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, abort, make_response, redirect, render_template, request, url_for
 
+from achievements import bestes_achievement
 from analysis import (
     ANZAHL_MATCHES,
     KATEGORIEN,
@@ -565,6 +566,54 @@ def gruppe_erstellen():
     return _meine_gruppen_cookie_setzen(resp, gruppe_id, name)
 
 
+GRUPPEN_FEED_LIMIT = 40
+
+
+def baue_gruppen_feed(cur, mitglied_puuids):
+    """Letzte Spiele ALLER Gruppenmitglieder, chronologisch gemischt (nicht pro Mitglied
+    getrennt) - genau das "ich seh die Spiele der anderen direkt hier"-Gefühl, das eine
+    Gruppe von einer reinen Mitgliederliste unterscheidet. Erkennt nebenbei Achievements
+    (Pentakill, perfektes Spiel, ...) pro Zeile für den Highlight-Bereich."""
+    if not mitglied_puuids:
+        return []
+
+    ddragon_version = get_ddragon_version()
+    cur.execute("""
+        SELECT p.match_id, p.puuid, pl.riot_name, pl.riot_tag, p.champion, p.role, p.win,
+               p.kills, p.deaths, p.assists, p.damage_rank, p.objectives_stolen, p.solo_kills,
+               p.penta_kills, p.quadra_kills, p.triple_kills, p.double_kills,
+               m.played_at, m.duration_seconds
+        FROM participants p
+        JOIN matches m ON p.match_id = m.match_id
+        JOIN players pl ON p.puuid = pl.puuid
+        WHERE p.puuid = ANY(%s)
+        ORDER BY m.played_at DESC
+        LIMIT %s;
+    """, (mitglied_puuids, GRUPPEN_FEED_LIMIT))
+
+    feed = []
+    for row in cur.fetchall():
+        (match_id, puuid, riot_name, riot_tag, champion, role, win, kills, deaths, assists,
+         damage_rank, objectives_stolen, solo_kills, penta, quadra, triple, double,
+         played_at, duration_seconds) = row
+
+        achievement_zeile = {
+            "champion": champion, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+            "damage_rank": damage_rank, "objectives_stolen": objectives_stolen or 0,
+            "solo_kills": solo_kills or 0, "penta_kills": penta or 0, "quadra_kills": quadra or 0,
+            "triple_kills": triple or 0, "double_kills": double or 0,
+        }
+
+        feed.append({
+            "match_id": match_id, "puuid": puuid, "riot_name": riot_name, "riot_tag": riot_tag,
+            "champion": champion, "champion_icon": champion_icon_url(champion, ddragon_version),
+            "role": role, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+            "zeit_text": relative_zeit(played_at), "dauer_min": duration_seconds // 60,
+            "achievement": bestes_achievement(achievement_zeile),
+        })
+    return feed
+
+
 @app.route("/gruppe/<gruppe_id>")
 def gruppe_ansehen(gruppe_id):
     conn = get_connection()
@@ -583,12 +632,18 @@ def gruppe_ansehen(gruppe_id):
         WHERE gm.gruppe_id = %s
         ORDER BY gm.hinzugefuegt_am;
     """, (gruppe_id,))
-    mitglieder = _mit_farbe([{"puuid": p, "name": n, "tag": t} for p, n, t in cur.fetchall()])
+    mitglieder_rows = cur.fetchall()
+    mitglieder = _mit_farbe([{"puuid": p, "name": n, "tag": t} for p, n, t in mitglieder_rows])
+
+    feed = baue_gruppen_feed(cur, [p for p, _, _ in mitglieder_rows])
+    achievement_feed = [f for f in feed if f["achievement"]]
+
     cur.close()
     conn.close()
 
     resp = make_response(render_template(
-        "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, mitglieder=mitglieder
+        "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, mitglieder=mitglieder,
+        feed=feed, achievement_feed=achievement_feed,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.

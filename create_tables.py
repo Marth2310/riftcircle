@@ -85,6 +85,12 @@ cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS champ_level INTEG
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_rank INTEGER;")
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS gold_diff INTEGER;")
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS skill_order JSONB;")
+# Für das Achievement-System der Gruppen-Ansicht (Penta/Quadra-Kills etc.) - liefert Riot
+# direkt im Match-Objekt, kein Extra-Call nötig.
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS penta_kills INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS quadra_kills INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS triple_kills INTEGER;")
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS double_kills INTEGER;")
 
 # Gruppen ("Community & Rivalen") - per Link teilbar, kein Login nötig: wer die Gruppen-ID
 # kennt, kann sie sehen und Mitglieder verwalten (bewusst einfach gehalten, passend zum Rest

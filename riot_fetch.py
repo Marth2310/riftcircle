@@ -47,8 +47,8 @@ def speichere_participant(cur, match_id, p, info):
         (match_id, puuid, champion, role, win, kills, deaths, assists, cs, vision_score,
          gold_earned, damage_dealt, damage_taken, kill_participation, damage_share,
          turret_takedowns, objectives_stolen, solo_kills, items, perks, champ_level,
-         damage_rank, gold_diff)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         damage_rank, gold_diff, penta_kills, quadra_kills, triple_kills, double_kills)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (match_id, puuid) DO UPDATE SET
             champion = EXCLUDED.champion,
             role = EXCLUDED.role,
@@ -70,7 +70,11 @@ def speichere_participant(cur, match_id, p, info):
             perks = EXCLUDED.perks,
             champ_level = EXCLUDED.champ_level,
             damage_rank = EXCLUDED.damage_rank,
-            gold_diff = EXCLUDED.gold_diff;
+            gold_diff = EXCLUDED.gold_diff,
+            penta_kills = EXCLUDED.penta_kills,
+            quadra_kills = EXCLUDED.quadra_kills,
+            triple_kills = EXCLUDED.triple_kills,
+            double_kills = EXCLUDED.double_kills;
     """, (
         match_id, p["puuid"], p["championName"], p["teamPosition"], p["win"],
         p["kills"], p["deaths"], p["assists"],
@@ -80,7 +84,8 @@ def speichere_participant(cur, match_id, p, info):
         kill_participation, damage_share,
         turret_takedowns, objectives_stolen, solo_kills,
         json.dumps(items), json.dumps(perks), champ_level,
-        damage_rank, gold_diff
+        damage_rank, gold_diff,
+        p.get("pentaKills", 0), p.get("quadraKills", 0), p.get("tripleKills", 0), p.get("doubleKills", 0),
     ))
 
 
@@ -117,13 +122,14 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     """, (puuid, riot_name, riot_tag))
     conn.commit()
 
-    # Zeilen ohne "items"/"champ_level"/"damage_rank" stammen von vor der jeweiligen
-    # Erweiterung und gelten als noch nicht vollständig synchronisiert, damit sie automatisch
-    # nachgeladen werden. "gold_diff" bleibt bei ARAM legitim NULL, taugt daher nicht als Marker.
+    # Zeilen ohne "items"/"champ_level"/"damage_rank"/"penta_kills" stammen von vor der
+    # jeweiligen Erweiterung und gelten als noch nicht vollständig synchronisiert, damit sie
+    # automatisch nachgeladen werden. "gold_diff" bleibt bei ARAM legitim NULL, taugt daher
+    # nicht als Marker.
     cur.execute(
         """SELECT match_id FROM participants
            WHERE puuid = %s AND items IS NOT NULL AND champ_level IS NOT NULL
-             AND damage_rank IS NOT NULL;""",
+             AND damage_rank IS NOT NULL AND penta_kills IS NOT NULL;""",
         (puuid,)
     )
     bereits_gespeichert = {row[0] for row in cur.fetchall()}
