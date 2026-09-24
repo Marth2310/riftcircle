@@ -287,6 +287,47 @@ h2.section-title::before {
 .vs-bar-fill.gegner { background: var(--loss); }
 .vs-bar-fill.lead { background: var(--win); }
 
+/* Vorschlagsliste der Spielersuche (static/spielersuche.js) - hängt am <body> */
+.suche-vorschlaege {
+  position: absolute;
+  z-index: 900;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 14px 34px rgba(5, 3, 18, 0.6);
+  max-height: 340px;
+  overflow-y: auto;
+}
+.suche-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.suche-item:hover, .suche-item.active { background: var(--panel-2); }
+.suche-item img, .suche-item .suche-buchstabe {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.suche-item .suche-buchstabe {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--accent), var(--void));
+  color: #0a0818;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.suche-item .suche-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suche-item .suche-tag { color: var(--muted); font-size: 0.82rem; flex-shrink: 0; }
+
 /* Runenseite wie im Client - geteilt zwischen Match-Detail und Champion-Datenbank
    (Markup: templates/_runen.html) */
 .rune-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }

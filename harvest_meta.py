@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 from db import get_connection
 from riot_assets import REQUEST_TIMEOUT
-from riot_fetch import speichere_participant
+from riot_fetch import merke_spielernamen, namen_aus_match, speichere_participant
 
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
@@ -115,6 +115,7 @@ def main():
             """, (p["puuid"], platzhalter_name, "EUW"))
             speichere_participant(cur, match_id, p, info)
             gespeicherte_teilnehmer += 1
+        merke_spielernamen(cur, namen_aus_match(info))
 
         conn.commit()
         if i % 25 == 0 or i == len(neue_match_ids):

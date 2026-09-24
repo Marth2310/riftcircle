@@ -1,12 +1,13 @@
 import hashlib
 import json
 import os
+import random
 import secrets
 import urllib.parse
 from datetime import datetime
 
 from dotenv import load_dotenv
-from flask import Flask, abort, make_response, redirect, render_template, request, url_for
+from flask import Flask, abort, jsonify, make_response, redirect, render_template, request, url_for
 
 from achievements import bestes_achievement
 from analysis import (
@@ -41,7 +42,13 @@ from riot_assets import (
     random_champion_splash_url,
     summoner_icon_url,
 )
-from riot_fetch import SummonerNotFound, fetch_match_teams, get_top_mastery_champion_id, sync_player
+from riot_fetch import (
+    SummonerNotFound,
+    fetch_match_teams,
+    get_top_mastery_champion_ids,
+    merke_spielernamen,
+    sync_player,
+)
 from riot_runes import build_rune_display, keystone_and_secondary_icons
 from riot_timeline import death_position_percent, fetch_timeline_events, format_game_time
 from rollen_tipps import tipps_fuer_rolle
@@ -68,7 +75,7 @@ def _seite_tracken(response):
     werden). Nur erfolgreiche GET-Seitenaufrufe zählen, keine Formular-POSTs, kein Static,
     keine Bots, und die Statistikseite selbst zählt sich nicht mit."""
     if (ANALYTICS_SECRET and request.method == "GET" and response.status_code == 200
-            and request.endpoint not in (None, "static", "seite_statistik", "favicon")):
+            and request.endpoint not in (None, "static", "seite_statistik", "favicon", "spieler_suche")):
         user_agent = (request.headers.get("User-Agent") or "").lower()
         if not any(wort in user_agent for wort in BOT_USER_AGENT_WOERTER):
             besucher_hash = hashlib.sha256(
@@ -846,6 +853,11 @@ def gruppe_mitglied_hinzufuegen(gruppe_id):
         abort(404)
 
     riot_id_input = request.form.get("riot_id", "").strip()
+    if riot_id_input and "#" not in riot_id_input:
+        # Name ohne Tag: nur übernehmen, wenn er im Namens-Index eindeutig ist
+        treffer = _spieler_mit_namen(cur, riot_id_input)
+        if len(treffer) == 1:
+            riot_id_input = f"{treffer[0]['name']}#{treffer[0]['tag']}"
     if riot_id_input and "#" in riot_id_input:
         name, tag = riot_id_input.rsplit("#", 1)
         name, tag = name.strip(), tag.strip()
@@ -968,27 +980,94 @@ def vergleich_ansehen():
     return render_template("vergleich.html", a=a, b=b, zeilen=zeilen, saetze=saetze)
 
 
+MAX_MEISTGESPIELTE = 6
+MAX_SUCH_VORSCHLAEGE = 8
+MAX_NAMENS_TREFFER = 25
+
+
+def _spieler_mit_namen(cur, name):
+    """Alle bekannten Spieler, die exakt so heißen (ohne Tag, Groß-/Kleinschreibung egal) -
+    getrackte Profile zuerst, sonst die zuletzt gesehenen."""
+    cur.execute("""
+        SELECT b.puuid, b.riot_name, b.riot_tag
+        FROM bekannte_spieler b
+        LEFT JOIN players pl ON pl.puuid = b.puuid AND NOT COALESCE(pl.is_meta_sample, FALSE)
+        WHERE lower(b.riot_name) = lower(%s)
+        ORDER BY (pl.puuid IS NOT NULL) DESC, b.zuletzt_gesehen DESC
+        LIMIT %s;
+    """, (name, MAX_NAMENS_TREFFER))
+    return [{"puuid": p, "name": n, "tag": t} for p, n, t in cur.fetchall()]
+
+
+@app.route("/api/spieler-suche")
+def spieler_suche():
+    """Vorschläge beim Tippen (wie bei OP.GG): Präfix-Suche im eigenen Namens-Index. Riot selbst
+    kennt keine Suche ohne Tag - gefunden wird also nur, wer schon in einem geladenen Match
+    auftauchte. "Name#Ta" filtert zusätzlich nach dem Tag-Anfang."""
+    eingabe = request.args.get("q", "").strip()
+    name, _, tag_anfang = eingabe.partition("#")
+    name, tag_anfang = name.strip(), tag_anfang.strip().lower()
+    if len(name) < 2:
+        return jsonify([])
+
+    # LIKE-Sonderzeichen im Namen maskieren (Escape-Zeichen "!"), damit z.B. ein "_" im
+    # Namen nicht als Platzhalter für ein beliebiges Zeichen gilt
+    muster = name.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT b.riot_name, b.riot_tag, pl.profile_icon_id
+        FROM bekannte_spieler b
+        LEFT JOIN players pl ON pl.puuid = b.puuid AND NOT COALESCE(pl.is_meta_sample, FALSE)
+        WHERE lower(b.riot_name) LIKE lower(%s) ESCAPE '!'
+          AND lower(b.riot_tag) LIKE %s ESCAPE '!'
+        ORDER BY (lower(b.riot_name) = lower(%s)) DESC, (pl.puuid IS NOT NULL) DESC,
+                 b.zuletzt_gesehen DESC
+        LIMIT %s;
+    """, (muster, tag_anfang.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%",
+          name, MAX_SUCH_VORSCHLAEGE))
+    zeilen = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    version = get_ddragon_version()
+    return jsonify([
+        {"name": n, "tag": t, "icon": summoner_icon_url(icon_id, version) if icon_id else None}
+        for n, t, icon_id in zeilen
+    ])
+
+
 @app.route("/profil")
 def profil():
     riot_id_input = request.args.get("riot_id", "").strip()
     fehler = None
     puuid = None
+    namens_treffer = []
 
     conn = get_connection()
     cur = conn.cursor()
 
     if riot_id_input:
+        geraten = False
         if "#" in riot_id_input:
             gesuchter_name, gesuchter_tag = riot_id_input.rsplit("#", 1)
             gesuchter_name, gesuchter_tag = gesuchter_name.strip(), gesuchter_tag.strip()
-            geraten = False
         else:
             # Riot bietet keine "alle Accounts mit diesem Namen"-Suche an - nur exakte
-            # Name#Tag-Lookups. Viele frühe EUW-Accounts hatten beim Umstieg auf Riot IDs
-            # automatisch den Tag "EUW" bekommen, das probieren wir als Best-Effort-Fallback.
-            gesuchter_name, gesuchter_tag = riot_id_input.strip(), "EUW"
-            geraten = True
+            # Name#Tag-Lookups. Deshalb erst im eigenen Namens-Index nachsehen (jeder Spieler
+            # aus einem geladenen Match): eindeutig -> direkt dieses Profil, mehrere -> Auswahl.
+            # Unbekannt -> Best-Effort "#EUW" (viele frühe EUW-Accounts bekamen beim Umstieg
+            # auf Riot IDs automatisch diesen Tag).
+            gesuchter_name = riot_id_input.strip()
+            namens_treffer = _spieler_mit_namen(cur, gesuchter_name)
+            if len(namens_treffer) == 1:
+                gesuchter_name, gesuchter_tag = namens_treffer[0]["name"], namens_treffer[0]["tag"]
+                namens_treffer = []
+            else:
+                gesuchter_tag = "EUW"
+                geraten = True
 
+    if riot_id_input and not namens_treffer:
         try:
             # Holt bei Bedarf neue Spiele nach - bereits gespeicherte Matches werden
             # übersprungen, wiederholte Suchen nach demselben Profil sind daher schnell.
@@ -1002,7 +1081,7 @@ def profil():
                 )
             else:
                 fehler = str(e)
-    else:
+    elif not riot_id_input:
         # Kein Suchbegriff: auf das zuletzt von DIESEM Browser angesehene Profil zurückfallen
         # (statt eines global letzten Profils aus der DB - jeder Besucher soll nur sein
         # eigenes zuletzt gesehenes Profil sehen, nicht das irgendeines anderen Nutzers).
@@ -1021,6 +1100,7 @@ def profil():
             kein_spieler=True,
             fehler=fehler,
             riot_id_input=riot_id_input,
+            namens_treffer=_mit_summoner_icons(_mit_farbe(namens_treffer)),
             zuletzt_gesehen=zuletzt_gesehen,
             meine_gruppen=meine_gruppen,
             gruppen_icons=GRUPPEN_ICONS,
@@ -1058,6 +1138,21 @@ def profil():
     cur.execute(MATCH_QUERY, (puuid, ANZAHL_MATCHES))
     rows = cur.fetchall()
 
+    # Meistgespielte Champions über ALLE gespeicherten Spiele des Spielers (nicht nur die
+    # letzten ANZAHL_MATCHES der Analyse oben)
+    cur.execute("""
+        SELECT champion, COUNT(*) AS spiele, SUM(CASE WHEN win THEN 1 ELSE 0 END) AS siege,
+               SUM(kills), SUM(deaths), SUM(assists)
+        FROM participants
+        WHERE puuid = %s
+        GROUP BY champion
+        ORDER BY spiele DESC, siege DESC, champion
+        LIMIT %s;
+    """, (puuid, MAX_MEISTGESPIELTE))
+    champ_zeilen = cur.fetchall()
+    cur.execute("SELECT COUNT(*) FROM participants WHERE puuid = %s;", (puuid,))
+    gespeicherte_spiele = cur.fetchone()[0]
+
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
         cur.execute("UPDATE players SET profile_icon_id = %s WHERE puuid = %s;", (profile_icon_id, puuid))
@@ -1067,13 +1162,32 @@ def profil():
 
     ddragon_version = get_ddragon_version()
 
-    # Highest-Mastery-Champion als transparenter Profil-Hintergrund, mit zufälligem Skin bei
-    # jedem Seitenaufruf. Fällt auf den zuletzt gespielten Champion zurück, falls die Mastery-
-    # API fehlschlägt oder (bei brandneuen Accounts) noch keine Mastery-Punkte existieren.
-    mastery_champion_id = get_top_mastery_champion_id(puuid, headers)
-    mastery_champion = get_champion_by_numeric_id(mastery_champion_id) if mastery_champion_id else None
-    hero_champion = mastery_champion["key"] if mastery_champion else (rows[0][1] if rows else None)
-    hero_splash = random_champion_splash_url(hero_champion) if hero_champion else None
+    # Profil-Hintergrund: zufälliger Skin eines zufälligen der 3 Mastery-Champions ("Mains"),
+    # bei jedem Seitenaufruf neu. Fällt auf den zuletzt gespielten Champion zurück, falls die
+    # Mastery-API fehlschlägt oder (bei brandneuen Accounts) noch keine Mastery-Punkte existieren.
+    mains = [
+        champ for champ in (get_champion_by_numeric_id(cid) for cid in get_top_mastery_champion_ids(puuid, headers))
+        if champ
+    ]
+    hero_champion = random.choice(mains)["key"] if mains else (rows[0][1] if rows else None)
+    try:
+        hero_splash = random_champion_splash_url(hero_champion) if hero_champion else None
+    except Exception:
+        hero_splash = champion_splash_url(hero_champion)
+
+    meistgespielte = []
+    for champion, spiele_anzahl, siege_anzahl, kills, deaths, assists in champ_zeilen:
+        champ_info = get_champion_by_key(champion)
+        meistgespielte.append({
+            "champion": champion,
+            "name": champ_info["name"] if champ_info else champion,  # "Twisted Fate" statt "TwistedFate"
+            "icon": champion_icon_url(champion, ddragon_version),
+            "spiele": spiele_anzahl,
+            "siege": siege_anzahl,
+            "niederlagen": spiele_anzahl - siege_anzahl,
+            "winrate": round(siege_anzahl / spiele_anzahl * 100),
+            "kda": round((kills + assists) / deaths, 2) if deaths else float(kills + assists),
+        })
 
     spiele = []
     alle_vergleiche = []
@@ -1151,6 +1265,8 @@ def profil():
         rang_flex=anzeige_rang_flex,
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
         hero_splash=hero_splash,
+        meistgespielte=meistgespielte,
+        gespeicherte_spiele=gespeicherte_spiele,
         anzahl_spiele=len(spiele),
         siege=siege,
         niederlagen=len(spiele) - siege,
@@ -1242,6 +1358,9 @@ def match_detail(match_id):
             # JSON-Objektschlüssel sind immer Strings - direkt angleichen, damit ein frisch
             # geholtes team_lineup genauso aussieht wie eines, das aus der DB zurückkommt.
             team_lineup = {str(k): v for k, v in team_lineup.items()}
+            merke_spielernamen(cur, [
+                (p["puuid"], p["riot_name"], p["riot_tag"]) for seite in team_lineup.values() for p in seite
+            ])
         cur.execute(
             "UPDATE matches SET team_lineup = %s WHERE match_id = %s;",
             (json.dumps(team_lineup), match_id)

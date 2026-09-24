@@ -361,7 +361,7 @@
     {% endif %}
 
     <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
-      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name#Tag" required>
+      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name oder Name#Tag" required data-spieler-suche="fuellen">
       <button type="submit">Hinzufügen</button>
     </form>
   </div>
@@ -666,5 +666,6 @@
   })();
 </script>
 
+<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

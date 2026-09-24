@@ -188,7 +188,7 @@
     <p class="tagline">Deine League-of-Legends-Postgame-Analyse - Muster über mehrere Spiele, Richtwert-Vergleiche und Details zu jedem Match, im Kreis.</p>
 
     <form class="search-bar" method="get" action="{{ url_for('profil') }}">
-      <input type="text" name="riot_id" placeholder="Summoner suchen: Name#Tag">
+      <input type="text" name="riot_id" placeholder="Summoner suchen: Name oder Name#Tag" data-spieler-suche="absenden">
       <button type="submit">Suchen</button>
     </form>
   </div>
@@ -301,5 +301,6 @@
   })();
 </script>
 
+<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

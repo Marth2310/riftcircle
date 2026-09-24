@@ -116,6 +116,42 @@ CREATE TABLE IF NOT EXISTS gruppen_mitglieder (
 );
 """)
 
+# Namens-Index für die Suche ohne Tag (wie bei OP.GG): Riot selbst bietet keine Suche nur
+# nach Namen an, daher merken wir uns jeden Spieler, der in einem geladenen Match auftaucht
+# (alle 10 Teilnehmer), nicht nur die gezielt gesuchten Profile.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS bekannte_spieler (
+    puuid TEXT PRIMARY KEY,
+    riot_name TEXT NOT NULL,
+    riot_tag TEXT NOT NULL,
+    zuletzt_gesehen TIMESTAMP DEFAULT now()
+);
+""")
+# text_pattern_ops: nötig, damit LIKE 'abc%' (Präfix-Suche) den Index auch bei einer
+# Nicht-C-Collation nutzen kann.
+cur.execute(
+    "CREATE INDEX IF NOT EXISTS idx_bekannte_spieler_name "
+    "ON bekannte_spieler (lower(riot_name) text_pattern_ops);"
+)
+# Einmalig aus dem vorhandenen Bestand befüllen: getrackte Profile + Team-Aufstellungen
+# bereits geöffneter Matches (ON CONFLICT: wiederholtes Ausführen ist harmlos).
+cur.execute("""
+    INSERT INTO bekannte_spieler (puuid, riot_name, riot_tag)
+    SELECT puuid, riot_name, riot_tag FROM players WHERE NOT COALESCE(is_meta_sample, FALSE)
+    ON CONFLICT (puuid) DO NOTHING;
+""")
+cur.execute("""
+    INSERT INTO bekannte_spieler (puuid, riot_name, riot_tag)
+    SELECT DISTINCT ON (sp->>'puuid') sp->>'puuid', sp->>'riot_name', sp->>'riot_tag'
+    FROM (SELECT team_lineup FROM matches WHERE jsonb_typeof(team_lineup) = 'object') m,
+         jsonb_each(m.team_lineup) AS seite(team, spieler),
+         jsonb_array_elements(CASE WHEN jsonb_typeof(seite.spieler) = 'array'
+                                   THEN seite.spieler ELSE '[]'::jsonb END) AS sp
+    WHERE COALESCE(sp->>'riot_tag', '') <> '' AND COALESCE(sp->>'riot_name', '') <> ''
+      AND sp->>'puuid' IS NOT NULL AND sp->>'puuid' <> 'BOT'
+    ON CONFLICT (puuid) DO NOTHING;
+""")
+
 # Seitenaufrufe fürs eigene Statistik-Dashboard (/stats/<secret>) - visitor_hash ist ein
 # gesalzener Hash aus IP+User-Agent, nie die rohe IP selbst, siehe dashboard.py.
 cur.execute("""

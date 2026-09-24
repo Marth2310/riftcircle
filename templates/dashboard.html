@@ -291,6 +291,40 @@
     font-size: 0.9rem;
   }
 
+  /* Auswahl bei mehreren Spielern mit gleichem Namen */
+  .treffer-hint { color: var(--muted); font-size: 0.85rem; margin: -6px 0 16px; }
+  .treffer-grid { justify-content: flex-start; margin-bottom: 28px; }
+  .treffer-chip { width: 100px; }
+  .treffer-tag { color: var(--muted); font-size: 0.7rem; }
+
+  /* Meistgespielte Champions */
+  .main-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .main-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    text-decoration: none; color: inherit;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .main-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .main-card img { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; }
+  .main-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .main-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .main-name { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .main-wr { font-weight: 800; font-size: 0.95rem; }
+  .main-wr.gut { color: var(--win); }
+  .main-wr.schlecht { color: var(--loss); }
+  .main-bar { height: 6px; border-radius: 999px; background: var(--loss); overflow: hidden; }
+  .main-bar-win { height: 100%; background: var(--win); }
+  .main-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.74rem; }
+
 </style>
 </head>
 <body>
@@ -312,7 +346,7 @@
 <div class="wrap">
 
   <form class="search-bar" method="get" action="{{ url_for('profil') }}">
-    <input type="text" name="riot_id" placeholder="Summoner suchen: Name#Tag (nur Name = Versuch mit #EUW)" value="{{ riot_id_input }}">
+    <input type="text" name="riot_id" placeholder="Summoner suchen: Name oder Name#Tag" value="{{ riot_id_input }}" data-spieler-suche="absenden">
     <button type="submit">Suchen</button>
   </form>
 
@@ -351,8 +385,23 @@
   </form>
 
 {% if kein_spieler %}
-  {% if not fehler %}
-    <p class="empty">Noch kein Profil angeschaut. Suche oben nach einem Summoner (Name#Tag).</p>
+  {% if namens_treffer %}
+    <h2 class="section-title">Welchen „{{ riot_id_input }}“ meinst du?</h2>
+    <p class="treffer-hint">{{ namens_treffer | length }} Spieler mit diesem Namen sind bei RiftCircle bekannt - bereits getrackte Profile stehen vorne.</p>
+    <div class="avatar-grid treffer-grid">
+      {% for t in namens_treffer %}
+      <a class="avatar-chip treffer-chip" href="{{ url_for('profil', riot_id = t.name ~ '#' ~ t.tag) }}">
+        {% if t.icon_url %}
+        <div class="circle has-icon" style="background: {{ t.farbe }};"><img src="{{ t.icon_url }}" alt=""></div>
+        {% else %}
+        <div class="circle" style="background: {{ t.farbe }};">{{ t.name[0] | upper }}</div>
+        {% endif %}
+        <div class="name">{{ t.name }}<br><span class="treffer-tag">#{{ t.tag }}</span></div>
+      </a>
+      {% endfor %}
+    </div>
+  {% elif not fehler %}
+    <p class="empty">Noch kein Profil angeschaut. Suche oben nach einem Summoner (Name oder Name#Tag).</p>
   {% endif %}
 {% else %}
 
@@ -385,6 +434,31 @@
       <div class="label">Spiele analysiert</div>
     </div>
   </div>
+
+  {% if meistgespielte %}
+  <h2 class="section-title">Meistgespielte Champions</h2>
+  <p class="treffer-hint">Aus allen {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spielen dieses Profils.</p>
+  <div class="main-grid">
+    {% for c in meistgespielte %}
+    <a class="main-card" href="{{ url_for('champion_detail', key=c.champion) }}">
+      <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+      <div class="main-info">
+        <div class="main-head">
+          <span class="main-name">{{ c.name }}</span>
+          <span class="main-wr {{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</span>
+        </div>
+        <div class="main-bar" title="{{ c.siege }} Siege / {{ c.niederlagen }} Niederlagen">
+          <div class="main-bar-win" style="width: {{ c.winrate }}%;"></div>
+        </div>
+        <div class="main-meta">
+          <span><b class="win-value">{{ c.siege }}S</b> <b class="loss-value">{{ c.niederlagen }}N</b> &middot; {{ c.spiele }} Spiel{{ "e" if c.spiele != 1 else "" }}</span>
+          <span>{{ c.kda }} KDA</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <h2 class="section-title">Übersicht</h2>
   <div class="chart-grid">
@@ -599,7 +673,7 @@
       });
     }
 
-    document.querySelectorAll(".known-players a").forEach(function (a) {
+    document.querySelectorAll(".known-players a, .treffer-chip").forEach(function (a) {
       a.addEventListener("click", function () {
         showLoading("Profil wird geladen...");
       });
@@ -622,5 +696,6 @@
   })();
 </script>
 
+<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

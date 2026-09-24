@@ -11,6 +11,29 @@ class SummonerNotFound(Exception):
     (z.B. weil er nicht auf EUW/Europe spielt - dieses Tool ist auf diese Region beschränkt)."""
 
 
+def merke_spielernamen(cur, spieler):
+    """Trägt [(puuid, name, tag), ...] in den Namens-Index für die Suche ohne Tag ein bzw.
+    aktualisiert Namen (Riot-IDs können sich ändern) und den Zeitpunkt des letzten Auftauchens.
+    Bots und Einträge ohne vollständige Riot-ID werden übersprungen."""
+    werte = [
+        (puuid, name, tag) for puuid, name, tag in spieler
+        if puuid and puuid != "BOT" and name and tag
+    ]
+    if not werte:
+        return
+    cur.executemany("""
+        INSERT INTO bekannte_spieler (puuid, riot_name, riot_tag, zuletzt_gesehen)
+        VALUES (%s, %s, %s, now())
+        ON CONFLICT (puuid) DO UPDATE SET
+            riot_name = EXCLUDED.riot_name, riot_tag = EXCLUDED.riot_tag, zuletzt_gesehen = now();
+    """, werte)
+
+
+def namen_aus_match(info):
+    """(puuid, name, tag) aller Teilnehmer aus einem rohen match-v5-"info"-Objekt."""
+    return [(p.get("puuid"), p.get("riotIdGameName"), p.get("riotIdTagline")) for p in info["participants"]]
+
+
 def speichere_participant(cur, match_id, p, info):
     """Berechnet alle abgeleiteten Werte (Kill-Participation, Damage-Share, Damage-Rang,
     Gold-Diff zum Lane-Gegner, ...) für EINEN Teilnehmer `p` aus den rohen Match-Daten `info`
@@ -102,6 +125,9 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     if resp.status_code != 200 or "puuid" not in account:
         raise SummonerNotFound(f"{riot_name}#{riot_tag} wurde nicht gefunden.")
     puuid = account["puuid"]
+    # Offizielle Schreibweise von Riot statt der eingetippten (Groß-/Kleinschreibung)
+    riot_name = account.get("gameName") or riot_name
+    riot_tag = account.get("tagLine") or riot_tag
 
     # Match-IDs VOR dem Speichern des Spielers validieren: Accounts von anderen Servern
     # als EUW/Europe (z.B. KR, NA) liefern hier eine leere oder ungültige Liste - dann
@@ -120,6 +146,7 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
         VALUES (%s, %s, %s)
         ON CONFLICT (puuid) DO UPDATE SET riot_name = EXCLUDED.riot_name, riot_tag = EXCLUDED.riot_tag;
     """, (puuid, riot_name, riot_tag))
+    merke_spielernamen(cur, [(puuid, riot_name, riot_tag)])
     conn.commit()
 
     # Zeilen ohne "items"/"champ_level"/"damage_rank"/"penta_kills" stammen von vor der
@@ -153,10 +180,12 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
             ON CONFLICT (match_id) DO NOTHING;
         """, (match_id, info["gameStartTimestamp"] / 1000, info["gameDuration"], info["gameVersion"]))
 
-        # Nur den Teil unseres Spielers aus dem Match rauspicken
+        # Nur den Teil unseres Spielers aus dem Match rauspicken - die Namen aller 10 aber
+        # für die Suche ohne Tag merken
         for p in info["participants"]:
             if p["puuid"] == puuid:
                 speichere_participant(cur, match_id, p, info)
+        merke_spielernamen(cur, namen_aus_match(info))
 
         conn.commit()
         time.sleep(1.2)  # Pause, um das Rate-Limit nicht zu sprengen
@@ -203,13 +232,16 @@ def fetch_match_teams(headers, match_id):
     return teams
 
 
-def get_top_mastery_champion_id(puuid, headers):
-    """championId (numerisch) des Champions mit der höchsten Mastery - für den transparenten
-    Profil-Hintergrund. None, falls der Call fehlschlägt oder der Spieler noch keine
-    Mastery-Punkte hat (z.B. brandneuer Account)."""
-    url = f"https://euw1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}/top?count=1"
+def get_top_mastery_champion_ids(puuid, headers, anzahl=3):
+    """championIds (numerisch) der `anzahl` Champions mit der höchsten Mastery - die "Mains"
+    des Spielers, für den Profil-Hintergrund. Leere Liste, falls der Call fehlschlägt oder der
+    Spieler noch keine Mastery-Punkte hat (z.B. brandneuer Account)."""
+    url = (
+        f"https://euw1.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/{puuid}"
+        f"/top?count={anzahl}"
+    )
     resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
     if resp.status_code != 200:
-        return None
+        return []
     daten = resp.json()
-    return daten[0]["championId"] if daten else None
+    return [eintrag["championId"] for eintrag in daten] if isinstance(daten, list) else []
