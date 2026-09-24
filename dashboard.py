@@ -65,7 +65,13 @@ ANALYTICS_SECRET = os.environ.get("ANALYTICS_SECRET", "")
 app = Flask(__name__)
 
 
-BOT_USER_AGENT_WOERTER = ("bot", "spider", "crawler", "slurp", "bingpreview", "facebookexternalhit")
+@app.template_filter("tausender")
+def tausender(zahl):
+    """1041 -> "1.041" (deutsche Tausendertrennung)."""
+    return f"{zahl:,}".replace(",", ".")
+
+
+BOT_USER_AGENT_WOERTER =("bot", "spider", "crawler", "slurp", "bingpreview", "facebookexternalhit")
 
 
 @app.after_request
