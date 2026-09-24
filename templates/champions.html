@@ -85,6 +85,85 @@
   .champ-card .winrate-badge.bad { background: rgba(247, 108, 138, 0.16); color: var(--loss); }
 
   .empty { color: var(--muted); text-align: center; padding: 40px; }
+
+  /* Kategorien: Alle + je Lane */
+  .rollen-tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 0 auto 8px; }
+  .rollen-tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.88rem;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .rollen-tab img { width: 20px; height: 20px; opacity: 0.7; }
+  .rollen-tab:hover { color: var(--text); border-color: var(--accent); }
+  .rollen-tab.active {
+    color: #0a0818;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    border-color: transparent;
+  }
+  .rollen-tab.active img { opacity: 1; filter: brightness(0.15); }
+
+  /* Listenansicht je Lane */
+  .rollen-hint { color: var(--muted); font-size: 0.8rem; text-align: center; margin: 0 0 16px; }
+  .tier-liste { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .tier-kopf, .tier-zeile {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 150px 150px 70px;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+  }
+  .tier-kopf {
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .sort-kopf {
+    background: none; border: none; padding: 0;
+    color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit;
+    cursor: pointer; text-align: left;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .sort-kopf:hover, .sort-kopf.active { color: var(--text); }
+  .sort-kopf .pfeil { font-size: 0.7rem; opacity: 0; }
+  .sort-kopf.active .pfeil { opacity: 1; color: var(--accent2); }
+  .tier-zeile {
+    border-top: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+  }
+  .tier-zeile:hover { background: rgba(139, 108, 245, 0.08); }
+  .tier-rang { color: var(--muted); font-weight: 700; font-size: 0.9rem; }
+  .tier-champ { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .tier-champ img { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; }
+  .tier-champ span { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tier-wert { display: flex; flex-direction: column; gap: 5px; }
+  .tier-wert b { font-size: 0.92rem; }
+  .tier-wert b.gut { color: var(--win); }
+  .tier-wert b.schlecht { color: var(--loss); }
+  .tier-balken { height: 5px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .tier-balken div { height: 100%; border-radius: 999px; }
+  .tier-balken .wr.gut { background: var(--win); }
+  .tier-balken .wr.schlecht { background: var(--loss); }
+  .tier-balken .pr { background: linear-gradient(90deg, var(--accent2), var(--teal)); }
+  .tier-spiele { color: var(--muted); font-size: 0.85rem; text-align: right; }
+
+  @media (max-width: 620px) {
+    .tier-kopf, .tier-zeile { grid-template-columns: 26px minmax(0, 1fr) 72px 72px; gap: 10px; padding: 10px 12px; }
+    .tier-spiele, .tier-kopf .kopf-spiele { display: none; }
+    .tier-champ img { width: 34px; height: 34px; }
+    .rollen-tab { padding: 8px 12px; font-size: 0.82rem; }
+  }
 </style>
 </head>
 <body>
@@ -108,6 +187,66 @@
        bereits über RiftCircle getrackt wurden. Wächst mit der Zeit, keine globale Meta-Statistik.</p>
   </div>
 
+  <nav class="rollen-tabs" aria-label="Kategorien">
+    <a class="rollen-tab {{ 'active' if not rolle else '' }}" href="{{ url_for('champions') }}">Alle</a>
+    {% for r in rollen_tabs %}
+    <a class="rollen-tab {{ 'active' if rolle == r.key else '' }}" href="{{ url_for('champions', rolle=r.key) }}">
+      <img src="{{ r.icon }}" alt="">{{ r.name }}
+    </a>
+    {% endfor %}
+  </nav>
+
+  {% if rolle %}
+  <div class="champ-controls">
+    <input type="text" class="champ-search" id="champSearch" placeholder="Champion suchen..." value="{{ suche }}">
+    <select class="champ-sort" id="rollenSort">
+      <option value="pickrate-desc">Pickrate absteigend</option>
+      <option value="pickrate-asc">Pickrate aufsteigend</option>
+      <option value="winrate-desc">Winrate absteigend</option>
+      <option value="winrate-asc">Winrate aufsteigend</option>
+    </select>
+  </div>
+
+  <p class="rollen-hint">
+    {{ rollen_name }}: {{ matches_gesamt }} gespeicherte Spiele. Pickrate = in wie viel Prozent dieser Spiele der Champion auf {{ rollen_name }} gespielt wurde.
+    {% if ausgeblendet %}{{ ausgeblendet }} Champion{{ "s" if ausgeblendet != 1 else "" }} mit weniger als {{ min_spiele }} Spielen ausgeblendet.{% endif %}
+  </p>
+
+  {% if rollen_liste %}
+  {% set max_pickrate = rollen_liste | map(attribute='pickrate') | max %}
+  <div class="tier-liste">
+    <div class="tier-kopf">
+      <span>#</span>
+      <span>Champion</span>
+      <button type="button" class="sort-kopf" data-feld="winrate">Winrate <span class="pfeil"></span></button>
+      <button type="button" class="sort-kopf" data-feld="pickrate">Pickrate <span class="pfeil"></span></button>
+      <span class="kopf-spiele" style="text-align: right;">Spiele</span>
+    </div>
+    <div id="tierZeilen">
+      {% for c in rollen_liste %}
+      <a class="tier-zeile" href="{{ url_for('champion_detail', key=c.key) }}"
+         data-name="{{ c.name|lower }}" data-winrate="{{ c.winrate }}" data-pickrate="{{ c.pickrate }}">
+        <span class="tier-rang">{{ loop.index }}</span>
+        <span class="tier-champ"><img src="{{ c.icon }}" alt="" loading="lazy"><span>{{ c.name }}</span></span>
+        <span class="tier-wert">
+          <b class="{{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</b>
+          <span class="tier-balken"><div class="wr {{ 'gut' if c.winrate >= 50 else 'schlecht' }}" style="width: {{ c.winrate }}%;"></div></span>
+        </span>
+        <span class="tier-wert">
+          <b>{{ c.pickrate }}%</b>
+          <span class="tier-balken"><div class="pr" style="width: {{ (c.pickrate / max_pickrate * 100) | round(1) }}%;"></div></span>
+        </span>
+        <span class="tier-spiele">{{ c.spiele }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <p class="empty">Noch keine Champions mit mindestens {{ min_spiele }} Spielen auf {{ rollen_name }}.</p>
+  {% endif %}
+  <p class="empty" id="champEmpty" hidden>Kein Champion gefunden.</p>
+
+  {% else %}
   <form class="champ-controls" method="get" action="{{ url_for('champions') }}">
     <input type="text" class="champ-search" id="champSearch" name="q" placeholder="Champion suchen..." value="{{ suche }}">
     <select class="champ-sort" name="sort" onchange="this.form.submit()">
@@ -135,25 +274,74 @@
     {% endfor %}
   </div>
   <p class="empty" id="champEmpty" hidden>Kein Champion gefunden.</p>
+  {% endif %}
 
 </div>
 
 <script>
   (function () {
     var input = document.getElementById("champSearch");
-    var cards = Array.prototype.slice.call(document.querySelectorAll(".champ-card"));
+    var eintraege = Array.prototype.slice.call(document.querySelectorAll(".champ-card, .tier-zeile"));
     var empty = document.getElementById("champEmpty");
+    var tierZeilen = document.getElementById("tierZeilen");
 
-    input.addEventListener("input", function () {
+    // Rang-Nummern der Lane-Liste folgen immer der aktuellen Sortierung + Suche
+    function nummerieren() {
+      if (!tierZeilen) return;
+      var n = 0;
+      Array.prototype.forEach.call(tierZeilen.children, function (z) {
+        if (!z.hidden) z.querySelector(".tier-rang").textContent = ++n;
+      });
+    }
+
+    function filtern() {
       var q = input.value.trim().toLowerCase();
       var sichtbar = 0;
-      cards.forEach(function (card) {
-        var match = card.dataset.name.indexOf(q) !== -1;
-        card.hidden = !match;
-        if (match) sichtbar++;
+      eintraege.forEach(function (el) {
+        var treffer = el.dataset.name.indexOf(q) !== -1;
+        el.hidden = !treffer;
+        if (treffer) sichtbar++;
       });
       empty.hidden = sichtbar !== 0;
-    });
+      nummerieren();
+    }
+    input.addEventListener("input", filtern);
+
+    if (tierZeilen) {
+      var select = document.getElementById("rollenSort");
+      var koepfe = document.querySelectorAll(".sort-kopf");
+
+      function sortieren(wert) {
+        var teile = wert.split("-"), feld = teile[0], absteigend = teile[1] === "desc";
+        var zeilen = Array.prototype.slice.call(tierZeilen.children);
+        zeilen.sort(function (a, b) {
+          var diff = parseFloat(a.dataset[feld]) - parseFloat(b.dataset[feld]);
+          if (diff === 0) diff = parseFloat(a.dataset.pickrate) - parseFloat(b.dataset.pickrate);
+          return absteigend ? -diff : diff;
+        });
+        zeilen.forEach(function (z) { tierZeilen.appendChild(z); });
+        select.value = wert;
+        koepfe.forEach(function (k) {
+          var aktiv = k.dataset.feld === feld;
+          k.classList.toggle("active", aktiv);
+          k.querySelector(".pfeil").textContent = aktiv ? (absteigend ? "▼" : "▲") : "▼";
+        });
+        nummerieren();
+      }
+
+      select.addEventListener("change", function () { sortieren(select.value); });
+      // Klick auf den Spaltenkopf: erst absteigend, erneuter Klick dreht die Richtung um
+      koepfe.forEach(function (k) {
+        k.addEventListener("click", function () {
+          var feld = k.dataset.feld;
+          var aktuell = select.value;
+          sortieren(aktuell === feld + "-desc" ? feld + "-asc" : feld + "-desc");
+        });
+      });
+      sortieren("pickrate-desc");
+    }
+
+    if (input.value) filtern();
   })();
 </script>
 

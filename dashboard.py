@@ -561,16 +561,86 @@ CHAMPION_SORTIERUNGEN = {
 }
 
 
+# Kategorien der Champion-Datenbank: URL-Wert -> (Riot-teamPosition, Anzeigename, Icon-Name)
+CHAMPION_ROLLEN = {
+    "top": ("TOP", "Top", "top"),
+    "jungle": ("JUNGLE", "Jungle", "jungle"),
+    "mid": ("MIDDLE", "Mid", "middle"),
+    "adc": ("BOTTOM", "ADC", "bottom"),
+    "support": ("UTILITY", "Support", "utility"),
+}
+ROLLEN_ICON_URL = (
+    "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/"
+    "position-selector/positions/icon-position-{}.png"
+)
+# Unter dieser Spielzahl auf einer Position ausgeblendet - sonst stünde ein einzelnes
+# gewonnenes Off-Role-Spiel (100% Winrate) beim Sortieren nach Winrate ganz oben.
+MIN_SPIELE_JE_ROLLE = 5
+
+
+def _rollen_statistik(cur, team_position):
+    """Winrate + Pickrate je Champion auf einer Position. Pickrate wie bei OP.GG/U.GG: in wie
+    viel Prozent der Spiele (Matches) mit dieser Position der Champion dort gespielt wurde -
+    nicht der Anteil an allen Zeilen, sonst würden Matches mit beiden gespeicherten
+    Lane-Spielern (Challenger-Import) doppelt zählen."""
+    cur.execute(
+        "SELECT COUNT(DISTINCT match_id) FROM participants WHERE role = %s;", (team_position,)
+    )
+    matches_gesamt = cur.fetchone()[0]
+    cur.execute("""
+        SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END)
+        FROM participants
+        WHERE role = %s
+        GROUP BY champion;
+    """, (team_position,))
+    zeilen = cur.fetchall()
+    return matches_gesamt, zeilen
+
+
 @app.route("/champions")
 def champions():
     suche = request.args.get("q", "").strip().lower()
     sortierung = request.args.get("sort", "name")
     if sortierung not in CHAMPION_SORTIERUNGEN:
         sortierung = "name"
+    rolle = request.args.get("rolle", "")
     alle_champions = get_all_champions()
+    rollen_tabs = [
+        {"key": key, "name": name, "icon": ROLLEN_ICON_URL.format(icon)}
+        for key, (_, name, icon) in CHAMPION_ROLLEN.items()
+    ]
 
     conn = get_connection()
     cur = conn.cursor()
+
+    if rolle in CHAMPION_ROLLEN:
+        matches_gesamt, zeilen = _rollen_statistik(cur, CHAMPION_ROLLEN[rolle][0])
+        cur.close()
+        conn.close()
+        champ_info = {c["key"]: c for c in alle_champions}
+        liste, ausgeblendet = [], 0
+        for champion, spiele, siege in zeilen:
+            if spiele < MIN_SPIELE_JE_ROLLE:
+                ausgeblendet += 1
+                continue
+            info = champ_info.get(champion)
+            liste.append({
+                "key": champion,
+                "name": info["name"] if info else champion,
+                "icon": info["icon"] if info else champion_icon_url(champion),
+                "spiele": spiele,
+                "siege": siege,
+                "winrate": round(siege / spiele * 100, 1),
+                "pickrate": round(spiele / matches_gesamt * 100, 1) if matches_gesamt else 0.0,
+            })
+        liste.sort(key=lambda c: (c["pickrate"], c["winrate"]), reverse=True)
+        return render_template(
+            "champions.html", rolle=rolle, rollen_tabs=rollen_tabs,
+            rollen_name=CHAMPION_ROLLEN[rolle][1], rollen_liste=liste,
+            matches_gesamt=matches_gesamt, ausgeblendet=ausgeblendet,
+            min_spiele=MIN_SPIELE_JE_ROLLE, suche=suche,
+        )
+
     cur.execute(
         "SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END) FROM participants GROUP BY champion;"
     )
@@ -602,7 +672,7 @@ def champions():
         champs.sort(key=sort_key, reverse=reverse)
 
     return render_template(
-        "champions.html", champions=champs, suche=suche,
+        "champions.html", champions=champs, suche=suche, rolle="", rollen_tabs=rollen_tabs,
         sortierung=sortierung, sortierungen=CHAMPION_SORTIERUNGEN,
     )
 

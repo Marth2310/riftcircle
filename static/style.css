@@ -16,6 +16,9 @@
   --teal: #3dd6c6;
 }
 * { box-sizing: border-box; }
+/* Sonst gewinnt z.B. ein "display: flex" einer Klasse gegen das hidden-Attribut und per JS
+   ausgeblendete Elemente (Suche, Tabs) bleiben sichtbar */
+[hidden] { display: none !important; }
 html { background: var(--bg-1); }
 body {
   margin: 0;
