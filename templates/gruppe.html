@@ -148,6 +148,71 @@
     margin-top: 4px;
   }
   .feed-card-time { color: var(--muted); font-size: 0.66rem; margin-top: 4px; }
+
+  .rename-trigger {
+    background: none; border: none; color: var(--muted);
+    font-size: 0.78rem; cursor: pointer; text-decoration: underline;
+  }
+  .rename-trigger:hover { color: var(--text); }
+  .rename-form { display: none; margin: 14px auto 0; max-width: 420px; }
+  .rename-form.active { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Wochenübersicht */
+  .woche-winner {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(212, 175, 106, 0.14), var(--panel));
+    border: 1px solid var(--gold);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .woche-winner .crown { font-size: 2rem; flex-shrink: 0; }
+  .woche-winner .circle {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #0a0818; flex-shrink: 0;
+  }
+  .woche-winner-info { flex: 1; min-width: 180px; }
+  .woche-winner-name { font-weight: 800; font-size: 1.05rem; }
+  .woche-winner-stats { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .woche-winner-score { font-size: 0.72rem; color: var(--gold); margin-top: 4px; }
+
+  .woche-liste { display: flex; flex-direction: column; gap: 6px; }
+  .woche-zeile { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 8px; background: var(--panel-2); font-size: 0.82rem; flex-wrap: wrap; }
+  .woche-zeile .rang { color: var(--muted); font-weight: 700; width: 18px; flex-shrink: 0; }
+  .woche-zeile .circle-sm {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 800; color: #0a0818; flex-shrink: 0;
+  }
+  .woche-zeile .name { font-weight: 600; flex: 1; min-width: 80px; }
+  .woche-zeile .stats { color: var(--muted); font-size: 0.74rem; }
+
+  /* Vergleichs-Auswahl auf den Spiel-Karten */
+  .feed-card-wrap { position: relative; }
+  .feed-card-select { position: absolute; top: 6px; left: 6px; z-index: 2; }
+  .feed-card-select input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--gold); }
+
+  .vergleich-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    z-index: 50;
+    transform: translateY(100%);
+    transition: transform 0.2s;
+  }
+  .vergleich-bar.visible { transform: translateY(0); }
+  .vergleich-bar span { color: var(--muted); font-size: 0.85rem; text-align: center; }
+  .vergleich-bar button {
+    padding: 9px 20px; border-radius: 999px; border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818; font-weight: 700; cursor: pointer;
+    opacity: 0.4; pointer-events: none;
+  }
+  .vergleich-bar button.ready { opacity: 1; pointer-events: auto; }
 </style>
 </head>
 <body>
@@ -168,6 +233,20 @@
   <div class="page-head">
     <div class="gruppe-icon">{{ gruppe_icon }}</div>
     <h1>{{ gruppe_name }}</h1>
+    <button type="button" class="rename-trigger" id="renameTrigger">Umbenennen</button>
+
+    <form class="gruppe-form rename-form" id="renameForm" method="post" action="{{ url_for('gruppe_umbenennen', gruppe_id=gruppe_id) }}">
+      <div class="gruppe-form-row">
+        <input type="text" name="name" value="{{ gruppe_name }}" maxlength="60" required>
+      </div>
+      <input type="hidden" name="icon" id="renameIconInput" value="{{ gruppe_icon }}">
+      <div class="icon-picker">
+        {% for icon in gruppen_icons %}
+        <button type="button" class="icon-choice {{ 'selected' if icon == gruppe_icon else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
+        {% endfor %}
+      </div>
+      <button type="submit">Speichern</button>
+    </form>
   </div>
 
   <p class="share-hint">
@@ -178,19 +257,65 @@
     </span>
   </p>
 
+  {% if wochenrangliste %}
+  <div class="panel">
+    <h2 class="section-title">Diese Woche</h2>
+    {% set sieger = wochenrangliste[0] %}
+    <div class="woche-winner">
+      <div class="crown">👑</div>
+      <div class="circle" style="background: {{ sieger.farbe }};">{{ sieger.name[0] | upper }}</div>
+      <div class="woche-winner-info">
+        <div class="woche-winner-name">{{ sieger.name }}</div>
+        <div class="woche-winner-stats">
+          {{ sieger.spiele }} Spiel{{ "e" if sieger.spiele != 1 else "" }} &middot; {{ sieger.winrate }}% Winrate &middot; {{ sieger.avg_kda }} Ø-KDA
+          {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
+          {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
+          {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
+        </div>
+        <div class="woche-winner-score">Wochen-Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl)</div>
+      </div>
+    </div>
+
+    {% if wochenrangliste[1:] %}
+    <div class="woche-liste">
+      {% for w in wochenrangliste[1:] %}
+      <div class="woche-zeile">
+        <span class="rang">#{{ loop.index + 1 }}</span>
+        <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
+        <span class="name">{{ w.name }}</span>
+        <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA &middot; Score {{ w.score }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="panel">
+    <h2 class="section-title">Diese Woche</h2>
+    <p class="empty">Noch niemand aus der Gruppe hat diese Woche gespielt.</p>
+  </div>
+  {% endif %}
+
   {% macro spiel_karte(f) %}
-  <a class="feed-card {{ 'win' if f.win else 'loss' }} {{ 'has-achievement' if f.achievement else '' }}"
-     href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
-     style="--splash: url('{{ f.champion_splash }}');">
-    {% if f.achievement %}<div class="feed-card-badge">{{ f.achievement.icon }}</div>{% endif %}
-    <img class="feed-card-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
-    <div class="feed-card-name">{{ f.riot_name }}</div>
-    <div class="feed-card-champ-name">{{ f.champion }}</div>
-    <div class="feed-card-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</div>
-    <div class="feed-card-stats">{{ f.kda }}:1 KDA &middot; {{ "%.1f"|format(f.damage_dealt / 1000) }}k Schaden</div>
-    {% if f.achievement %}<div class="feed-card-achievement-text">{{ f.achievement.text }}</div>{% endif %}
-    <div class="feed-card-time">{{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
-  </a>
+  <div class="feed-card-wrap">
+    <label class="feed-card-select" title="Für Vergleich auswählen">
+      <input type="checkbox" class="vergleich-check"
+             data-match="{{ f.match_id }}" data-puuid="{{ f.puuid }}"
+             data-label="{{ f.riot_name }} ({{ f.champion }})">
+    </label>
+    <a class="feed-card {{ 'win' if f.win else 'loss' }} {{ 'has-achievement' if f.achievement else '' }}"
+       href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
+       style="--splash: url('{{ f.champion_splash }}');">
+      {% if f.achievement %}<div class="feed-card-badge">{{ f.achievement.icon }}</div>{% endif %}
+      <img class="feed-card-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
+      <div class="feed-card-name">{{ f.riot_name }}</div>
+      <div class="feed-card-champ-name">{{ f.champion }}</div>
+      <div class="feed-card-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</div>
+      <div class="feed-card-stats">{{ f.kda }}:1 KDA &middot; {{ "%.1f"|format(f.damage_dealt / 1000) }}k Schaden</div>
+      {% if f.achievement %}<div class="feed-card-achievement-text">{{ f.achievement.text }}</div>{% endif %}
+      <div class="feed-card-time">{{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
+    </a>
+  </div>
   {% endmacro %}
 
   {% if achievement_feed %}
@@ -241,6 +366,11 @@
 
 </div>
 
+<div class="vergleich-bar" id="vergleichBar">
+  <span id="vergleichBarText">0/2 Spiele für den Vergleich ausgewählt</span>
+  <button type="button" id="vergleichBarBtn">Vergleichen</button>
+</div>
+
 <script>
   (function () {
     var input = document.getElementById("shareLink");
@@ -254,6 +384,74 @@
         btn.textContent = "Kopiert!";
         setTimeout(function () { btn.textContent = original; }, 1500);
       }).catch(function () {});
+    });
+
+    // Umbenennen-Formular ein-/ausklappen
+    var renameTrigger = document.getElementById("renameTrigger");
+    var renameForm = document.getElementById("renameForm");
+    renameTrigger.addEventListener("click", function () {
+      renameForm.classList.toggle("active");
+    });
+    var renameIconInput = document.getElementById("renameIconInput");
+    renameForm.querySelectorAll(".icon-choice").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        renameForm.querySelectorAll(".icon-choice").forEach(function (b) { b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        renameIconInput.value = btn.getAttribute("data-icon");
+      });
+    });
+
+    // Neue-Gruppe-Icon-Picker (falls auf dieser Seite vorhanden)
+    var neueGruppeIconInput = document.getElementById("gruppeIconInput");
+    if (neueGruppeIconInput) {
+      document.querySelectorAll(".gruppe-form:not(.rename-form) .icon-choice").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".gruppe-form:not(.rename-form) .icon-choice").forEach(function (b) { b.classList.remove("selected"); });
+          btn.classList.add("selected");
+          neueGruppeIconInput.value = btn.getAttribute("data-icon");
+        });
+      });
+    }
+
+    // Zwei Spiele für den direkten Vergleich auswählen
+    var ausgewaehlt = [];
+    var bar = document.getElementById("vergleichBar");
+    var barText = document.getElementById("vergleichBarText");
+    var barBtn = document.getElementById("vergleichBarBtn");
+
+    function aktualisiereBar() {
+      if (ausgewaehlt.length === 0) {
+        bar.classList.remove("visible");
+        return;
+      }
+      bar.classList.add("visible");
+      barText.textContent = ausgewaehlt.length + "/2 Spiele für den Vergleich ausgewählt";
+      barBtn.classList.toggle("ready", ausgewaehlt.length === 2);
+    }
+
+    document.querySelectorAll(".vergleich-check").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        if (cb.checked) {
+          if (ausgewaehlt.length >= 2) {
+            cb.checked = false;
+            return;
+          }
+          ausgewaehlt.push(cb);
+        } else {
+          ausgewaehlt = ausgewaehlt.filter(function (c) { return c !== cb; });
+        }
+        aktualisiereBar();
+      });
+    });
+
+    barBtn.addEventListener("click", function () {
+      if (ausgewaehlt.length !== 2) return;
+      var url = "{{ url_for('vergleich_ansehen') }}"
+        + "?m1=" + encodeURIComponent(ausgewaehlt[0].dataset.match)
+        + "&p1=" + encodeURIComponent(ausgewaehlt[0].dataset.puuid)
+        + "&m2=" + encodeURIComponent(ausgewaehlt[1].dataset.match)
+        + "&p2=" + encodeURIComponent(ausgewaehlt[1].dataset.puuid);
+      window.location.href = url;
     });
   })();
 </script>

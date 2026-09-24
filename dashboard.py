@@ -43,6 +43,8 @@ from riot_fetch import SummonerNotFound, fetch_match_teams, get_top_mastery_cham
 from riot_runes import build_rune_display, keystone_and_secondary_icons
 from riot_timeline import death_position_percent, fetch_timeline_events, format_game_time
 from rollen_tipps import tipps_fuer_rolle
+from vergleich import fazit_saetze, vergleiche
+from wochenrueckblick import berechne_score
 
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
@@ -633,6 +635,48 @@ def baue_gruppen_feed(cur, mitglied_puuids):
     return feed
 
 
+def baue_wochenrueckblick(cur, mitglieder):
+    """Wer war diese Woche (letzte 7 Tage) am besten? Siehe wochenrueckblick.py für die
+    Gewichtung. Leere Liste, falls in der Gruppe diese Woche noch niemand gespielt hat."""
+    if not mitglieder:
+        return []
+
+    puuids = [m["puuid"] for m in mitglieder]
+    cur.execute("""
+        SELECT p.puuid,
+               COUNT(*) AS spiele,
+               SUM(CASE WHEN p.win THEN 1 ELSE 0 END) AS siege,
+               SUM(p.kills) AS kills, SUM(p.deaths) AS deaths, SUM(p.assists) AS assists,
+               SUM(COALESCE(p.penta_kills, 0)) AS pentas, SUM(COALESCE(p.quadra_kills, 0)) AS quadras,
+               SUM(COALESCE(p.triple_kills, 0)) AS triples, SUM(COALESCE(p.double_kills, 0)) AS doubles
+        FROM participants p
+        JOIN matches m ON p.match_id = m.match_id
+        WHERE p.puuid = ANY(%s) AND m.played_at >= now() - interval '7 days'
+        GROUP BY p.puuid;
+    """, (puuids,))
+
+    mitglied_by_puuid = {m["puuid"]: m for m in mitglieder}
+    rangliste = []
+    for row in cur.fetchall():
+        (puuid, spiele, siege, kills, deaths, assists, pentas, quadras, triples, doubles) = row
+        stats = {
+            "spiele": spiele, "siege": siege, "kills": kills, "deaths": deaths, "assists": assists,
+            "pentas": pentas, "quadras": quadras, "triples": triples, "doubles": doubles,
+        }
+        avg_kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
+        mitglied = mitglied_by_puuid.get(puuid, {})
+        rangliste.append({
+            "puuid": puuid, "name": mitglied.get("name", "?"), "tag": mitglied.get("tag", ""),
+            "farbe": mitglied.get("farbe", "var(--void)"),
+            "spiele": spiele, "siege": siege, "winrate": round(siege / spiele * 100),
+            "avg_kda": round(avg_kda, 2),
+            "pentas": pentas, "quadras": quadras, "triples": triples, "doubles": doubles,
+            "score": berechne_score(stats),
+        })
+    rangliste.sort(key=lambda r: r["score"], reverse=True)
+    return rangliste
+
+
 @app.route("/gruppe/<gruppe_id>")
 def gruppe_ansehen(gruppe_id):
     conn = get_connection()
@@ -657,13 +701,15 @@ def gruppe_ansehen(gruppe_id):
 
     feed = baue_gruppen_feed(cur, [p for p, _, _ in mitglieder_rows])
     achievement_feed = [f for f in feed if f["achievement"]]
+    wochenrangliste = baue_wochenrueckblick(cur, mitglieder)
 
     cur.close()
     conn.close()
 
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
-        feed=feed, achievement_feed=achievement_feed, gruppen_icons=GRUPPEN_ICONS,
+        feed=feed, achievement_feed=achievement_feed, wochenrangliste=wochenrangliste,
+        gruppen_icons=GRUPPEN_ICONS,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
@@ -711,6 +757,76 @@ def gruppe_mitglied_entfernen(gruppe_id, puuid):
     cur.close()
     conn.close()
     return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/umbenennen", methods=["POST"])
+def gruppe_umbenennen(gruppe_id):
+    name = request.form.get("name", "").strip()
+    icon = request.form.get("icon", "").strip()
+    if icon not in GRUPPEN_ICONS:
+        icon = None
+
+    conn = get_connection()
+    cur = conn.cursor()
+    if name and icon:
+        cur.execute("UPDATE gruppen SET name = %s, icon = %s WHERE id = %s;", (name, icon, gruppe_id))
+    elif name:
+        cur.execute("UPDATE gruppen SET name = %s WHERE id = %s;", (name, gruppe_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    # Das neue Cookie mit dem aktuellen Namen/Icon wird gleich beim Redirect auf
+    # gruppe_ansehen() automatisch mitgeschrieben (die liest immer frisch aus der DB).
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+def _lade_vergleichsdaten(cur, match_id, puuid):
+    cur.execute("""
+        SELECT p.champion, p.role, p.win, p.kills, p.deaths, p.assists, p.cs, p.vision_score,
+               p.damage_dealt, p.gold_earned, m.duration_seconds, pl.riot_name, pl.riot_tag
+        FROM participants p
+        JOIN matches m ON p.match_id = m.match_id
+        JOIN players pl ON p.puuid = pl.puuid
+        WHERE p.match_id = %s AND p.puuid = %s;
+    """, (match_id, puuid))
+    row = cur.fetchone()
+    if row is None:
+        return None
+    (champion, role, win, kills, deaths, assists, cs, vision_score,
+     damage_dealt, gold_earned, duration_seconds, riot_name, riot_tag) = row
+    kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
+    return {
+        "match_id": match_id, "puuid": puuid, "name": f"{riot_name}#{riot_tag}",
+        "riot_name": riot_name, "riot_tag": riot_tag,
+        "champion": champion, "champion_icon": champion_icon_url(champion, get_ddragon_version()),
+        "role": role, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+        "kda": round(kda, 2), "cs": cs, "vision_score": vision_score,
+        "damage_dealt": damage_dealt, "gold_earned": gold_earned,
+        "dauer_min": duration_seconds // 60,
+    }
+
+
+@app.route("/vergleich")
+def vergleich_ansehen():
+    m1, p1 = request.args.get("m1", ""), request.args.get("p1", "")
+    m2, p2 = request.args.get("m2", ""), request.args.get("p2", "")
+    if not (m1 and p1 and m2 and p2):
+        return redirect(url_for("landing"))
+
+    conn = get_connection()
+    cur = conn.cursor()
+    a = _lade_vergleichsdaten(cur, m1, p1)
+    b = _lade_vergleichsdaten(cur, m2, p2)
+    cur.close()
+    conn.close()
+
+    if a is None or b is None:
+        abort(404)
+
+    zeilen = vergleiche(a, b)
+    saetze = fazit_saetze(a, b, zeilen)
+
+    return render_template("vergleich.html", a=a, b=b, zeilen=zeilen, saetze=saetze)
 
 
 @app.route("/profil")

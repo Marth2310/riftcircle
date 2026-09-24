@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ a.riot_name }} vs {{ b.riot_name }} | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  .wrap { max-width: 720px; }
+  .page-head { text-align: center; margin: 4px 0 24px; }
+  .page-head h1 { margin: 0; font-size: 1.5rem; }
+  .page-head .sub { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+
+  .vs-header .vs-side .vs-champ { color: var(--muted); font-size: 0.72rem; margin-top: -4px; }
+  .vs-header .vs-side .vs-result { font-size: 0.7rem; font-weight: 700; margin-top: 2px; }
+  .vs-header .vs-side.win .vs-result { color: var(--win); }
+  .vs-header .vs-side.loss .vs-result { color: var(--loss); }
+
+  .fazit-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .fazit-list li {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+
+  <a class="back-link" href="javascript:history.back()">&larr; Zurück</a>
+
+  <div class="page-head">
+    <h1>Match-Vergleich</h1>
+    <div class="sub">Zwei Spiele direkt gegenübergestellt - keine Elo-Bewertung, nur ein direkter Vergleich der rohen Zahlen.</div>
+  </div>
+
+  <div class="panel">
+    <div class="vs-header">
+      <div class="vs-side mine {{ 'win' if a.win else 'loss' }}">
+        <img src="{{ a.champion_icon }}" alt="{{ a.champion }}">
+        <span class="vs-name">{{ a.riot_name }}</span>
+        <span class="vs-champ">{{ a.champion }}</span>
+        <span class="vs-result">{{ "Sieg" if a.win else "Niederlage" }}</span>
+      </div>
+      <span class="vs-label">VS</span>
+      <div class="vs-side gegner {{ 'win' if b.win else 'loss' }}">
+        <img src="{{ b.champion_icon }}" alt="{{ b.champion }}">
+        <span class="vs-name">{{ b.riot_name }}</span>
+        <span class="vs-champ">{{ b.champion }}</span>
+        <span class="vs-result">{{ "Sieg" if b.win else "Niederlage" }}</span>
+      </div>
+    </div>
+
+    {% for z in zeilen %}
+    <div class="vs-stat-row">
+      <span class="vs-stat-value {{ 'lead' if z.a_besser else '' }}">{{ z.wert_a_text }}</span>
+      <div class="vs-bar-track mine">
+        <div class="vs-bar-fill {{ 'lead' if z.a_besser else '' }}" style="width: {{ z.a_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-label">{{ z.label }}</span>
+      <div class="vs-bar-track">
+        <div class="vs-bar-fill gegner {{ 'lead' if z.a_besser == false else '' }}" style="width: {{ 100 - z.a_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-value {{ 'lead' if z.a_besser == false else '' }}">{{ z.wert_b_text }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Fazit</h2>
+    {% if saetze %}
+    <ul class="fazit-list">
+      {% for satz in saetze %}
+      <li>{{ satz }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Beide Spiele waren in allen Kategorien exakt gleich auf.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+</body>
+</html>
