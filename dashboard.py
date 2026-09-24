@@ -34,6 +34,7 @@ from champion_mobility import hat_escape
 from riot_assets import (
     champion_icon_url,
     champion_splash_url,
+    get_champion_spells,
     get_ddragon_version,
     get_summoner_icon_id,
     item_icon_url,
@@ -639,9 +640,14 @@ def champion_detail(key):
         hintergrund_splash = random_champion_splash_url(key)
     except Exception:
         hintergrund_splash = champion_splash_url(key)
+    try:
+        spells = get_champion_spells(key)
+    except Exception:
+        spells = None  # Skill-Pfad erscheint dann nur mit Q/W/E/R-Buchstaben
 
     return render_template(
         "champion_detail.html", champ=champ, stats=stats, hintergrund_splash=hintergrund_splash,
+        spells=spells,
     )
 
 

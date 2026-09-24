@@ -14,9 +14,8 @@ REQUEST_TIMEOUT = 10
 _ddragon_version_cache = None
 _FALLBACK_VERSION = "14.19.1"
 
-# champion_key -> (version, [skin_num, ...]) - nur "Basis"-Skins (keine Chromas, die haben
-# ohnehin kein eigenes Splash-Art und liefern 403 - siehe Namensfilter unten).
-_champion_skins_cache = {}
+# champion_key -> (version, Champion-JSON aus Data Dragon) - Quelle für Skins und Spells
+_champion_daten_cache = {}
 
 
 def get_ddragon_version():
@@ -43,21 +42,43 @@ def champion_splash_url(champion, skin_num=0):
     return f"https://ddragon.leagueoflegends.com/cdn/img/champion/splash/{champion}_{skin_num}.jpg"
 
 
-def _get_base_skin_numbers(champion):
-    """Skin-Nummern eines Champions OHNE Chromas - Chromas (z.B. "Bullet Angel Kai'Sa
-    (Ruby)") teilen sich das Splash-Art ihres Basis-Skins und liefern unter ihrer eigenen
-    Nummer einen 403, taugen also nicht für zufällige Hintergrundbilder."""
+def _get_champion_daten(champion):
+    """Detail-JSON eines Champions (Skins, Spells, ...) - einmal pro Patch-Version gecacht.
+    None, wenn Data Dragon den Champion nicht liefert."""
     version = get_ddragon_version()
-    cached = _champion_skins_cache.get(champion)
+    cached = _champion_daten_cache.get(champion)
     if cached is None or cached[0] != version:
         url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion/{champion}.json"
         resp = requests.get(url, timeout=REQUEST_TIMEOUT)
         if resp.status_code != 200:
-            return [0]
-        skins = resp.json()["data"][champion]["skins"]
-        nums = [s["num"] for s in skins if "(" not in s["name"]] or [0]
-        _champion_skins_cache[champion] = (version, nums)
-    return _champion_skins_cache[champion][1]
+            return None
+        _champion_daten_cache[champion] = (version, resp.json()["data"][champion])
+    return _champion_daten_cache[champion][1]
+
+
+def _get_base_skin_numbers(champion):
+    """Skin-Nummern eines Champions OHNE Chromas - Chromas (z.B. "Bullet Angel Kai'Sa
+    (Ruby)") teilen sich das Splash-Art ihres Basis-Skins und liefern unter ihrer eigenen
+    Nummer einen 403, taugen also nicht für zufällige Hintergrundbilder."""
+    daten = _get_champion_daten(champion)
+    if not daten:
+        return [0]
+    return [s["num"] for s in daten["skins"] if "(" not in s["name"]] or [0]
+
+
+def get_champion_spells(champion):
+    """Q/W/E/R des Champions als [{"name", "icon"}] (Index 0 = Q), None falls nicht ladbar."""
+    daten = _get_champion_daten(champion)
+    if not daten or len(daten.get("spells", [])) < 4:
+        return None
+    version = get_ddragon_version()
+    return [
+        {
+            "name": s["name"],
+            "icon": f"https://ddragon.leagueoflegends.com/cdn/{version}/img/spell/{s['image']['full']}",
+        }
+        for s in daten["spells"][:4]
+    ]
 
 
 def random_champion_splash_url(champion):

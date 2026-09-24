@@ -24,6 +24,51 @@ MAX_RUNEN_VARIANTEN = 4
 STAT_SLOTS = ("offense", "flex", "defense")
 
 
+MAX_SKILL_LEVEL = 18
+MIN_SPIELE_JE_SKILL_LEVEL = 3
+R_LEVEL = (6, 11, 16)
+
+
+def _naechster_skill_nach_regel(pfad, prioritaet_slots):
+    """Standard-Skillregel als Ergänzung, wo die Daten ausgehen: R auf 6/11/16, sonst der
+    höchstpriorisierte Basis-Skill, der noch nicht maximiert ist und das Level-Limit (Rang
+    höchstens (Level+1)//2) nicht überschreitet."""
+    level = len(pfad) + 1
+    punkte = Counter(pfad)
+    if level in R_LEVEL and punkte[4] < 3:
+        return 4
+    for slot in prioritaet_slots:
+        if punkte[slot] < 5 and punkte[slot] < (level + 1) // 2:
+            return slot
+    return None
+
+
+def _haeufigster_skill_pfad(sequenzen, prioritaet_slots):
+    """Häufigster tatsächlich gespielter Pfad über alle 18 Level: Level für Level die häufigste
+    Wahl, aber nur unter den Spielen, die bis dahin genau so geskillt haben - der Pfad ist also
+    immer einer, den echte Spiele so genommen haben (eine reine Mehrheit pro Level könnte
+    z.B. R vor Level 6 oder einen 6. Punkt in Q ergeben).
+    Sobald weniger als MIN_SPIELE_JE_SKILL_LEVEL Spiele übrig sind (viele Spiele enden vor 18),
+    wird nach der Standardregel ergänzt; "daten_bis" = Anzahl der datengestützten Level."""
+    pfad, kandidaten, daten_bis = [], sequenzen, None
+    schwelle = max(1, min(MIN_SPIELE_JE_SKILL_LEVEL, len(sequenzen)))
+    for i in range(MAX_SKILL_LEVEL):
+        wahl = None
+        if daten_bis is None:
+            zaehler = Counter(s[i] for s in kandidaten if len(s) > i)
+            if sum(zaehler.values()) >= schwelle:
+                wahl = zaehler.most_common(1)[0][0]
+                kandidaten = [s for s in kandidaten if len(s) > i and s[i] == wahl]
+            else:
+                daten_bis = i
+        if wahl is None:
+            wahl = _naechster_skill_nach_regel(pfad, prioritaet_slots)
+            if wahl is None:
+                break
+        pfad.append(wahl)
+    return {"pfad": pfad, "daten_bis": len(pfad) if daten_bis is None else daten_bis}
+
+
 def _hat_vollstaendige_runen(perks):
     styles = (perks or {}).get("styles") or []
     return (
@@ -281,6 +326,7 @@ def berechne_champion_stats(cur, champion_key):
         })
 
     order_counter = {}
+    order_details = {}  # prioritaet -> (prioritaet_slots, [skill_order, ...])
     skill_order_spiele = 0
     for _, _, skill_order, _, _, _ in rows:
         if not skill_order:
@@ -301,6 +347,9 @@ def berechne_champion_stats(cur, champion_key):
                 erreicht.append(slot)
         prioritaet = " > ".join(SKILL_BUCHSTABEN[s] for s in erreicht)
         order_counter[prioritaet] = order_counter.get(prioritaet, 0) + 1
+        order_details.setdefault(prioritaet, (erreicht, []))[1].append(
+            [s for s in skill_order if s in SKILL_BUCHSTABEN]
+        )
     top_orders = sorted(order_counter.items(), key=lambda kv: kv[1], reverse=True)[:3]
 
     cur.execute("SELECT win, perks FROM participants WHERE champion = %s;", (champion_key,))
@@ -321,7 +370,11 @@ def berechne_champion_stats(cur, champion_key):
         "builds": builds,
         "skill_order_spiele": skill_order_spiele,
         "top_orders": [
-            {"order": o, "count": cnt, "pct": round(cnt / skill_order_spiele * 100)}
+            {
+                "order": o, "count": cnt, "pct": round(cnt / skill_order_spiele * 100),
+                "prioritaet_slots": order_details[o][0],
+                **_haeufigster_skill_pfad(order_details[o][1], order_details[o][0]),
+            }
             for o, cnt in top_orders
         ] if skill_order_spiele else [],
         "avg_kills": round(gesamt_kills / total, 1),
