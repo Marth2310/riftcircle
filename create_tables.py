@@ -107,6 +107,21 @@ CREATE TABLE IF NOT EXISTS gruppen (
 );
 """)
 cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '🛡️';")
+# Discord-Webhook der Gruppe + Zeitpunkt des Verbindens (nur Spiele danach werden gepostet,
+# sonst käme beim Einrichten eine Flut alter Achievements)
+cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS discord_webhook TEXT;")
+cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS discord_seit TIMESTAMP;")
+# Was schon gepostet wurde (typ "achievement": match_id:puuid, typ "woche": z.B. 2026-KW39) -
+# der Primärschlüssel verhindert Doppel-Posts, auch wenn zwei Requests gleichzeitig auslösen.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS discord_posts (
+    gruppe_id TEXT REFERENCES gruppen(id) ON DELETE CASCADE,
+    typ TEXT NOT NULL,
+    schluessel TEXT NOT NULL,
+    gepostet_am TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (gruppe_id, typ, schluessel)
+);
+""")
 cur.execute("""
 CREATE TABLE IF NOT EXISTS gruppen_mitglieder (
     gruppe_id TEXT REFERENCES gruppen(id) ON DELETE CASCADE,

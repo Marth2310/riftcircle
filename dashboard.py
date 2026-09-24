@@ -32,6 +32,15 @@ from champion_stats import (
 )
 from db import get_connection
 from champion_mobility import hat_escape
+from discord_webhook import (
+    MAX_EMBEDS_PRO_NACHRICHT,
+    achievement_embed,
+    ist_gueltige_webhook_url,
+    sende,
+    test_embed,
+    verbunden_embed,
+    wochen_embed,
+)
 from riot_assets import (
     champion_icon_url,
     champion_splash_url,
@@ -58,6 +67,8 @@ from wochenrueckblick import berechne_score
 load_dotenv()
 API_KEY = os.environ["RIOT_API_KEY"]
 headers = {"X-Riot-Token": API_KEY}
+# Öffentliche Adresse der Seite für Links in Discord-Nachrichten (dort gehen nur absolute URLs)
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://riftcircle.com").rstrip("/")
 # Schaltet /stats/<secret> frei und salzt den Besucher-Hash - ohne gesetztes Secret bleibt
 # Tracking einfach aus (z.B. lokal, wenn man sich damit nicht beschäftigen will).
 ANALYTICS_SECRET = os.environ.get("ANALYTICS_SECRET", "")
@@ -816,15 +827,24 @@ def baue_gruppen_feed(cur, mitglied_puuids):
             "role": role, "role_label": ROLLEN_LABEL.get(role, "ARAM"),
             "win": win, "kills": kills, "deaths": deaths, "assists": assists,
             "kda": round(kda, 2), "cs": cs, "damage_dealt": damage_dealt,
+            "played_at": played_at,
             "zeit_text": relative_zeit(played_at), "dauer_min": duration_seconds // 60,
             "achievement": bestes_achievement(achievement_zeile),
         })
     return feed
 
 
-def baue_wochenrueckblick(cur, mitglieder):
-    """Wer war diese Woche (letzte 7 Tage) am besten? Siehe wochenrueckblick.py für die
-    Gewichtung. Leere Liste, falls in der Gruppe diese Woche noch niemand gespielt hat."""
+WOCHEN_ZEITRAUM = {
+    # Anzeige auf der Gruppenseite: gleitend die letzten 7 Tage
+    False: "m.played_at >= now() - interval '7 days'",
+    # Discord-Wochensieger: die zuletzt abgeschlossene Kalenderwoche (Mo 00:00 bis Mo 00:00)
+    True: "m.played_at >= date_trunc('week', now()) - interval '7 days' AND m.played_at < date_trunc('week', now())",
+}
+
+
+def baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=False):
+    """Wer war diese Woche am besten? Siehe wochenrueckblick.py für die Gewichtung. Leere
+    Liste, falls in der Gruppe in dem Zeitraum noch niemand gespielt hat."""
     if not mitglieder:
         return []
 
@@ -838,7 +858,7 @@ def baue_wochenrueckblick(cur, mitglieder):
                SUM(COALESCE(p.triple_kills, 0)) AS triples, SUM(COALESCE(p.double_kills, 0)) AS doubles
         FROM participants p
         JOIN matches m ON p.match_id = m.match_id
-        WHERE p.puuid = ANY(%s) AND m.played_at >= now() - interval '7 days'
+        WHERE p.puuid = ANY(%s) AND """ + WOCHEN_ZEITRAUM[letzte_kalenderwoche] + """
         GROUP BY p.puuid;
     """, (puuids,))
 
@@ -862,6 +882,115 @@ def baue_wochenrueckblick(cur, mitglieder):
         })
     rangliste.sort(key=lambda r: r["score"], reverse=True)
     return rangliste
+
+
+def _discord_beanspruchen(cur, conn, gruppe_id, typ, schluessel):
+    """True, wenn dieser Post noch aussteht und jetzt von DIESEM Request übernommen wurde -
+    der Eintrag wird VOR dem Senden committed, damit ein paralleler Request (2 Gunicorn-
+    Worker) denselben Post nicht nochmal schickt."""
+    cur.execute("""
+        INSERT INTO discord_posts (gruppe_id, typ, schluessel) VALUES (%s, %s, %s)
+        ON CONFLICT DO NOTHING RETURNING 1;
+    """, (gruppe_id, typ, schluessel))
+    uebernommen = cur.fetchone() is not None
+    conn.commit()
+    return uebernommen
+
+
+def _discord_freigeben(cur, conn, gruppe_id, typ, schluessel):
+    """Senden fehlgeschlagen -> wieder freigeben, damit der nächste Auslöser es erneut versucht."""
+    cur.execute(
+        "DELETE FROM discord_posts WHERE gruppe_id = %s AND typ = %s AND schluessel = ANY(%s);",
+        (gruppe_id, typ, list(schluessel)),
+    )
+    conn.commit()
+
+
+def _discord_senden(cur, conn, gruppe_id, webhook, embeds, typ, schluessel):
+    """Sendet und räumt bei Fehlern auf. False = abbrechen (nichts weiter senden)."""
+    status = sende(webhook, embeds, PUBLIC_BASE_URL)
+    if 200 <= status < 300:
+        return True
+    _discord_freigeben(cur, conn, gruppe_id, typ, schluessel)
+    if status in (401, 404):
+        # Webhook wurde in Discord gelöscht - Verbindung trennen statt es ewig weiter zu versuchen
+        cur.execute("UPDATE gruppen SET discord_webhook = NULL WHERE id = %s;", (gruppe_id,))
+        conn.commit()
+    return False
+
+
+def benachrichtige_gruppe(cur, conn, gruppe_id, feed=None, mitglieder=None):
+    """Postet ausstehende Achievements (nur aus Spielen seit dem Verbinden) und den Sieger der
+    zuletzt abgeschlossenen Kalenderwoche in den Discord-Kanal der Gruppe. Läuft (bis zum Riot-
+    Production-Key) nur, wenn etwas auf der Seite passiert - Profil-Suche, Mitglied hinzufügen,
+    Gruppe öffnen -, es gibt keinen Hintergrund-Job. feed/mitglieder können übergeben werden,
+    wenn der Aufrufer sie ohnehin schon berechnet hat."""
+    cur.execute(
+        "SELECT name, icon, discord_webhook, discord_seit FROM gruppen WHERE id = %s;", (gruppe_id,)
+    )
+    row = cur.fetchone()
+    if not row or not row[2]:
+        return
+    name, icon, webhook, seit = row
+    icon = icon or "🛡️"
+    gruppen_url = PUBLIC_BASE_URL + url_for("gruppe_ansehen", gruppe_id=gruppe_id)
+
+    if mitglieder is None:
+        cur.execute("""
+            SELECT pl.puuid, pl.riot_name, pl.riot_tag
+            FROM gruppen_mitglieder gm JOIN players pl ON gm.puuid = pl.puuid
+            WHERE gm.gruppe_id = %s ORDER BY gm.hinzugefuegt_am;
+        """, (gruppe_id,))
+        mitglieder = _mit_farbe([{"puuid": p, "name": n, "tag": t} for p, n, t in cur.fetchall()])
+    if feed is None:
+        feed = baue_gruppen_feed(cur, [m["puuid"] for m in mitglieder])
+
+    neue = sorted(
+        (f for f in feed if f["achievement"] and f["played_at"] and seit and f["played_at"] >= seit),
+        key=lambda f: f["played_at"],
+    )
+    offen = [
+        f for f in neue
+        if _discord_beanspruchen(cur, conn, gruppe_id, "achievement", f"{f['match_id']}:{f['puuid']}")
+    ]
+    for i in range(0, len(offen), MAX_EMBEDS_PRO_NACHRICHT):
+        teil = offen[i:i + MAX_EMBEDS_PRO_NACHRICHT]
+        embeds = [
+            achievement_embed(
+                f, name, icon,
+                PUBLIC_BASE_URL + url_for("match_detail", match_id=f["match_id"], puuid=f["puuid"]),
+            )
+            for f in teil
+        ]
+        if not _discord_senden(cur, conn, gruppe_id, webhook, embeds, "achievement",
+                               [f"{f['match_id']}:{f['puuid']}" for f in offen[i:]]):
+            return
+
+    # Wochensieger der zuletzt abgeschlossenen Kalenderwoche - nur Wochen, die nach dem
+    # Verbinden geendet haben (sonst käme beim Einrichten sofort der Sieger der Vorwoche)
+    cur.execute("""
+        SELECT to_char(date_trunc('week', now()) - interval '7 days', 'IYYY-"KW"IW'),
+               to_char(date_trunc('week', now()) - interval '7 days', 'IW'),
+               date_trunc('week', now()) > %s;
+    """, (seit,))
+    woche_key, kw, nach_verbinden = cur.fetchone()
+    if nach_verbinden:
+        rangliste = baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=True)
+        if rangliste and _discord_beanspruchen(cur, conn, gruppe_id, "woche", woche_key):
+            _discord_senden(
+                cur, conn, gruppe_id, webhook,
+                [wochen_embed(rangliste, f"KW {int(kw)}", name, icon, gruppen_url)],
+                "woche", [woche_key],
+            )
+
+
+def benachrichtige_gruppe_sicher(cur, conn, gruppe_id, **kwargs):
+    """Discord ist Beiwerk - ein Fehler dort darf nie die eigentliche Seite kaputt machen."""
+    try:
+        benachrichtige_gruppe(cur, conn, gruppe_id, **kwargs)
+    except Exception as e:
+        conn.rollback()
+        print(f"Discord-Benachrichtigung für Gruppe {gruppe_id} fehlgeschlagen: {e!r}")
 
 
 @app.route("/gruppe/<gruppe_id>")
@@ -890,6 +1019,12 @@ def gruppe_ansehen(gruppe_id):
     achievement_feed = [f for f in feed if f["achievement"]]
     wochenrangliste = baue_wochenrueckblick(cur, mitglieder)
 
+    benachrichtige_gruppe_sicher(cur, conn, gruppe_id, feed=feed, mitglieder=mitglieder)
+    # Erst NACH dem Benachrichtigen lesen - ein in Discord gelöschter Webhook wird dabei getrennt
+    cur.execute("SELECT discord_webhook IS NOT NULL, discord_seit FROM gruppen WHERE id = %s;", (gruppe_id,))
+    discord_verbunden, discord_seit = cur.fetchone()
+    discord_meldung = DISCORD_MELDUNGEN.get(request.args.get("discord", ""))
+
     # "Zuletzt aktiv" je Mitglied - der Feed ist schon chronologisch (neuestes zuerst), der
     # erste Treffer pro puuid ist also automatisch deren letztes Spiel.
     zuletzt_aktiv = {}
@@ -912,6 +1047,9 @@ def gruppe_ansehen(gruppe_id):
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, wochenrangliste=wochenrangliste,
         gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
+        discord_verbunden=discord_verbunden,
+        discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,
+        discord_meldung=discord_meldung,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
@@ -1005,6 +1143,84 @@ def gruppe_loeschen(gruppe_id):
         max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
     )
     return resp
+
+
+DISCORD_MELDUNGEN = {
+    "verbunden": ("ok", "Discord ist verbunden - schau in deinen Kanal, dort sollte gerade eine Nachricht angekommen sein."),
+    "ungueltig": ("fehler", "Das ist keine Discord-Webhook-URL. Sie beginnt mit https://discord.com/api/webhooks/..."),
+    "nicht_erreichbar": ("fehler", "Discord hat die Nachricht abgelehnt - ist der Webhook noch aktiv? Bitte URL prüfen."),
+    "test_ok": ("ok", "Testnachricht wurde gesendet."),
+    "test_fehler": ("fehler", "Testnachricht konnte nicht gesendet werden - der Webhook wurde evtl. in Discord gelöscht."),
+    "getrennt": ("ok", "Discord wurde getrennt."),
+}
+
+
+def _gruppe_oder_404(cur, conn, gruppe_id):
+    cur.execute("SELECT name, icon, discord_webhook FROM gruppen WHERE id = %s;", (gruppe_id,))
+    row = cur.fetchone()
+    if row is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    return row[0], row[1] or "🛡️", row[2]
+
+
+def _zur_gruppe(gruppe_id, meldung):
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id, discord=meldung) + "#discord")
+
+
+@app.route("/gruppe/<gruppe_id>/discord", methods=["POST"])
+def gruppe_discord_verbinden(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    name, icon, _ = _gruppe_oder_404(cur, conn, gruppe_id)
+    webhook = request.form.get("webhook", "").strip()
+
+    if not ist_gueltige_webhook_url(webhook):
+        meldung = "ungueltig"
+    else:
+        # Erst speichern, wenn Discord die Begrüßung tatsächlich angenommen hat
+        gruppen_url = PUBLIC_BASE_URL + url_for("gruppe_ansehen", gruppe_id=gruppe_id)
+        status = sende(webhook, [verbunden_embed(name, icon, gruppen_url)], PUBLIC_BASE_URL)
+        if 200 <= status < 300:
+            cur.execute(
+                "UPDATE gruppen SET discord_webhook = %s, discord_seit = now() WHERE id = %s;",
+                (webhook, gruppe_id),
+            )
+            conn.commit()
+            meldung = "verbunden"
+        else:
+            meldung = "nicht_erreichbar"
+
+    cur.close()
+    conn.close()
+    return _zur_gruppe(gruppe_id, meldung)
+
+
+@app.route("/gruppe/<gruppe_id>/discord/test", methods=["POST"])
+def gruppe_discord_test(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    name, icon, webhook = _gruppe_oder_404(cur, conn, gruppe_id)
+    cur.close()
+    conn.close()
+    if not webhook:
+        return _zur_gruppe(gruppe_id, "test_fehler")
+    gruppen_url = PUBLIC_BASE_URL + url_for("gruppe_ansehen", gruppe_id=gruppe_id)
+    status = sende(webhook, [test_embed(name, icon, gruppen_url)], PUBLIC_BASE_URL)
+    return _zur_gruppe(gruppe_id, "test_ok" if 200 <= status < 300 else "test_fehler")
+
+
+@app.route("/gruppe/<gruppe_id>/discord/trennen", methods=["POST"])
+def gruppe_discord_trennen(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    _gruppe_oder_404(cur, conn, gruppe_id)
+    cur.execute("UPDATE gruppen SET discord_webhook = NULL, discord_seit = NULL WHERE id = %s;", (gruppe_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return _zur_gruppe(gruppe_id, "getrennt")
 
 
 def _lade_vergleichsdaten(cur, match_id, puuid):
@@ -1147,7 +1363,14 @@ def profil():
         try:
             # Holt bei Bedarf neue Spiele nach - bereits gespeicherte Matches werden
             # übersprungen, wiederholte Suchen nach demselben Profil sind daher schnell.
-            puuid, _ = sync_player(cur, conn, headers, gesuchter_name, gesuchter_tag)
+            puuid, neue_spiele = sync_player(cur, conn, headers, gesuchter_name, gesuchter_tag)
+            if neue_spiele:
+                cur.execute("""
+                    SELECT gm.gruppe_id FROM gruppen_mitglieder gm JOIN gruppen g ON g.id = gm.gruppe_id
+                    WHERE gm.puuid = %s AND g.discord_webhook IS NOT NULL;
+                """, (puuid,))
+                for (gruppe_id,) in cur.fetchall():
+                    benachrichtige_gruppe_sicher(cur, conn, gruppe_id)
         except SummonerNotFound as e:
             if geraten:
                 fehler = (
