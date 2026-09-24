@@ -1,3 +1,6 @@
+import math
+from collections import Counter
+
 import requests
 
 from riot_assets import REQUEST_TIMEOUT, get_ddragon_version
@@ -11,6 +14,92 @@ _item_info_cache = None  # (version, {item_id: {"tags": {...}, "gold": int, "hat
 SKILL_BUCHSTABEN = {1: "Q", 2: "W", 3: "E", 4: "R"}
 MIN_SPIELE_FUER_BUILD = 3  # weniger als das gilt als Rauschen, kein eigener Build-Tab
 MAX_BUILDS = 3
+
+# Runen-Variante = Keystone + Sekundärbaum. Eigener Tab erst ab 3 Spielen UND 5% aller Spiele
+# des Champions - bei beliebten Champions mit hunderten Spielen wären 3 Spiele sonst Rauschen
+# (Off-Meta-Experimente, Troll-Runen).
+MIN_SPIELE_FUER_RUNEN = 3
+MIN_ANTEIL_FUER_RUNEN = 0.05
+MAX_RUNEN_VARIANTEN = 4
+STAT_SLOTS = ("offense", "flex", "defense")
+
+
+def _hat_vollstaendige_runen(perks):
+    styles = (perks or {}).get("styles") or []
+    return (
+        len(styles) >= 2
+        and len(styles[0].get("selections") or []) >= 4
+        and len(styles[1].get("selections") or []) >= 2
+        and bool(perks.get("statPerks"))
+    )
+
+
+def berechne_runen_varianten(zeilen):
+    """zeilen = [(win, perks)]. Liefert (varianten, anzahl_spiele_mit_runen).
+
+    Pro Variante wird je Zeile die häufigste Rune gewählt (Zeilen sind im Client voneinander
+    unabhängig, das ergibt also immer eine gültige Seite). Beim Sekundärbaum dagegen das
+    häufigste PAAR - zwei einzeln häufige Runen könnten aus derselben Zeile stammen und wären
+    zusammen gar nicht wählbar."""
+    spiele = [(win, perks) for win, perks in zeilen if _hat_vollstaendige_runen(perks)]
+    if not spiele:
+        return [], 0
+
+    gruppen = {}
+    for win, perks in spiele:
+        keystone = perks["styles"][0]["selections"][0]["perk"]
+        gruppen.setdefault((keystone, perks["styles"][1]["style"]), []).append((win, perks))
+
+    mindest = max(MIN_SPIELE_FUER_RUNEN, math.ceil(len(spiele) * MIN_ANTEIL_FUER_RUNEN))
+    sortiert = sorted(gruppen.items(), key=lambda kv: len(kv[1]), reverse=True)
+
+    varianten = []
+    for (keystone, sekundaer_style), gruppe in sortiert[:MAX_RUNEN_VARIANTEN]:
+        n = len(gruppe)
+        if n < mindest:
+            break
+
+        primaer_zeilen = [Counter() for _ in range(3)]
+        sekundaer_runen, sekundaer_paare = Counter(), Counter()
+        stat_zeilen = [Counter() for _ in STAT_SLOTS]
+        for _, perks in gruppe:
+            auswahl = perks["styles"][0]["selections"]
+            for i in range(3):
+                primaer_zeilen[i][auswahl[i + 1]["perk"]] += 1
+            sek = [s["perk"] for s in perks["styles"][1]["selections"][:2]]
+            sekundaer_paare[tuple(sorted(sek))] += 1
+            sekundaer_runen.update(sek)
+            for i, slot in enumerate(STAT_SLOTS):
+                stat_zeilen[i][perks["statPerks"].get(slot)] += 1
+
+        anteile = {}
+        for counter in primaer_zeilen + [sekundaer_runen]:
+            anteile.update({rid: round(cnt / n * 100) for rid, cnt in counter.items()})
+
+        wins = sum(1 for win, _ in gruppe if win)
+        varianten.append({
+            "games": n,
+            "winrate": round(wins / n * 100),
+            "anteil": round(n / len(spiele) * 100),
+            "perks": {
+                "styles": [
+                    {
+                        "style": gruppe[0][1]["styles"][0]["style"],
+                        "selections": [{"perk": keystone}] + [
+                            {"perk": c.most_common(1)[0][0]} for c in primaer_zeilen
+                        ],
+                    },
+                    {
+                        "style": sekundaer_style,
+                        "selections": [{"perk": rid} for rid in sekundaer_paare.most_common(1)[0][0]],
+                    },
+                ],
+                "statPerks": {slot: c.most_common(1)[0][0] for slot, c in zip(STAT_SLOTS, stat_zeilen)},
+            },
+            "anteile": anteile,
+            "stat_anteile": [{pid: round(cnt / n * 100) for pid, cnt in c.items()} for c in stat_zeilen],
+        })
+    return varianten, len(spiele)
 
 
 def _get_item_info():
@@ -214,6 +303,9 @@ def berechne_champion_stats(cur, champion_key):
         order_counter[prioritaet] = order_counter.get(prioritaet, 0) + 1
     top_orders = sorted(order_counter.items(), key=lambda kv: kv[1], reverse=True)[:3]
 
+    cur.execute("SELECT win, perks FROM participants WHERE champion = %s;", (champion_key,))
+    runen_varianten, runen_spiele = berechne_runen_varianten(cur.fetchall())
+
     gesamt_kills = sum(k for _, _, _, k, _, _ in rows)
     gesamt_deaths = sum(d for _, _, _, _, d, _ in rows)
     gesamt_assists = sum(a for _, _, _, _, _, a in rows)
@@ -236,4 +328,6 @@ def berechne_champion_stats(cur, champion_key):
         "avg_deaths": round(gesamt_deaths / total, 1),
         "avg_assists": round(gesamt_assists / total, 1),
         "avg_kda": round(avg_kda, 2),
+        "runen_varianten": runen_varianten,
+        "runen_spiele": runen_spiele,
     }

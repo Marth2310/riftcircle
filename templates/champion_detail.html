@@ -69,9 +69,14 @@
   .order-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--void)); }
 
   .empty-panel { text-align: center; color: var(--muted); padding: 32px 20px; }
+
+  .rune-tab-title { display: inline-flex; align-items: center; gap: 6px; }
+  .rune-tab-title img { width: 22px; height: 22px; }
+  .rune-tab-title img.rune-tab-sub { width: 15px; height: 15px; margin-left: -10px; margin-top: 12px; }
 </style>
 </head>
 <body>
+{% from "_runen.html" import rune_seite %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -125,6 +130,34 @@
         <div class="label">Ø KDA</div>
       </div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>Runen</h2>
+    {% if stats.runen_varianten %}
+    <p class="item-hint">Varianten nach Keystone + Sekundärbaum, jeweils mit den häufigsten Picks je Zeile. Die Prozentzahl unter einer Rune zeigt, wie oft sie in dieser Variante gewählt wurde.</p>
+    <div class="tab-nav">
+      {% for v in stats.runen_varianten %}
+      <button class="tab-btn build-tab-btn rune-tab-btn {{ 'active' if loop.first else '' }}" data-tab="runen{{ loop.index0 }}">
+        <span class="rune-tab-title">
+          <img src="{{ v.keystone.icon }}" alt="">
+          <img class="rune-tab-sub" src="{{ v.runen.secondary_icon }}" alt="">
+          {{ v.keystone.name }}
+        </span>
+        <span class="build-tab-meta">{{ v.anteil }}% gespielt &middot; {{ v.winrate }}% WR &middot; {{ v.games }} Sp.</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    {% for v in stats.runen_varianten %}
+    <div data-tabgroup="runen{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
+      <p class="item-hint">{{ v.keystone.name }} + {{ v.runen.secondary_name }}: {{ v.winrate }}% Winrate in {{ v.games }} Spiel{{ "en" if v.games != 1 else "" }} ({{ v.anteil }}% aller Spiele mit Runen-Daten).</p>
+      {{ rune_seite(v.runen) }}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty-panel">Noch nicht genug Spiele für eine Runen-Empfehlung (mindestens 3 Spiele mit derselben Keystone-/Sekundärbaum-Kombination nötig).</p>
+    {% endif %}
   </div>
 
   <div class="panel">
@@ -205,14 +238,16 @@
 
 <script>
   (function () {
+    // Tabs pro Panel getrennt (Runen und Item-Builds haben je ihre eigene Tab-Leiste)
     document.querySelectorAll(".build-tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var tab = btn.getAttribute("data-tab");
-        document.querySelectorAll(".build-tab-btn").forEach(function (b) {
+        var panel = btn.closest(".panel");
+        panel.querySelectorAll(".build-tab-btn").forEach(function (b) {
           b.classList.toggle("active", b === btn);
         });
-        document.querySelectorAll("[data-tabgroup]").forEach(function (panel) {
-          panel.hidden = panel.getAttribute("data-tabgroup") !== tab;
+        panel.querySelectorAll("[data-tabgroup]").forEach(function (gruppe) {
+          gruppe.hidden = gruppe.getAttribute("data-tabgroup") !== tab;
         });
       });
     });

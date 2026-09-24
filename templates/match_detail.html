@@ -59,35 +59,6 @@
   .build-step .zeit { font-size: 0.6rem; color: var(--muted); }
   .build-arrow { color: var(--accent); font-size: 0.75rem; padding-bottom: 12px; }
 
-  /* Runen - Baumansicht wie im Client */
-  .rune-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-  .rune-col-title { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; }
-  .rune-col-title img { width: 26px; height: 26px; }
-  .rune-row { display: flex; gap: 14px; margin-bottom: 14px; }
-  .rune-icon-wrap {
-    width: 42px; height: 42px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    opacity: 0.35;
-    filter: grayscale(70%);
-  }
-  .rune-icon-wrap img { width: 65%; height: 65%; }
-  .rune-icon-wrap.selected {
-    opacity: 1;
-    filter: none;
-    border-color: var(--gold);
-    background: radial-gradient(circle, rgba(212, 175, 106, 0.25), transparent 70%);
-    box-shadow: 0 0 10px rgba(212, 175, 106, 0.5);
-  }
-  .rune-row.keystones .rune-icon-wrap { width: 54px; height: 54px; }
-  .rune-row.keystones .rune-icon-wrap img { width: 75%; height: 75%; }
-
-  .stat-shards-title { font-size: 0.8rem; color: var(--muted); margin: 18px 0 10px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .stat-shard-row { display: flex; gap: 10px; margin-bottom: 8px; }
-  .stat-shard-row .rune-icon-wrap { width: 28px; height: 28px; border-radius: 6px; }
-
   /* Map & Zeitstrahl */
   .map-timeline-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
   .map-col { flex: 1 1 300px; max-width: 420px; }
@@ -298,6 +269,7 @@
 </style>
 </head>
 <body>
+{% from "_runen.html" import rune_seite %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -559,49 +531,7 @@
   <div class="panel" data-tabgroup="uebersicht">
     <h2>Runen</h2>
     {% if runen %}
-    <div class="rune-cols">
-      <div>
-        <div class="rune-col-title">
-          <img src="{{ runen.primary_icon }}" alt="">
-          {{ runen.primary_name }}
-        </div>
-        {% for row in runen.primary_rows %}
-        <div class="rune-row {{ 'keystones' if loop.first else '' }}">
-          {% for r in row %}
-          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
-            <img src="{{ r.icon }}" alt="{{ r.name }}">
-          </div>
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-      <div>
-        <div class="rune-col-title">
-          <img src="{{ runen.secondary_icon }}" alt="">
-          {{ runen.secondary_name }}
-        </div>
-        {% for row in runen.secondary_rows %}
-        <div class="rune-row">
-          {% for r in row %}
-          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
-            <img src="{{ r.icon }}" alt="{{ r.name }}">
-          </div>
-          {% endfor %}
-        </div>
-        {% endfor %}
-
-        <div class="stat-shards-title">Stat-Shards</div>
-        {% for row in runen.stat_rows %}
-        <div class="stat-shard-row">
-          {% for r in row %}
-          <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}">
-            {% if r.icon %}<img src="{{ r.icon }}" alt="{{ r.name }}">{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-    </div>
+    {{ rune_seite(runen) }}
     {% else %}
     <p class="empty">Runen-Daten liegen für dieses Spiel noch nicht vor. Suche das Profil erneut, um sie nachzuladen.</p>
     {% endif %}

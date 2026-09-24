@@ -39,9 +39,14 @@ def get_rune_trees(version):
     return by_id
 
 
-def build_rune_display(perks, version):
+def build_rune_display(perks, version, anteile=None, stat_anteile=None):
     """Baut die komplette Rune-Page (alle Optionen je Zeile, gewählte markiert) - wie die
-    Rune-Ansicht im LoL-Client, nicht nur eine Liste der gewählten Runen."""
+    Rune-Ansicht im LoL-Client, nicht nur eine Liste der gewählten Runen.
+    Optional (Champion-Datenbank): anteile = {rune_id: pct} für Primär-/Sekundärbaum und
+    stat_anteile = [{shard_id: pct}] je Stat-Zeile - landen als "pct" an jeder Rune (sonst None).
+    Stat-Shards brauchen eigene Dicts pro Zeile, weil z.B. Adaptive Force in zwei Zeilen wählbar ist."""
+    anteile = anteile or {}
+    stat_anteile = stat_anteile or [{}, {}, {}]
     if not perks or not perks.get("styles") or len(perks["styles"]) < 2:
         return None
 
@@ -67,6 +72,7 @@ def build_rune_display(perks, version):
                     "name": r["name"],
                     "icon": _icon_url(r["icon"]),
                     "selected": r["id"] in selected_ids,
+                    "pct": anteile.get(r["id"]),
                 }
                 for r in slot["runes"]
             ])
@@ -83,10 +89,11 @@ def build_rune_display(perks, version):
     ]
     stat_rows = [
         [
-            {**STAT_PERKS.get(pid, {"name": f"Stat #{pid}", "icon": None}), "selected": pid == pick}
+            {**STAT_PERKS.get(pid, {"name": f"Stat #{pid}", "icon": None}), "selected": pid == pick,
+             "pct": zeilen_anteile.get(pid)}
             for pid in row
         ]
-        for row, pick in zip(STAT_SHARD_ROWS, stat_slot_picks)
+        for row, pick, zeilen_anteile in zip(STAT_SHARD_ROWS, stat_slot_picks, stat_anteile)
     ]
 
     return {

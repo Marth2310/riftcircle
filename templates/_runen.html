@@ -1,0 +1,45 @@
+{# Runenseite wie im Client - geteilt zwischen Match-Detail (ein Spiel) und Champion-Datenbank
+   (häufigste Picks je Variante, dort mit Prozentanteil unter jeder nennenswert gewählten Rune). #}
+
+{% macro rune_zelle(r) %}
+<div class="rune-cell">
+  <div class="rune-icon-wrap {{ 'selected' if r.selected else '' }}" title="{{ r.name }}{% if r.pct %} - {{ r.pct }}%{% endif %}">
+    {% if r.icon %}<img src="{{ r.icon }}" alt="{{ r.name }}">{% endif %}
+  </div>
+  {% if r.pct and r.pct >= 10 %}<div class="rune-pct {{ 'selected' if r.selected else '' }}">{{ r.pct }}%</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro rune_seite(runen) %}
+<div class="rune-cols">
+  <div>
+    <div class="rune-col-title">
+      <img src="{{ runen.primary_icon }}" alt="">
+      {{ runen.primary_name }}
+    </div>
+    {% for row in runen.primary_rows %}
+    <div class="rune-row {{ 'keystones' if loop.first else '' }}">
+      {% for r in row %}{{ rune_zelle(r) }}{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div>
+    <div class="rune-col-title">
+      <img src="{{ runen.secondary_icon }}" alt="">
+      {{ runen.secondary_name }}
+    </div>
+    {% for row in runen.secondary_rows %}
+    <div class="rune-row">
+      {% for r in row %}{{ rune_zelle(r) }}{% endfor %}
+    </div>
+    {% endfor %}
+
+    <div class="stat-shards-title">Stat-Shards</div>
+    {% for row in runen.stat_rows %}
+    <div class="stat-shard-row">
+      {% for r in row %}{{ rune_zelle(r) }}{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}

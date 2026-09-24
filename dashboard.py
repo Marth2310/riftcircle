@@ -623,6 +623,17 @@ def champion_detail(key):
                 for it in build["top_boots"]
             ]
 
+        runen_varianten = []
+        for v in stats["runen_varianten"]:
+            runen = build_rune_display(v["perks"], ddragon_version, v["anteile"], v["stat_anteile"])
+            if not runen:
+                continue  # z.B. Keystone aus einem inzwischen entfernten Runenbaum
+            keystone = next((r for r in runen["primary_rows"][0] if r["selected"]), None)
+            if keystone is None:
+                continue
+            runen_varianten.append({**v, "runen": runen, "keystone": keystone})
+        stats["runen_varianten"] = runen_varianten
+
     return render_template("champion_detail.html", champ=champ, stats=stats)
 
 
