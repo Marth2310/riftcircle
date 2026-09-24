@@ -290,6 +290,44 @@ h2.section-title::before {
 .vs-bar-fill.gegner { background: var(--loss); }
 .vs-bar-fill.lead { background: var(--win); }
 
+/* Anmelde-Knopf oben rechts (templates/_konto_ecke.html) */
+.konto-ecke {
+  position: absolute;
+  top: calc(18px + env(safe-area-inset-top, 0px));
+  right: 18px;
+  z-index: 50;
+}
+.konto-knopf {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px 7px 10px;
+  border-radius: 999px;
+  background: #5865f2;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 6px 18px rgba(10, 6, 30, 0.45);
+  transition: filter 0.15s, transform 0.15s;
+}
+.konto-knopf:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.konto-knopf svg { width: 20px; height: 20px; }
+.konto-knopf.angemeldet {
+  padding: 5px 14px 5px 5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.konto-knopf.angemeldet:hover { border-color: var(--accent); filter: none; }
+.konto-knopf.angemeldet img { width: 28px; height: 28px; border-radius: 50%; }
+.konto-knopf span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) {
+  .konto-ecke { top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; }
+  /* Auf dem Handy nur Logo/Avatar, damit der Knopf nicht mit dem Seitenkopf kollidiert */
+  .konto-knopf span { display: none; }
+  .konto-knopf { padding: 8px; }
+  .konto-knopf.angemeldet { padding: 4px; }
+}
+
 /* Vorschlagsliste der Spielersuche (static/spielersuche.js) - hängt am <body> */
 .suche-vorschlaege {
   position: absolute;

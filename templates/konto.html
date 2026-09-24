@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mein Konto | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<style>
+  .wrap { max-width: 640px; }
+  .page-head { text-align: center; margin: 4px 0 24px; }
+  .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
+  .page-head p { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+  .meldung { padding: 11px 15px; border-radius: 12px; font-size: 0.88rem; margin-bottom: 18px; }
+  .meldung.ok { background: rgba(52, 211, 153, 0.12); border: 1px solid var(--win); color: var(--win); }
+  .meldung.fehler { background: rgba(247, 108, 138, 0.12); border: 1px solid var(--loss); color: var(--loss); }
+
+  .login-panel { text-align: center; padding: 34px 24px; }
+  .login-panel p { color: var(--muted); font-size: 0.92rem; line-height: 1.55; margin: 0 auto 22px; max-width: 440px; }
+  .discord-gross {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 13px 26px;
+    border-radius: 999px;
+    background: #5865f2;
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(88, 101, 242, 0.35);
+  }
+  .discord-gross:hover { filter: brightness(1.1); }
+  .discord-gross svg { width: 24px; height: 24px; }
+  .login-klein { color: var(--muted); font-size: 0.75rem; margin-top: 14px; }
+
+  .person { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .person img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid #5865f2; }
+  .person .riot-icon { border-color: var(--accent); }
+  .person-info { flex: 1; min-width: 160px; }
+  .person-name { font-weight: 800; font-size: 1.15rem; }
+  .person-name .tag { color: var(--muted); font-weight: 600; }
+  .person-sub { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+
+  .knopf-reihe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .knopf {
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .knopf.leise { background: none; border: 1px solid var(--border); color: var(--muted); }
+  .knopf.leise:hover { color: var(--text); border-color: var(--accent); }
+  .knopf.gefahr:hover { color: var(--loss); border-color: var(--loss); }
+
+  .hinweis { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin: 0 0 14px; }
+  .riot-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .riot-form input {
+    flex: 1; min-width: 200px;
+    padding: 11px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.9rem;
+  }
+  .riot-form input::placeholder { color: var(--muted); }
+
+  .pruef-box { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .pruef-icon {
+    width: 96px; height: 96px;
+    border-radius: 18px;
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 22px rgba(212, 175, 106, 0.4);
+    flex-shrink: 0;
+  }
+  .pruef-schritte { flex: 1; min-width: 220px; margin: 0; padding-left: 20px; color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+  .pruef-schritte b { color: var(--text); }
+</style>
+</head>
+<body>
+{% include "_konto_ecke.html" %}
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Lädt - wenn neue Spiele synchronisiert werden, kann das wegen Riots Rate-Limit bis zu 30 Sekunden dauern...</div>
+</div>
+
+<a class="site-header" href="{{ url_for('landing') }}">
+  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
+  <div class="wordmark">RiftCircle</div>
+</a>
+
+<div class="wrap">
+  <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
+
+  <div class="page-head">
+    <h1>Mein Konto</h1>
+    <p>Mit Discord anmelden und deinen Riot-Account verknüpfen.</p>
+  </div>
+
+  {% if meldung %}
+  <div class="meldung {{ meldung[0] }}">{{ meldung[1] }}</div>
+  {% endif %}
+
+  {% if not nutzer %}
+  <div class="panel login-panel">
+    <p>Melde dich mit Discord an und verknüpfe deinen Riot-Account - dann hast du dein eigenes Profil immer mit einem Klick parat. Weitere Funktionen mit Freunden folgen.</p>
+    <a class="discord-gross" href="{{ url_for('discord_login') }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.27 18.27 0 0 0-5.49 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.74 19.74 0 0 0-4.89 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.1 13.1 13.1 0 0 1-1.87-.9.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1 0 .13c-.6.35-1.22.65-1.87.9a.08.08 0 0 0-.04.1c.36.7.77 1.36 1.22 1.99a.08.08 0 0 0 .08.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.05c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg>
+      Mit Discord anmelden
+    </a>
+    <div class="login-klein">RiftCircle sieht nur deinen Discord-Namen und Avatar - keine E-Mail, keine Server, keine Nachrichten.</div>
+  </div>
+
+  {% else %}
+  <div class="panel">
+    <h2 class="section-title">Discord</h2>
+    <div class="person">
+      <img src="{{ nutzer.avatar }}" alt="">
+      <div class="person-info">
+        <div class="person-name">{{ nutzer.name }}</div>
+        <div class="person-sub">Angemeldet über Discord</div>
+      </div>
+      <form method="post" action="{{ url_for('discord_logout') }}">
+        <button type="submit" class="knopf leise">Abmelden</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Riot-Account</h2>
+
+    {% if riot %}
+    <div class="person">
+      {% if riot.icon %}<img class="riot-icon" src="{{ riot.icon }}" alt="">{% endif %}
+      <div class="person-info">
+        <div class="person-name">{{ riot.name }} <span class="tag">#{{ riot.tag }}</span></div>
+        <div class="person-sub">Bestätigt seit {{ riot.seit }}</div>
+      </div>
+    </div>
+    <div class="knopf-reihe">
+      <a class="knopf" href="{{ url_for('profil', riot_id=riot.name ~ '#' ~ riot.tag) }}" data-laden>Zu meinem Profil</a>
+      <form method="post" action="{{ url_for('konto_trennen') }}" onsubmit="return confirm('Verknüpfung mit {{ riot.name }}#{{ riot.tag }} lösen?');">
+        <button type="submit" class="knopf leise gefahr">Verknüpfung lösen</button>
+      </form>
+    </div>
+
+    {% elif pruefung %}
+    <p class="hinweis">Bestätige, dass <b>{{ pruefung.name }}#{{ pruefung.tag }}</b> dir gehört:</p>
+    <div class="pruef-box">
+      <img class="pruef-icon" src="{{ pruefung.icon }}" alt="Profil-Icon {{ pruefung.icon_id }}">
+      <ol class="pruef-schritte">
+        <li>Im League-Client oben rechts auf <b>dein Profil-Icon</b> klicken</li>
+        <li><b>Genau dieses Icon</b> auswählen (es ist ein Standard-Icon, jeder Account hat es) und speichern</li>
+        <li>Hier auf <b>Prüfen</b> klicken - danach kannst du dein altes Icon wieder setzen</li>
+      </ol>
+    </div>
+    <div class="knopf-reihe">
+      <form method="post" action="{{ url_for('konto_pruefen') }}" data-laden>
+        <button type="submit" class="knopf">Prüfen</button>
+      </form>
+      <form method="post" action="{{ url_for('konto_trennen') }}">
+        <button type="submit" class="knopf leise">Abbrechen</button>
+      </form>
+    </div>
+
+    {% else %}
+    <p class="hinweis">Gib deine Riot-ID ein. Zur Bestätigung setzt du danach kurz ein vorgegebenes Profil-Icon im League-Client - so kann niemand fremde Accounts mit sich verknüpfen.</p>
+    <form class="riot-form" method="post" action="{{ url_for('konto_verknuepfen') }}">
+      <input type="text" name="riot_id" placeholder="Name#Tag" required data-spieler-suche="fuellen">
+      <button type="submit" class="knopf">Weiter</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  (function () {
+    var overlay = document.getElementById("loadingOverlay");
+    document.querySelectorAll("[data-laden]").forEach(function (el) {
+      el.addEventListener(el.tagName === "FORM" ? "submit" : "click", function () {
+        overlay.classList.add("active");
+      });
+    });
+  })();
+</script>
+<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
+</body>
+</html>

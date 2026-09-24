@@ -170,6 +170,26 @@ cur.execute("""
     ON CONFLICT (puuid) DO NOTHING;
 """)
 
+# Konten über Discord-Login. riot_puuid ist der per Icon-Trick bestätigte Riot-Account (UNIQUE:
+# ein Riot-Account gehört genau einem Konto). pruef_*: laufende Bestätigung - welcher Account,
+# welches Icon gesetzt werden soll, seit wann.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS nutzer (
+    discord_id TEXT PRIMARY KEY,
+    discord_name TEXT NOT NULL,
+    discord_avatar TEXT,
+    riot_puuid TEXT UNIQUE REFERENCES players(puuid) ON DELETE SET NULL,
+    verknuepft_am TIMESTAMP,
+    pruef_puuid TEXT,
+    pruef_name TEXT,
+    pruef_tag TEXT,
+    pruef_icon INTEGER,
+    pruef_seit TIMESTAMP,
+    erstellt_am TIMESTAMP DEFAULT now(),
+    zuletzt_login TIMESTAMP DEFAULT now()
+);
+""")
+
 # Seitenaufrufe fürs eigene Statistik-Dashboard (/stats/<secret>) - visitor_hash ist ein
 # gesalzener Hash aus IP+User-Agent, nie die rohe IP selbst, siehe dashboard.py.
 cur.execute("""

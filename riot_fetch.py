@@ -1,5 +1,6 @@
 import json
 import time
+import urllib.parse
 
 import requests
 
@@ -110,6 +111,25 @@ def speichere_participant(cur, match_id, p, info):
         damage_rank, gold_diff,
         p.get("pentaKills", 0), p.get("quadraKills", 0), p.get("tripleKills", 0), p.get("doubleKills", 0),
     ))
+
+
+def finde_riot_account(headers, riot_name, riot_tag):
+    """{"puuid", "name", "tag"} mit Riots offizieller Schreibweise, oder None."""
+    url = (
+        "https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/"
+        f"{urllib.parse.quote(riot_name)}/{urllib.parse.quote(riot_tag)}"
+    )
+    resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    if resp.status_code != 200:
+        return None
+    daten = resp.json()
+    if "puuid" not in daten:
+        return None
+    return {
+        "puuid": daten["puuid"],
+        "name": daten.get("gameName") or riot_name,
+        "tag": daten.get("tagLine") or riot_tag,
+    }
 
 
 def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
