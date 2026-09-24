@@ -133,6 +133,9 @@ cur.execute(
     "CREATE INDEX IF NOT EXISTS idx_bekannte_spieler_name "
     "ON bekannte_spieler (lower(riot_name) text_pattern_ops);"
 )
+# Profile, die erst über harvest_meta.py (Platzhaltername "Meta-...") und danach gezielt über
+# die Suche kamen, behielten früher fälschlich is_meta_sample - erkennbar am echten Namen.
+cur.execute("UPDATE players SET is_meta_sample = FALSE WHERE is_meta_sample AND riot_name NOT LIKE 'Meta-%';")
 # Einmalig aus dem vorhandenen Bestand befüllen: getrackte Profile + Team-Aufstellungen
 # bereits geöffneter Matches (ON CONFLICT: wiederholtes Ausführen ist harmlos).
 cur.execute("""

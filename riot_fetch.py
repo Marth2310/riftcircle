@@ -144,7 +144,11 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     cur.execute("""
         INSERT INTO players (puuid, riot_name, riot_tag)
         VALUES (%s, %s, %s)
-        ON CONFLICT (puuid) DO UPDATE SET riot_name = EXCLUDED.riot_name, riot_tag = EXCLUDED.riot_tag;
+        ON CONFLICT (puuid) DO UPDATE SET
+            riot_name = EXCLUDED.riot_name, riot_tag = EXCLUDED.riot_tag,
+            -- Wer gezielt gesucht wird, ist ein echtes Profil - auch wenn er vorher schon als
+            -- anonymer Teilnehmer über harvest_meta.py in der DB gelandet war
+            is_meta_sample = FALSE;
     """, (puuid, riot_name, riot_tag))
     merke_spielernamen(cur, [(puuid, riot_name, riot_tag)])
     conn.commit()
