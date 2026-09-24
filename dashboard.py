@@ -703,13 +703,27 @@ def gruppe_ansehen(gruppe_id):
     achievement_feed = [f for f in feed if f["achievement"]]
     wochenrangliste = baue_wochenrueckblick(cur, mitglieder)
 
+    # "Zuletzt aktiv" je Mitglied - der Feed ist schon chronologisch (neuestes zuerst), der
+    # erste Treffer pro puuid ist also automatisch deren letztes Spiel.
+    zuletzt_aktiv = {}
+    for f in feed:
+        if f["puuid"] not in zuletzt_aktiv:
+            zuletzt_aktiv[f["puuid"]] = f["zeit_text"]
+    for m in mitglieder:
+        m["zuletzt_aktiv"] = zuletzt_aktiv.get(m["puuid"])
+
+    # Schnellauswahl beim Mitglied-Hinzufügen: eigene "Zuletzt gesehen"-Profile, die noch
+    # nicht in der Gruppe sind.
+    mitglied_puuids = {m["puuid"] for m in mitglieder}
+    vorschlaege = [e for e in _mit_farbe(_lese_zuletzt_gesehen()) if e["puuid"] not in mitglied_puuids]
+
     cur.close()
     conn.close()
 
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, wochenrangliste=wochenrangliste,
-        gruppen_icons=GRUPPEN_ICONS,
+        gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
@@ -778,6 +792,26 @@ def gruppe_umbenennen(gruppe_id):
     # Das neue Cookie mit dem aktuellen Namen/Icon wird gleich beim Redirect auf
     # gruppe_ansehen() automatisch mitgeschrieben (die liest immer frisch aus der DB).
     return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/loeschen", methods=["POST"])
+def gruppe_loeschen(gruppe_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    # gruppen_mitglieder hat ON DELETE CASCADE auf gruppe_id - läuft automatisch mit.
+    cur.execute("DELETE FROM gruppen WHERE id = %s;", (gruppe_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    resp = make_response(redirect(url_for("landing")))
+    # Auch aus dem eigenen "Meine Gruppen"-Cookie entfernen, sonst bleibt ein toter Link stehen.
+    verbleibend = [e for e in _lese_meine_gruppen() if e["id"] != gruppe_id]
+    resp.set_cookie(
+        MEINE_GRUPPEN_COOKIE, urllib.parse.quote(json.dumps(verbleibend)),
+        max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
+    )
+    return resp
 
 
 def _lade_vergleichsdaten(cur, match_id, puuid):

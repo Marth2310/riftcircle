@@ -213,6 +213,34 @@
     opacity: 0.4; pointer-events: none;
   }
   .vergleich-bar button.ready { opacity: 1; pointer-events: auto; }
+
+  .member-active { color: var(--muted); font-size: 0.62rem; margin-top: -4px; }
+
+  .vorschlaege-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
+  .vorschlag-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.76rem;
+    cursor: pointer;
+  }
+  .vorschlag-chip:hover { color: var(--text); border-color: var(--accent); }
+  .vorschlag-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .danger-zone { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border); text-align: center; }
+  .danger-btn {
+    background: none;
+    border: 1px solid var(--loss);
+    color: var(--loss);
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .danger-btn:hover { background: rgba(247, 108, 138, 0.12); }
 </style>
 </head>
 <body>
@@ -220,6 +248,11 @@
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
 <div class="void-glow void-glow-3"></div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Lädt...</div>
+</div>
 
 <a class="site-header" href="{{ url_for('landing') }}">
   <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
@@ -350,6 +383,7 @@
         <a href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
           <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
           <div class="name">{{ m.name }}</div>
+          {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
         </a>
       </div>
       {% endfor %}
@@ -358,10 +392,27 @@
     <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
     {% endif %}
 
-    <form class="add-member-form" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
-      <input type="text" name="riot_id" placeholder="Profil hinzufügen: Name#Tag" required>
+    {% if vorschlaege %}
+    <div class="vorschlaege-row">
+      {% for v in vorschlaege %}
+      <button type="button" class="vorschlag-chip" data-riotid="{{ v.name }}#{{ v.tag }}">
+        <span class="dot" style="background: {{ v.farbe }};"></span>{{ v.name }}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
+      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name#Tag" required>
       <button type="submit">Hinzufügen</button>
     </form>
+
+    <div class="danger-zone">
+      <form method="post" action="{{ url_for('gruppe_loeschen', gruppe_id=gruppe_id) }}"
+            onsubmit="return confirm('Gruppe „{{ gruppe_name }}“ inkl. aller Mitglieder unwiderruflich löschen?');">
+        <button type="submit" class="danger-btn">Gruppe löschen</button>
+      </form>
+    </div>
   </div>
 
 </div>
@@ -412,6 +463,32 @@
         });
       });
     }
+
+    // Ladeanzeige beim Hinzufügen - ein neues Profil kann wegen Riots Rate-Limit
+    // 20-30s zum Synchronisieren brauchen, ohne Feedback wirkt das wie eingefroren.
+    var overlay = document.getElementById("loadingOverlay");
+    var loadingText = document.getElementById("loadingText");
+    document.getElementById("addMemberForm").addEventListener("submit", function () {
+      loadingText.textContent = "Profil wird synchronisiert - bei neuen Profilen kann das wegen Riots Rate-Limit bis zu 30 Sekunden dauern...";
+      overlay.classList.add("active");
+    });
+    document.querySelectorAll(".member-remove, .danger-btn").forEach(function (btn) {
+      btn.closest("form").addEventListener("submit", function (e) {
+        if (e.defaultPrevented) return;
+        loadingText.textContent = "Wird gespeichert...";
+        overlay.classList.add("active");
+      });
+    });
+
+    // Vorschlags-Chips aus "Zuletzt gesehen" - füllt nur das Feld, damit man vor dem
+    // Absenden noch die Riot-ID prüfen/anpassen kann.
+    var addMemberInput = document.getElementById("addMemberInput");
+    document.querySelectorAll(".vorschlag-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        addMemberInput.value = chip.getAttribute("data-riotid");
+        addMemberInput.focus();
+      });
+    });
 
     // Zwei Spiele für den direkten Vergleich auswählen
     var ausgewaehlt = [];
