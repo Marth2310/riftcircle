@@ -66,6 +66,14 @@ def _get_base_skin_numbers(champion):
     return [s["num"] for s in daten["skins"] if "(" not in s["name"]] or [0]
 
 
+def champion_skin_splashes(champion, anzahl=8):
+    """Bis zu `anzahl` Splash-Arts verschiedener Skins in zufälliger Reihenfolge - für
+    Hintergründe, die zwischen den Skins eines Champions wechseln."""
+    nums = list(_get_base_skin_numbers(champion))
+    random.shuffle(nums)
+    return [champion_splash_url(champion, n) for n in nums[:anzahl]]
+
+
 def get_champion_spells(champion):
     """Q/W/E/R des Champions als [{"name", "icon"}] (Index 0 = Q), None falls nicht ladbar."""
     daten = _get_champion_daten(champion)

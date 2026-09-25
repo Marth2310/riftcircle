@@ -22,22 +22,33 @@
     padding: 28px 32px;
     border-radius: 18px;
     border: 1px solid var(--border);
-    background: var(--panel);
+    background: rgba(27, 20, 64, 0.55);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
   }
-  .profile::before {
-    content: "";
-    position: absolute;
+  .profile > * { position: relative; }
+
+  /* Seitenhintergrund: Skins eines Mains, zwei Ebenen werden abwechselnd überblendet */
+  .profil-bg {
+    position: fixed;
     inset: 0;
-    background-image: var(--hero-splash);
     background-size: cover;
     background-position: center 20%;
-    opacity: 0.28;
-    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 35%, #000 70%, transparent 100%);
-    mask-image: linear-gradient(to right, transparent 0%, #000 35%, #000 70%, transparent 100%);
+    opacity: 0;
+    transition: opacity 1.6s ease;
     pointer-events: none;
+    z-index: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 92%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 92%);
   }
-  .profile > * { position: relative; }
+  .profil-bg.sichtbar { opacity: 0.38; }
+  /* Karten leicht durchsichtig, damit der Skin auch hinter den Inhalten durchscheint */
+  body .card, body .chart-card, body .main-card, body .rollen-zeile, body .duo-zeile {
+    background: rgba(27, 20, 64, 0.8);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
   .profile img.icon {
     width: 96px; height: 96px;
     flex-shrink: 0;
@@ -364,6 +375,39 @@
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
 <div class="void-glow void-glow-3"></div>
+{% if not kein_spieler and hintergrund_skins %}
+<div class="profil-bg" id="profilBgA"></div>
+<div class="profil-bg" id="profilBgB"></div>
+<script type="application/json" id="profilSkins">{{ hintergrund_skins | tojson }}</script>
+<script>
+  (function () {
+    // Skins nacheinander überblenden - das nächste Bild wird erst gezeigt, wenn es fertig
+    // geladen ist, damit nie eine leere Fläche aufblitzt
+    var skins = JSON.parse(document.getElementById("profilSkins").textContent);
+    var ebenen = [document.getElementById("profilBgA"), document.getElementById("profilBgB")];
+    var index = 0, aktiv = 0;
+    function zeige(url) {
+      var bild = new Image();
+      bild.onload = function () {
+        var naechste = ebenen[1 - aktiv];
+        naechste.style.backgroundImage = "url('" + url + "')";
+        naechste.classList.add("sichtbar");
+        ebenen[aktiv].classList.remove("sichtbar");
+        aktiv = 1 - aktiv;
+      };
+      bild.src = url;
+    }
+    zeige(skins[0]);
+    var ruhig = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (skins.length > 1 && !ruhig) {
+      setInterval(function () {
+        index = (index + 1) % skins.length;
+        zeige(skins[index]);
+      }, 9000);
+    }
+  })();
+</script>
+{% endif %}
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
@@ -437,7 +481,7 @@
   {% endif %}
 {% else %}
 
-  <div class="profile" style="{{ '--hero-splash: url(\'' ~ hero_splash ~ '\');' if hero_splash else '' }}">
+  <div class="profile">
     {% if summoner_icon %}<img class="icon" src="{{ summoner_icon }}" alt="Summoner Icon">{% endif %}
     <div>
       <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>

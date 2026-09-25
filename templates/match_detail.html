@@ -10,67 +10,231 @@
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <style>
-  .wrap { max-width: 960px; }
+  .wrap { max-width: 1040px; }
+  .unter-titel { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; }
+  .empty { color: var(--muted); padding: 12px 0; font-size: 0.9rem; }
 
-  .head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .head img.champ { width: 64px; height: 64px; border-radius: 12px; border: 1px solid var(--border); }
-  .head .champ-name { font-size: 1.25rem; font-weight: 700; }
-  .head .meta { color: var(--muted); font-size: 0.85rem; }
-  .result-badge { margin-left: auto; padding: 5px 16px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
-  .result-badge.win { background: rgba(52, 211, 153, 0.15); color: var(--win); }
-  .result-badge.loss { background: rgba(247, 108, 138, 0.15); color: var(--loss); }
+  /* ---------- Kopfbereich ---------- */
+  .match-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    padding: 26px 28px 22px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(10, 6, 30, 0.45);
+  }
+  .match-hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 22%;
+    opacity: 0.32;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 45%, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0%, #000 45%, #000 100%);
+    pointer-events: none;
+  }
+  .match-hero::after {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+    background: var(--ergebnis);
+  }
+  .match-hero.win { --ergebnis: var(--win); }
+  .match-hero.loss { --ergebnis: var(--loss); }
+  .match-hero > * { position: relative; }
+  .hero-kopf { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .hero-champ { position: relative; flex-shrink: 0; }
+  .hero-champ img { width: 92px; height: 92px; border-radius: 20px; border: 3px solid var(--ergebnis); box-shadow: 0 8px 22px rgba(10, 6, 30, 0.5); }
+  .hero-level {
+    position: absolute; right: -8px; bottom: -8px;
+    min-width: 30px; height: 30px; padding: 0 6px;
+    border-radius: 999px;
+    background: var(--panel-2); border: 2px solid var(--ergebnis);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.85rem;
+  }
+  .hero-titel { flex: 1; min-width: 200px; }
+  .hero-name { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+  .hero-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
+  .hero-meta img { width: 20px; height: 20px; }
+  .hero-meta .punkt { opacity: 0.5; }
+  .hero-spieler { margin-top: 6px; font-weight: 600; font-size: 0.92rem; }
+  .hero-spieler span { color: var(--muted); font-weight: 500; }
+  .result-badge {
+    align-self: flex-start;
+    padding: 8px 20px; border-radius: 999px;
+    font-size: 0.9rem; font-weight: 800; letter-spacing: 0.02em;
+  }
+  .result-badge.win { background: rgba(52, 211, 153, 0.18); color: var(--win); border: 1px solid var(--win); }
+  .result-badge.loss { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
 
-  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 18px; }
-  .stat-row .stat .value { font-size: 1.2rem; font-weight: 700; }
-  .stat-row .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 22px; }
+  .kennzahl {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(23, 19, 47, 0.78);
+    border: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+  .kennzahl .wert { font-size: 1.35rem; font-weight: 800; white-space: nowrap; }
+  .kennzahl .wert .d { color: var(--loss); }
+  .kennzahl .label { color: var(--muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .kennzahl .zusatz { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
 
-  h2 { font-size: 0.95rem; margin: 0 0 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  /* ---------- Reiter ---------- */
+  .match-tabs { margin-bottom: 20px; }
+  .match-tabs .tab-btn { font-size: 0.98rem; padding: 14px 20px; }
 
-  /* Rollen-Tipps */
-  .tipp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-  .tipp-kategorie-titel { font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; color: var(--accent2); }
-  .tipp-liste { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
-  .tipp-liste li { font-size: 0.85rem; line-height: 1.5; }
-  .tipp-liste li::marker { color: var(--accent); }
-
-  /* Items */
-  .item-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  /* ---------- Übersicht: Items ---------- */
+  .item-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 24px; }
   .item-slot {
-    width: 52px; height: 52px;
-    border-radius: 8px;
+    width: 60px; height: 60px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     overflow: hidden;
+    box-shadow: 0 4px 12px rgba(10, 6, 30, 0.35);
   }
-  .item-slot img { width: 100%; height: 100%; }
-  .item-gap { width: 10px; }
+  .item-slot img { width: 100%; height: 100%; display: block; }
+  .item-slot.trinket { width: 48px; height: 48px; border-radius: 50%; margin-left: 12px; }
 
-  /* Item-Baupfad - kompakte, durchgehende Zeile mit Pfeilen zum jeweils nächsten Item */
-  .build-row { display: flex; align-items: flex-end; gap: 3px; flex-wrap: wrap; }
-  .build-step { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .build-step .build-icon {
-    width: 30px; height: 30px;
+  .kauf-runden { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .kauf-runde {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+  }
+  .kauf-zeit { font-size: 0.74rem; font-weight: 700; color: var(--accent2); font-variant-numeric: tabular-nums; }
+  .kauf-items { display: flex; gap: 6px; }
+  .kauf-items img { width: 42px; height: 42px; border-radius: 9px; border: 1px solid var(--border); }
+  .kauf-pfeil { align-self: center; color: var(--accent); font-size: 1.2rem; }
+
+  /* ---------- Team ---------- */
+  .team-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
+  .team-karte { border-radius: 16px; border: 1px solid var(--border); overflow: hidden; background: rgba(23, 19, 47, 0.6); }
+  .team-karte.blue { --team: var(--accent2); }
+  .team-karte.red { --team: var(--loss); }
+  .team-kopf {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--team) 22%, transparent), transparent);
+  }
+  .team-titel { font-weight: 800; color: var(--team); }
+  .team-ergebnis { font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+  .team-ergebnis.win { background: rgba(52, 211, 153, 0.18); color: var(--win); }
+  .team-ergebnis.loss { background: rgba(247, 108, 138, 0.18); color: var(--loss); }
+  .team-summe { margin-left: auto; color: var(--muted); font-size: 0.8rem; }
+
+  .spieler-zeile {
+    display: grid;
+    grid-template-columns: 28px 54px minmax(0, 1fr);
+    grid-template-areas: "rang champ info" ". . ausruestung";
+    column-gap: 12px; row-gap: 8px;
+    padding: 12px 16px;
+    text-decoration: none; color: inherit;
+    border-bottom: 1px solid rgba(150, 130, 240, 0.08);
+    transition: background 0.15s;
+  }
+  .spieler-zeile:last-child { border-bottom: none; }
+  .spieler-zeile:hover { background: rgba(139, 108, 245, 0.08); }
+  .spieler-zeile.you { background: rgba(139, 108, 245, 0.14); box-shadow: inset 3px 0 0 var(--accent); }
+  .p-rank {
+    grid-area: rang; align-self: center;
+    width: 28px; height: 28px;
     border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--panel-2);
-    overflow: hidden;
+    background: var(--panel-2); border: 1px solid var(--border);
+    font-size: 0.76rem; font-weight: 800; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
   }
-  .build-step .build-icon img { width: 100%; height: 100%; }
-  .build-step .zeit { font-size: 0.6rem; color: var(--muted); }
-  .build-arrow { color: var(--accent); font-size: 0.75rem; padding-bottom: 12px; }
+  .p-rank.mvp { background: linear-gradient(135deg, #ffe08a, var(--gold)); border-color: var(--gold); color: #3a2a06; }
+  .p-rank.ace { background: rgba(247, 108, 138, 0.18); border-color: var(--loss); color: var(--loss); }
+  .p-champ { grid-area: champ; width: 54px; height: 54px; border-radius: 14px; border: 2px solid var(--border); align-self: center; }
+  .p-info { grid-area: info; min-width: 0; align-self: center; }
+  .p-name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .p-name { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .p-tag { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+  .p-stats { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.8rem; margin-top: 3px; }
+  .p-stats b { color: var(--text); }
+  .badge-mvp, .badge-ace { font-size: 0.64rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+  .badge-mvp { background: linear-gradient(135deg, #ffe08a, var(--gold)); color: #3a2a06; }
+  .badge-ace { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
+  .p-ausruestung { grid-area: ausruestung; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .p-runes { display: flex; align-items: center; }
+  .p-rune { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--gold); background: var(--panel-2); padding: 3px; }
+  .p-rune-sub { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel-2); padding: 2px; margin-left: -8px; box-shadow: 0 0 0 2px var(--panel); }
+  .p-items { display: flex; gap: 4px; }
+  .p-item-slot { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); overflow: hidden; }
+  .p-item-slot img { width: 100%; height: 100%; display: block; }
+  .p-item-slot.trinket { border-radius: 50%; margin-left: 4px; }
 
-  /* Map & Zeitstrahl */
-  .map-timeline-layout { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
-  .map-col { flex: 1 1 300px; max-width: 420px; }
-  .timeline-col { flex: 1 1 280px; min-width: 0; }
+  /* Team-Vergleich */
+  .tv-legend { display: flex; justify-content: center; gap: 24px; margin-bottom: 22px; font-size: 0.85rem; color: var(--muted); }
+  .tv-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .tv-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .tv-dot.win { background: var(--win); }
+  .tv-dot.loss { background: var(--loss); }
+  .tv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
+  .tv-kategorie { padding: 16px; border-radius: 14px; background: rgba(23, 19, 47, 0.6); border: 1px solid var(--border); }
+  .tv-titel { text-align: center; font-weight: 800; font-size: 0.95rem; margin-bottom: 14px; }
+  .tv-row { display: flex; align-items: center; gap: 14px; }
+  .tv-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .tv-player-row { display: flex; align-items: center; gap: 8px; }
+  .tv-player-row.reverse { flex-direction: row-reverse; }
+  .tv-player-row img { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+  .tv-bar-track { flex: 1; height: 11px; border-radius: 6px; background: var(--panel-2); overflow: hidden; min-width: 0; }
+  .tv-bar-fill { height: 100%; border-radius: 6px; }
+  .tv-bar-fill.win { background: var(--win); }
+  .tv-bar-fill.loss { background: var(--loss); }
+  .tv-value { font-size: 0.8rem; color: var(--muted); width: 58px; flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .tv-player-row.reverse .tv-value { text-align: left; }
+  .tv-donut-wrap { flex-shrink: 0; }
+  .tv-donut {
+    --pct: 50;
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    background: conic-gradient(var(--win) calc(var(--pct) * 1%), var(--loss) 0);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .tv-donut::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--panel); }
+  .tv-donut-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 0.74rem; font-weight: 800; }
+  @media (max-width: 640px) {
+    .tv-row { flex-direction: column; }
+    .tv-col { width: 100%; }
+    .team-cols, .tv-grid { grid-template-columns: 1fr; }
+    .spieler-zeile { grid-template-columns: 28px 48px minmax(0, 1fr); grid-template-areas: "rang champ info" "ausruestung ausruestung ausruestung"; padding: 12px; }
+    .p-champ { width: 48px; height: 48px; }
+    .p-items { flex-wrap: wrap; }
+    .p-item-slot { width: 30px; height: 30px; }
+  }
 
+  /* Lane-Vergleich: größere Portraits als im geteilten VS-Stil */
+  .lane-vergleich .vs-side { width: 140px; }
+  .lane-vergleich .vs-side img { width: 76px; height: 76px; border-width: 3px; }
+  .lane-vergleich .vs-side .vs-name { font-size: 0.92rem; max-width: 140px; }
+  .lane-vergleich .vs-label { font-size: 1rem; }
+  .lane-vergleich .vs-stat-row { grid-template-columns: 70px 1fr 110px 1fr 70px; margin-bottom: 14px; }
+  .lane-vergleich .vs-stat-value { font-size: 0.95rem; }
+  .lane-vergleich .vs-stat-label { font-size: 0.78rem; }
+  .lane-vergleich .vs-bar-track { height: 11px; }
+  .gold-chart-wrap { margin-top: 26px; height: 220px; }
+  .gold-chart-legend { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
+  .gold-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- Karte & Verlauf ---------- */
+  .map-timeline-layout { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 24px; align-items: start; }
   .map-wrap {
     position: relative;
     width: 100%;
-    max-width: 420px;
     aspect-ratio: 1 / 1;
-    margin: 0 auto;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
     border: 1px solid var(--border);
     background: #100a24;
@@ -78,199 +242,88 @@
   .map-image { width: 100%; height: 100%; display: block; object-fit: cover; }
   .map-marker {
     position: absolute;
-    width: 13px; height: 13px;
+    width: 16px; height: 16px;
     border: 2px solid #140b2e;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     cursor: pointer;
     transition: width 0.15s, height 0.15s;
   }
-  .map-marker.marker-tod { background: var(--loss); box-shadow: 0 0 6px rgba(247, 108, 138, 0.7); }
-  .map-marker.marker-kill { background: var(--win); box-shadow: 0 0 6px rgba(52, 211, 153, 0.7); }
-  .map-marker.marker-objective { background: var(--gold); box-shadow: 0 0 6px rgba(212, 175, 106, 0.7); }
-  .map-marker.highlighted {
-    width: 22px; height: 22px;
-    border-color: #fff;
-    z-index: 5;
-    animation: marker-pulse 1s ease-in-out infinite;
-  }
+  .map-marker.marker-tod { background: var(--loss); box-shadow: 0 0 7px rgba(247, 108, 138, 0.75); }
+  .map-marker.marker-kill { background: var(--win); box-shadow: 0 0 7px rgba(52, 211, 153, 0.75); }
+  .map-marker.marker-objective { background: var(--gold); box-shadow: 0 0 7px rgba(212, 175, 106, 0.75); }
+  .map-marker.ausgeblendet { display: none; }
+  .map-marker.highlighted { width: 26px; height: 26px; border-color: #fff; z-index: 5; animation: marker-pulse 1s ease-in-out infinite; }
   @keyframes marker-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
-    50% { box-shadow: 0 0 0 9px rgba(255, 255, 255, 0); }
+    50% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
   }
-  .map-legend { color: var(--muted); font-size: 0.78rem; text-align: center; margin-top: 10px; }
+  .map-legende { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 0.8rem; }
+  .map-legende span { display: inline-flex; align-items: center; gap: 6px; }
+  .map-legende i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 
-  .timeline-list {
-    display: flex; flex-direction: column; gap: 6px;
-    max-height: 420px;
-    overflow-y: auto;
-    padding-right: 4px;
+  .zeitstrahl-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .zeitstrahl-filter button {
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.8rem; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
   }
+  .zeitstrahl-filter button:hover { color: var(--text); border-color: var(--accent); }
+  .zeitstrahl-filter button.active { color: #0a0818; background: linear-gradient(90deg, var(--accent), var(--void)); border-color: transparent; }
+  .timeline-list { display: flex; flex-direction: column; gap: 6px; max-height: 470px; overflow-y: auto; padding-right: 4px; }
   .timeline-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px;
-    border-radius: 8px;
+    display: grid; grid-template-columns: 46px 52px 30px minmax(0, 1fr); align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
     background: var(--panel-2);
     border: 1px solid transparent;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.86rem;
   }
   .timeline-row:hover { border-color: var(--border); }
-  .timeline-row.active { border-color: var(--accent); background: rgba(139, 108, 245, 0.14); }
-  .timeline-row.disabled { cursor: default; opacity: 0.65; }
-  .timeline-zeit { color: var(--muted); font-variant-numeric: tabular-nums; width: 40px; flex-shrink: 0; }
-  .timeline-badge {
-    font-size: 0.6rem; font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
+  .timeline-row.active { border-color: var(--accent); background: rgba(139, 108, 245, 0.16); }
+  .timeline-row.disabled { cursor: default; opacity: 0.7; }
+  .timeline-zeit { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .timeline-badge { font-size: 0.64rem; font-weight: 800; padding: 3px 0; border-radius: 999px; text-align: center; }
   .timeline-badge.loss { background: rgba(247, 108, 138, 0.18); color: var(--loss); }
   .timeline-badge.win { background: rgba(52, 211, 153, 0.18); color: var(--win); }
   .timeline-badge.gold { background: rgba(212, 175, 106, 0.18); color: var(--gold); }
   .timeline-badge.accent2 { background: rgba(79, 140, 255, 0.18); color: var(--accent2); }
-  .timeline-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .timeline-bild { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+  .timeline-bild img { width: 30px; height: 30px; border-radius: 8px; }
+  .timeline-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .tod-analyse { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .tod-analyse { display: flex; flex-direction: column; gap: 10px; }
   .tod-kommentar {
     background: rgba(247, 108, 138, 0.08);
-    border-left: 3px solid var(--loss);
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    line-height: 1.5;
+    border-left: 4px solid var(--loss);
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+  @media (max-width: 820px) {
+    .map-timeline-layout { grid-template-columns: 1fr; }
   }
 
-  /* Team-Aufstellung */
-  .team-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .team-col-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .team-col-title.blue { color: var(--accent2); }
-  .team-col-title.red { color: var(--loss); }
-  .player-row {
-    display: flex; flex-direction: column; gap: 8px;
-    padding: 10px;
-    border-radius: 12px;
-    text-decoration: none;
-    color: inherit;
-  }
-  .player-row:hover { background: var(--panel-2); }
-  .player-row.you { border: 1px solid var(--accent); }
-  .player-row-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-  .p-rank {
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    font-size: 0.7rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    color: var(--muted);
-  }
-  .p-rank.mvp { background: linear-gradient(135deg, #ffe08a, var(--gold)); border-color: var(--gold); color: #3a2a06; }
-  .p-rank.ace { background: rgba(247, 108, 138, 0.18); border-color: var(--loss); color: var(--loss); }
-
-  .player-row img.p-champ { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
-
-  .p-name-block { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-  .p-name-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .p-name { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-  .p-tag { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
-  .badge-mvp, .badge-ace {
-    font-size: 0.62rem; font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-  .badge-mvp { background: linear-gradient(135deg, #ffe08a, var(--gold)); color: #3a2a06; }
-  .badge-ace { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
-
-  .player-row .p-kda { margin-left: auto; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
-  .player-row-bottom { display: flex; align-items: center; gap: 10px; padding-left: 36px; flex-wrap: wrap; }
-  .p-runes { display: flex; align-items: center; }
-  .p-rune {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--gold);
-    background: var(--panel-2);
-    padding: 2px;
-  }
-  .p-rune-sub {
-    width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--panel-2);
-    padding: 2px;
-    margin-left: -8px;
-    box-shadow: 0 0 0 2px var(--panel);
-  }
-  .p-items { display: flex; gap: 4px; }
-  .p-item-slot {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--panel-2);
-    overflow: hidden;
-  }
-  .p-item-slot img { width: 100%; height: 100%; }
-
-  /* Team-Vergleich */
-  .tv-legend { display: flex; justify-content: center; gap: 24px; margin-bottom: 22px; font-size: 0.8rem; color: var(--muted); }
-  .tv-legend span { display: inline-flex; align-items: center; gap: 7px; }
-  .tv-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  .tv-dot.win { background: var(--win); }
-  .tv-dot.loss { background: var(--loss); }
-
-  .tv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 28px 36px; }
-  .tv-titel { text-align: center; font-weight: 700; font-size: 0.9rem; margin-bottom: 14px; }
-  .tv-row { display: flex; align-items: center; gap: 14px; }
-  .tv-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-
-  .tv-player-row { display: flex; align-items: center; gap: 8px; }
-  .tv-player-row.reverse { flex-direction: row-reverse; }
-  .tv-player-row img { width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; }
-  .tv-bar-track { flex: 1; height: 9px; border-radius: 5px; background: var(--panel-2); overflow: hidden; min-width: 0; }
-  .tv-bar-fill { height: 100%; border-radius: 5px; }
-  .tv-bar-fill.win { background: var(--win); }
-  .tv-bar-fill.loss { background: var(--loss); }
-  .tv-value { font-size: 0.74rem; color: var(--muted); width: 52px; flex-shrink: 0; text-align: right; }
-  .tv-player-row.reverse .tv-value { text-align: left; }
-
-  .tv-donut-wrap { flex-shrink: 0; }
-  .tv-donut {
-    --pct: 50;
-    width: 78px; height: 78px;
-    border-radius: 50%;
-    background: conic-gradient(var(--win) calc(var(--pct) * 1%), var(--loss) 0);
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-  }
-  .tv-donut::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--panel); }
-  .tv-donut-inner {
-    position: relative;
-    display: flex; flex-direction: column; align-items: center; gap: 1px;
-    font-size: 0.68rem; font-weight: 700;
-  }
-
-  @media (max-width: 640px) {
-    .tv-row { flex-direction: column; }
-    .tv-col { width: 100%; }
-  }
-
-
-  .gold-chart-wrap { margin-top: 22px; height: 200px; }
-  .gold-chart-legend { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.75rem; color: var(--muted); }
-  .gold-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-
-  .empty { color: var(--muted); padding: 12px 0; font-size: 0.9rem; }
-
+  /* ---------- Tipps ---------- */
+  .tipp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .tipp-karte { padding: 16px 18px; border-radius: 14px; background: rgba(23, 19, 47, 0.6); border: 1px solid var(--border); }
+  .tipp-kategorie-titel { font-weight: 800; font-size: 0.95rem; margin-bottom: 10px; color: var(--accent2); }
+  .tipp-liste { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 9px; }
+  .tipp-liste li { font-size: 0.88rem; line-height: 1.55; }
+  .tipp-liste li::marker { color: var(--accent); }
 </style>
 </head>
 <body>
 {% include "_konto_ecke.html" %}
 {% from "_runen.html" import rune_seite %}
+{% from "_skill_raster.html" import skill_raster %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -290,76 +343,94 @@
 
   <a class="back-link" href="{{ url_for('profil', riot_id = riot_name ~ '#' ~ riot_tag) }}">&larr; Zurück zu {{ riot_name }}#{{ riot_tag }}</a>
 
-  <div class="panel">
-    <div class="head">
-      <img class="champ" src="{{ champion_icon }}" alt="{{ champion }}">
-      <div>
-        <div class="champ-name">{{ champion }}</div>
-        <div class="meta">{{ role or "ARAM" }}</div>
+  <div class="match-hero {{ 'win' if win else 'loss' }}" style="--splash: url('{{ champion_splash }}');">
+    <div class="hero-kopf">
+      <div class="hero-champ">
+        <img src="{{ champion_icon }}" alt="{{ champion }}">
+        {% if champ_level %}<span class="hero-level" title="Champion-Level">{{ champ_level }}</span>{% endif %}
+      </div>
+      <div class="hero-titel">
+        <div class="hero-name">{{ champion }}</div>
+        <div class="hero-meta">
+          {% if rollen_icon %}<img src="{{ rollen_icon }}" alt="">{% endif %}
+          <span>{{ rollen_name }}</span>
+          <span class="punkt">&middot;</span><span>{{ dauer_text }} Min.</span>
+          {% if zeit_text %}<span class="punkt">&middot;</span><span>{{ zeit_text }}</span>{% endif %}
+        </div>
+        <div class="hero-spieler">{{ riot_name }}<span>#{{ riot_tag }}</span></div>
       </div>
       <span class="result-badge {{ 'win' if win else 'loss' }}">{{ "Sieg" if win else "Niederlage" }}</span>
     </div>
 
-    <div class="stat-row">
-      <div class="stat">
-        <div class="value">{{ kills }}/{{ deaths }}/{{ assists }}</div>
-        <div class="label">KDA ({{ "%.2f"|format(kda) }})</div>
+    <div class="kennzahlen">
+      <div class="kennzahl">
+        <div class="wert">{{ kills }} / <span class="d">{{ deaths }}</span> / {{ assists }}</div>
+        <div class="label">KDA</div>
+        <div class="zusatz">{{ "%.2f"|format(kda) }}:1</div>
       </div>
-      <div class="stat">
-        <div class="value">{{ cs }}</div>
-        <div class="label">CS ({{ "%.1f"|format(cs_per_min) }}/min)</div>
+      <div class="kennzahl">
+        <div class="wert">{{ cs }}</div>
+        <div class="label">CS</div>
+        <div class="zusatz">{{ "%.1f"|format(cs_per_min) }} pro Minute</div>
       </div>
-      <div class="stat">
-        <div class="value">{{ vision }}</div>
-        <div class="label">Vision ({{ "%.2f"|format(vision_per_min) }}/min)</div>
+      {% if damage_dealt %}
+      <div class="kennzahl">
+        <div class="wert">{{ "%.1f"|format(damage_dealt / 1000) }}k</div>
+        <div class="label">Schaden</div>
+        <div class="zusatz">{% if damage_share %}{{ (damage_share * 100) | round | int }}% vom Team{% else %}an Champions{% endif %}</div>
+      </div>
+      {% endif %}
+      {% if gold_earned %}
+      <div class="kennzahl">
+        <div class="wert">{{ "%.1f"|format(gold_earned / 1000) }}k</div>
+        <div class="label">Gold</div>
+        <div class="zusatz">{{ (gold_earned / minuten) | round | int }} pro Minute</div>
+      </div>
+      {% endif %}
+      {% if kill_participation is not none %}
+      <div class="kennzahl">
+        <div class="wert">{{ (kill_participation * 100) | round | int }}%</div>
+        <div class="label">Kill-Beteiligung</div>
+        <div class="zusatz">an Team-Kills</div>
+      </div>
+      {% endif %}
+      <div class="kennzahl">
+        <div class="wert">{{ vision }}</div>
+        <div class="label">Vision</div>
+        <div class="zusatz">{{ "%.2f"|format(vision_per_min) }} pro Minute</div>
       </div>
     </div>
   </div>
 
-  <div class="tab-nav">
+  <div class="tab-nav match-tabs">
     <button class="tab-btn active" data-tab="uebersicht">Übersicht</button>
     <button class="tab-btn" data-tab="team">Team &amp; Vergleich</button>
     <button class="tab-btn" data-tab="karte">Karte &amp; Verlauf</button>
     <button class="tab-btn" data-tab="tipps">Tipps</button>
   </div>
 
-  <div class="panel" data-tabgroup="tipps" hidden>
-    <h2>Tipps für {{ role or "ARAM" }}</h2>
-    <div class="tipp-cols">
-      {% for kategorie in rollen_tipps %}
-      <div class="tipp-kategorie">
-        <div class="tipp-kategorie-titel">{{ kategorie.titel }}</div>
-        <ul class="tipp-liste">
-          {% for punkt in kategorie.punkte %}
-          <li>{{ punkt }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
+  {# ================= Übersicht ================= #}
   <div class="panel" data-tabgroup="uebersicht">
-    <h2>Finale Items</h2>
+    <h2 class="section-title">Items</h2>
+    <div class="unter-titel">Finaler Build</div>
     <div class="item-row">
       {% for icon in item_slots[:6] %}
         <div class="item-slot">{% if icon %}<img src="{{ icon }}" alt="Item" loading="lazy">{% endif %}</div>
       {% endfor %}
-      <div class="item-gap"></div>
-      <div class="item-slot">{% if item_slots[6] %}<img src="{{ item_slots[6] }}" alt="Trinket" loading="lazy">{% endif %}</div>
+      <div class="item-slot trinket">{% if item_slots[6] %}<img src="{{ item_slots[6] }}" alt="Trinket" loading="lazy">{% endif %}</div>
     </div>
-  </div>
 
-  <div class="panel" data-tabgroup="uebersicht">
-    <h2>Item-Baupfad</h2>
+    <div class="unter-titel">Einkaufsrunden</div>
     {% if item_build %}
-    <div class="build-row">
-      {% for step in item_build %}
-        {% if not loop.first %}<span class="build-arrow">&rarr;</span>{% endif %}
-        <div class="build-step">
-          <div class="build-icon"><img src="{{ step.icon }}" alt="" loading="lazy"></div>
-          <span class="zeit">{{ step.zeit }}</span>
+    <div class="kauf-runden">
+      {% for runde in item_build %}
+      <div class="kauf-runde">
+        <div class="kauf-zeit">{{ runde.zeit }}</div>
+        <div class="kauf-items">
+          {% for icon in runde.kaeufe %}<img src="{{ icon }}" alt="" loading="lazy">{% endfor %}
         </div>
+      </div>
+      {% if not loop.last %}<span class="kauf-pfeil">&rsaquo;</span>{% endif %}
       {% endfor %}
     </div>
     {% else %}
@@ -367,72 +438,68 @@
     {% endif %}
   </div>
 
+  {% if skill_pfad %}
+  <div class="panel" data-tabgroup="uebersicht">
+    <h2 class="section-title">Skill-Reihenfolge</h2>
+    {{ skill_raster(skill_pfad, spells) }}
+  </div>
+  {% endif %}
+
+  <div class="panel" data-tabgroup="uebersicht">
+    <h2 class="section-title">Runen</h2>
+    {% if runen %}
+    {{ rune_seite(runen) }}
+    {% else %}
+    <p class="empty">Runen-Daten liegen für dieses Spiel noch nicht vor. Suche das Profil erneut, um sie nachzuladen.</p>
+    {% endif %}
+  </div>
+
+  {# ================= Team & Vergleich ================= #}
   <div class="panel" data-tabgroup="team" hidden>
-    <h2>Team-Aufstellung</h2>
+    <h2 class="section-title">Team-Aufstellung</h2>
     {% if teams %}
     <div class="team-cols">
-      <div>
-        <div class="team-col-title blue">Blaue Seite</div>
-        {% for p in teams["100"] %}
-        <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
+      {% for team_id, titel, farbe in [("100", "Blaue Seite", "blue"), ("200", "Rote Seite", "red")] %}
+      {% set spieler = teams[team_id] %}
+      {% set sieg = spieler[0].win if spieler else false %}
+      <div class="team-karte {{ farbe }}">
+        <div class="team-kopf">
+          <span class="team-titel">{{ titel }}</span>
+          <span class="team-ergebnis {{ 'win' if sieg else 'loss' }}">{{ "Sieg" if sieg else "Niederlage" }}</span>
+          <span class="team-summe">{{ spieler | sum(attribute='kills') }} Kills &middot; {{ "%.1f"|format((spieler | sum(attribute='gold_earned')) / 1000) }}k Gold</span>
+        </div>
+        {% for p in spieler %}
+        <a class="spieler-zeile {{ 'you' if p.puuid == puuid else '' }}"
            href="{{ url_for('profil', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
-          <div class="player-row-top">
-            <div class="p-rank {{ 'mvp' if p.ist_mvp else '' }} {{ 'ace' if p.ist_ace else '' }}">{{ p.rang }}</div>
-            <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
-            <div class="p-name-block">
-              <div class="p-name-line">
-                <span class="p-name">{{ p.riot_name }}<span class="p-tag">#{{ p.riot_tag }}</span></span>
-                {% if p.ist_mvp %}<span class="badge-mvp">MVP</span>{% endif %}
-                {% if p.ist_ace %}<span class="badge-ace">ACE</span>{% endif %}
-              </div>
+          <div class="p-rank {{ 'mvp' if p.ist_mvp else '' }} {{ 'ace' if p.ist_ace else '' }}" title="Platz im Match-Ranking">{{ p.rang }}</div>
+          <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
+          <div class="p-info">
+            <div class="p-name-line">
+              <span class="p-name">{{ p.riot_name }}<span class="p-tag">#{{ p.riot_tag }}</span></span>
+              {% if p.ist_mvp %}<span class="badge-mvp">MVP</span>{% endif %}
+              {% if p.ist_ace %}<span class="badge-ace">ACE</span>{% endif %}
             </div>
-            <span class="p-kda">{{ p.kills }}/{{ p.deaths }}/{{ p.assists }}</span>
+            <div class="p-stats">
+              <span><b>{{ p.kills }}/{{ p.deaths }}/{{ p.assists }}</b></span>
+              <span>{{ p.cs }} CS</span>
+              <span>{{ "%.1f"|format(p.damage_dealt / 1000) }}k Schaden</span>
+            </div>
           </div>
-          <div class="player-row-bottom">
+          <div class="p-ausruestung">
             <div class="p-runes">
               {% if p.keystone_icon %}<img class="p-rune" src="{{ p.keystone_icon }}" alt="">{% endif %}
               {% if p.secondary_icon %}<img class="p-rune-sub" src="{{ p.secondary_icon }}" alt="">{% endif %}
             </div>
             <div class="p-items">
               {% for icon in p.item_icons %}
-              <div class="p-item-slot">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+              <div class="p-item-slot {{ 'trinket' if loop.last else '' }}">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
               {% endfor %}
             </div>
           </div>
         </a>
         {% endfor %}
       </div>
-      <div>
-        <div class="team-col-title red">Rote Seite</div>
-        {% for p in teams["200"] %}
-        <a class="player-row {{ 'you' if p.riot_name|lower == riot_name|lower and p.riot_tag|lower == riot_tag|lower else '' }}"
-           href="{{ url_for('profil', riot_id = p.riot_name ~ '#' ~ p.riot_tag) }}">
-          <div class="player-row-top">
-            <div class="p-rank {{ 'mvp' if p.ist_mvp else '' }} {{ 'ace' if p.ist_ace else '' }}">{{ p.rang }}</div>
-            <img class="p-champ" src="{{ p.champion_icon }}" alt="{{ p.champion }}">
-            <div class="p-name-block">
-              <div class="p-name-line">
-                <span class="p-name">{{ p.riot_name }}<span class="p-tag">#{{ p.riot_tag }}</span></span>
-                {% if p.ist_mvp %}<span class="badge-mvp">MVP</span>{% endif %}
-                {% if p.ist_ace %}<span class="badge-ace">ACE</span>{% endif %}
-              </div>
-            </div>
-            <span class="p-kda">{{ p.kills }}/{{ p.deaths }}/{{ p.assists }}</span>
-          </div>
-          <div class="player-row-bottom">
-            <div class="p-runes">
-              {% if p.keystone_icon %}<img class="p-rune" src="{{ p.keystone_icon }}" alt="">{% endif %}
-              {% if p.secondary_icon %}<img class="p-rune-sub" src="{{ p.secondary_icon }}" alt="">{% endif %}
-            </div>
-            <div class="p-items">
-              {% for icon in p.item_icons %}
-              <div class="p-item-slot">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
-              {% endfor %}
-            </div>
-          </div>
-        </a>
-        {% endfor %}
-      </div>
+      {% endfor %}
     </div>
     {% else %}
     <p class="empty">Team-Aufstellung konnte nicht geladen werden.</p>
@@ -440,7 +507,7 @@
   </div>
 
   <div class="panel" data-tabgroup="team" hidden>
-    <h2>Team-Vergleich</h2>
+    <h2 class="section-title">Team-Vergleich</h2>
     {% if team_vergleich %}
     <div class="tv-legend">
       <span><span class="tv-dot win"></span>Siegerteam</span>
@@ -486,8 +553,8 @@
     {% endif %}
   </div>
 
-  <div class="panel" data-tabgroup="team" hidden>
-    <h2>Lane-Vergleich</h2>
+  <div class="panel lane-vergleich" data-tabgroup="team" hidden>
+    <h2 class="section-title">Lane-Vergleich</h2>
     {% if lane_vergleich %}
     <div class="vs-header">
       <div class="vs-side mine">
@@ -529,34 +596,40 @@
     {% endif %}
   </div>
 
-  <div class="panel" data-tabgroup="uebersicht">
-    <h2>Runen</h2>
-    {% if runen %}
-    {{ rune_seite(runen) }}
-    {% else %}
-    <p class="empty">Runen-Daten liegen für dieses Spiel noch nicht vor. Suche das Profil erneut, um sie nachzuladen.</p>
-    {% endif %}
-  </div>
-
+  {# ================= Karte & Verlauf ================= #}
   <div class="panel" data-tabgroup="karte" hidden>
-    <h2>Karte &amp; Zeitstrahl</h2>
+    <h2 class="section-title">Karte &amp; Zeitstrahl</h2>
     {% if zeitstrahl %}
     <div class="map-timeline-layout">
-      <div class="map-col">
+      <div>
         <div class="map-wrap" id="matchMap">
           <img class="map-image" src="{{ url_for('static', filename='map.webp') }}" alt="Summoner's Rift Minimap">
           {% for e in zeitstrahl if e.klickbar %}
-          <div class="map-marker marker-{{ e.typ }}" data-id="{{ e.id }}" style="left: {{ e.x }}%; top: {{ e.y }}%;" title="{{ e.zeit }} - {{ e.text }}"></div>
+          <div class="map-marker marker-{{ e.typ }}" data-id="{{ e.id }}" data-typ="{{ e.typ }}" style="left: {{ e.x }}%; top: {{ e.y }}%;" title="{{ e.zeit }} - {{ e.text }}"></div>
           {% endfor %}
         </div>
-        <div class="map-legend">Klick auf einen Zeitstrahl-Eintrag links, um ihn hier hervorzuheben</div>
+        <div class="map-legende">
+          <span><i style="background: var(--win);"></i>Kills</span>
+          <span><i style="background: var(--loss);"></i>Tode</span>
+          <span><i style="background: var(--gold);"></i>Objectives</span>
+        </div>
       </div>
-      <div class="timeline-col">
+      <div>
+        <div class="zeitstrahl-filter">
+          <button type="button" class="active" data-filter="alle">Alle</button>
+          <button type="button" data-filter="kill">Kills</button>
+          <button type="button" data-filter="tod">Tode</button>
+          <button type="button" data-filter="objective">Objectives</button>
+          <button type="button" data-filter="ward">Wards</button>
+        </div>
         <div class="timeline-list">
           {% for e in zeitstrahl %}
-          <div class="timeline-row {{ '' if e.klickbar else 'disabled' }}" {% if e.klickbar %}data-id="{{ e.id }}"{% endif %}>
+          <div class="timeline-row {{ '' if e.klickbar else 'disabled' }}" data-typ="{{ e.typ }}" {% if e.klickbar %}data-id="{{ e.id }}"{% endif %}>
             <span class="timeline-zeit">{{ e.zeit }}</span>
             <span class="timeline-badge {{ e.farbe }}">{{ e.label }}</span>
+            <span class="timeline-bild">
+              {% if e.icon %}<img src="{{ e.icon }}" alt="" loading="lazy">{% elif e.symbol %}{{ e.symbol }}{% endif %}
+            </span>
             <span class="timeline-text">{{ e.text }}</span>
           </div>
           {% endfor %}
@@ -569,7 +642,7 @@
   </div>
 
   <div class="panel" data-tabgroup="karte" hidden>
-    <h2>Auffällige Tode</h2>
+    <h2 class="section-title">Auffällige Tode</h2>
     {% if tod_analyse %}
     <div class="tod-analyse">
       {% for kommentar in tod_analyse %}
@@ -581,6 +654,22 @@
     {% endif %}
   </div>
 
+  {# ================= Tipps ================= #}
+  <div class="panel" data-tabgroup="tipps" hidden>
+    <h2 class="section-title">Tipps für {{ rollen_name }}</h2>
+    <div class="tipp-cols">
+      {% for kategorie in rollen_tipps %}
+      <div class="tipp-karte">
+        <div class="tipp-kategorie-titel">{{ kategorie.titel }}</div>
+        <ul class="tipp-liste">
+          {% for punkt in kategorie.punkte %}
+          <li>{{ punkt }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 
 </div>
 
@@ -588,15 +677,10 @@
   (function () {
     var overlay = document.getElementById("loadingOverlay");
     var text = document.getElementById("loadingText");
-
-    function showLoading(msg) {
-      text.textContent = msg;
-      overlay.classList.add("active");
-    }
-
-    document.querySelectorAll(".back-link, .player-row").forEach(function (a) {
+    document.querySelectorAll(".back-link, .spieler-zeile").forEach(function (a) {
       a.addEventListener("click", function () {
-        showLoading("Profil wird geladen...");
+        text.textContent = "Profil wird geladen...";
+        overlay.classList.add("active");
       });
     });
   })();
@@ -635,6 +719,7 @@
         }],
       },
       options: {
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
           x: { ticks: { maxTicksLimit: 8 } },
@@ -651,42 +736,40 @@
 
 <script>
   (function () {
+    // Zeitstrahl-Eintrag anklicken -> passenden Marker auf der Karte hervorheben
     document.querySelectorAll(".timeline-row[data-id]").forEach(function (row) {
       row.addEventListener("click", function () {
         var id = row.getAttribute("data-id");
-
-        document.querySelectorAll(".map-marker.highlighted").forEach(function (m) {
-          m.classList.remove("highlighted");
-        });
-        document.querySelectorAll(".timeline-row.active").forEach(function (r) {
-          r.classList.remove("active");
-        });
-
+        document.querySelectorAll(".map-marker.highlighted").forEach(function (m) { m.classList.remove("highlighted"); });
+        document.querySelectorAll(".timeline-row.active").forEach(function (r) { r.classList.remove("active"); });
         var marker = document.querySelector('.map-marker[data-id="' + id + '"]');
-        if (marker) {
-          marker.classList.add("highlighted");
-          marker.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        }
+        if (marker) marker.classList.add("highlighted");
         row.classList.add("active");
       });
     });
-  })();
-</script>
 
-<script>
-  (function () {
-    document.querySelectorAll(".tab-btn").forEach(function (btn) {
+    // Filter: nur Kills / Tode / Objectives / Wards - gilt für Liste und Karte
+    document.querySelectorAll(".zeitstrahl-filter button").forEach(function (knopf) {
+      knopf.addEventListener("click", function () {
+        var filter = knopf.getAttribute("data-filter");
+        document.querySelectorAll(".zeitstrahl-filter button").forEach(function (k) { k.classList.toggle("active", k === knopf); });
+        document.querySelectorAll(".timeline-row").forEach(function (r) {
+          r.hidden = filter !== "alle" && r.getAttribute("data-typ") !== filter;
+        });
+        document.querySelectorAll(".map-marker").forEach(function (m) {
+          m.classList.toggle("ausgeblendet", filter !== "alle" && m.getAttribute("data-typ") !== filter);
+        });
+      });
+    });
+
+    // Reiter
+    document.querySelectorAll(".match-tabs .tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var tab = btn.getAttribute("data-tab");
-
-        document.querySelectorAll(".tab-btn").forEach(function (b) {
-          b.classList.toggle("active", b === btn);
-        });
+        document.querySelectorAll(".match-tabs .tab-btn").forEach(function (b) { b.classList.toggle("active", b === btn); });
         document.querySelectorAll("[data-tabgroup]").forEach(function (panel) {
           panel.hidden = panel.getAttribute("data-tabgroup") !== tab;
         });
-
-        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
   })();

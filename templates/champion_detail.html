@@ -82,48 +82,6 @@
     backdrop-filter: blur(6px);
   }
 
-  /* Skill-Pfad: Q/W/E/R-Zeilen x Level 1-18, eigene Farbe je Skill */
-  .s1 { --skill: var(--accent2); }
-  .s2 { --skill: var(--void); }
-  .s3 { --skill: var(--teal); }
-  .s4 { --skill: var(--gold); }
-  .skill-prio { display: inline-flex; align-items: center; gap: 4px; }
-  .prio-skill { display: inline-flex; align-items: center; gap: 4px; }
-  .prio-skill img { width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--skill); }
-  .prio-skill b { color: var(--skill); }
-  .prio-arrow { color: var(--muted); margin: 0 2px; }
-
-  .skill-grid-wrap { overflow-x: auto; margin: 4px 0 0; }
-  .skill-grid { border-collapse: separate; border-spacing: 4px; min-width: 640px; width: 100%; }
-  .skill-grid thead th { color: var(--muted); font-size: 0.68rem; font-weight: 600; text-align: center; }
-  .skill-grid td {
-    width: 30px; height: 30px;
-    border-radius: 7px;
-    background: rgba(23, 19, 47, 0.7);
-    text-align: center;
-    padding: 0;
-  }
-  .skill-label { text-align: left; white-space: nowrap; padding-right: 8px; display: flex; align-items: center; gap: 8px; }
-  .skill-label img { width: 32px; height: 32px; border-radius: 7px; border: 1px solid var(--border); flex-shrink: 0; }
-  .skill-label span { display: flex; flex-direction: column; line-height: 1.15; }
-  .skill-label b { font-size: 0.85rem; }
-  .skill-label small { color: var(--muted); font-size: 0.66rem; font-weight: 500; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
-  .skill-dot {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; height: 30px;
-    border-radius: 7px;
-    font-size: 0.78rem; font-weight: 800;
-    color: #0a0818;
-    background: var(--skill);
-    box-shadow: 0 0 8px color-mix(in srgb, var(--skill) 45%, transparent);
-  }
-  .skill-dot.ergaenzt {
-    background: transparent;
-    color: var(--skill);
-    border: 1.5px dashed var(--skill);
-    box-shadow: none;
-  }
-  .skill-note { margin: 12px 0 0; }
 
   .rune-tab-title { display: inline-flex; align-items: center; gap: 6px; }
   .rune-tab-title img { width: 22px; height: 22px; }
@@ -133,6 +91,7 @@
 <body>
 {% include "_konto_ecke.html" %}
 {% from "_runen.html" import rune_seite %}
+{% from "_skill_raster.html" import skill_raster %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -297,36 +256,7 @@
 
     {% for o in stats.top_orders %}
     <div data-tabgroup="skills{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
-      <div class="skill-grid-wrap">
-        <table class="skill-grid">
-          <thead>
-            <tr>
-              <th></th>
-              {% for lvl in range(1, 19) %}<th>{{ lvl }}</th>{% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for slot in [1, 2, 3, 4] %}
-            <tr>
-              <th class="skill-label">
-                {% if spells %}<img src="{{ spells[slot - 1].icon }}" alt="" title="{{ spells[slot - 1].name }}">{% endif %}
-                <span>
-                  <b>{{ B[slot] }}</b>
-                  {% if spells %}<small>{{ spells[slot - 1].name }}</small>{% endif %}
-                </span>
-              </th>
-              {% for i in range(18) %}
-              <td>
-                {% if o.pfad | length > i and o.pfad[i] == slot %}
-                <span class="skill-dot s{{ slot }} {{ 'ergaenzt' if i >= o.daten_bis else '' }}">{{ B[slot] }}</span>
-                {% endif %}
-              </td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      {{ skill_raster(o.pfad, spells, o.daten_bis) }}
       {% if o.daten_bis < o.pfad | length %}
       <p class="item-hint skill-note">Level {{ o.daten_bis + 1 }}–{{ o.pfad | length }} gestrichelt: dafür gab es zu wenige Spiele mit genau diesem Pfad (viele Spiele enden vorher), ergänzt nach der Standardregel (R auf 6/11/16, sonst Priorität {{ o.order }}).</p>
       {% endif %}

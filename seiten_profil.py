@@ -22,11 +22,11 @@ from champion_stats import get_champion_by_key, get_champion_by_numeric_id
 from db import get_connection
 from riot_assets import (
     champion_icon_url,
+    champion_skin_splashes,
     champion_splash_url,
     get_ddragon_version,
     get_summoner_icon_id,
     item_icon_url,
-    random_champion_splash_url,
     summoner_icon_url,
 )
 from riot_fetch import (
@@ -202,18 +202,21 @@ def profil():
 
     ddragon_version = get_ddragon_version()
 
-    # Profil-Hintergrund: zufälliger Skin eines zufälligen der 3 Mastery-Champions ("Mains"),
-    # bei jedem Seitenaufruf neu. Fällt auf den zuletzt gespielten Champion zurück, falls die
-    # Mastery-API fehlschlägt oder (bei brandneuen Accounts) noch keine Mastery-Punkte existieren.
+    # Seitenhintergrund: einer der 3 Mastery-Champions ("Mains"), zufällig pro Aufruf, dessen
+    # Skins im Browser nacheinander überblendet werden. Fällt auf den zuletzt gespielten Champion
+    # zurück, falls die Mastery-API fehlschlägt oder (bei brandneuen Accounts) noch keine
+    # Mastery-Punkte existieren.
     mains = [
         champ for champ in (get_champion_by_numeric_id(cid) for cid in get_top_mastery_champion_ids(puuid, headers))
         if champ
     ]
     hero_champion = random.choice(mains)["key"] if mains else (rows[0][1] if rows else None)
-    try:
-        hero_splash = random_champion_splash_url(hero_champion) if hero_champion else None
-    except Exception:
-        hero_splash = champion_splash_url(hero_champion)
+    hintergrund_skins = []
+    if hero_champion:
+        try:
+            hintergrund_skins = champion_skin_splashes(hero_champion)
+        except Exception:
+            hintergrund_skins = [champion_splash_url(hero_champion)]
 
     meistgespielte = []
     for champion, spiele_anzahl, siege_anzahl, kills, deaths, assists in champ_zeilen:
@@ -305,7 +308,7 @@ def profil():
         rang_solo=anzeige_rang_solo,
         rang_flex=anzeige_rang_flex,
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
-        hero_splash=hero_splash,
+        hintergrund_skins=hintergrund_skins,
         meistgespielte=meistgespielte,
         rang_verlauf=verlauf_rang,
         tier_achse=tier_achse(),

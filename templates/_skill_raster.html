@@ -1,0 +1,36 @@
+{# Skill-Reihenfolge als Raster: Zeilen Q/W/E/R, Spalten Level 1-18. pfad = Liste von Slots
+   (1=Q ... 4=R); ab Index daten_bis wird gestrichelt gezeichnet (ergänzte statt gespielter Level). #}
+{% macro skill_raster(pfad, spells, daten_bis=none) %}
+{% set B = {1: "Q", 2: "W", 3: "E", 4: "R"} %}
+{% set grenze = daten_bis if daten_bis is not none else pfad | length %}
+<div class="skill-grid-wrap">
+  <table class="skill-grid">
+    <thead>
+      <tr>
+        <th></th>
+        {% for lvl in range(1, 19) %}<th>{{ lvl }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for slot in [1, 2, 3, 4] %}
+      <tr>
+        <th class="skill-label">
+          {% if spells %}<img src="{{ spells[slot - 1].icon }}" alt="" title="{{ spells[slot - 1].name }}">{% endif %}
+          <span>
+            <b>{{ B[slot] }}</b>
+            {% if spells %}<small>{{ spells[slot - 1].name }}</small>{% endif %}
+          </span>
+        </th>
+        {% for i in range(18) %}
+        <td>
+          {% if pfad | length > i and pfad[i] == slot %}
+          <span class="skill-dot s{{ slot }} {{ 'ergaenzt' if i >= grenze else '' }}">{{ B[slot] }}</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endmacro %}

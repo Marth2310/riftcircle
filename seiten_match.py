@@ -6,12 +6,15 @@ from flask import abort, redirect, render_template, request, url_for
 from app_core import app, headers
 from champion_mobility import hat_escape
 from db import get_connection
-from riot_assets import champion_icon_url, get_ddragon_version, item_icon_url
+from profil_statistik import ROLLEN
+from riot_assets import champion_icon_url, champion_splash_url, get_champion_spells, get_ddragon_version, item_icon_url
 from riot_fetch import fetch_match_teams, merke_spielernamen
 from riot_runes import build_rune_display, keystone_and_secondary_icons
 from riot_timeline import death_position_percent, fetch_timeline_events, format_game_time
 from rollen_tipps import tipps_fuer_rolle
+from seiten_champions import ROLLEN_ICON_URL
 from vergleich import fazit_saetze, vergleiche
+from web_hilfen import relative_zeit
 
 
 def berechne_rangliste(teams, duration_seconds):
@@ -58,7 +61,12 @@ def berechne_rangliste(teams, duration_seconds):
 
 OBJECTIVE_NAMEN = {
     "DRAGON": "Drachen", "RIFTHERALD": "Herald", "BARON_NASHOR": "Baron", "ELDER_DRAGON": "Elder-Drachen",
+    "HORDE": "Void-Larven", "ATAKHAN": "Atakhan",
 }
+OBJECTIVE_ICONS = {"DRAGON": "🐉", "RIFTHERALD": "🦀", "BARON_NASHOR": "👾", "ELDER_DRAGON": "🐲", "HORDE": "🪲", "ATAKHAN": "😈"}
+WARD_ITEM_ID = 3340  # Stealth Ward (Trinket) - als Symbol für Ward-Einträge im Zeitstrahl
+ROLLEN_LABEL = {role: name for role, name, _ in ROLLEN}
+EINKAUFSRUNDE_MS = 45_000  # Käufe innerhalb 45s gelten als ein Besuch im Shop
 OBJECTIVE_FENSTER_MS = 90_000  # Tod bis zu 90s vor gegnerischem Objective-Kill wird als Ursache gewertet
 TEAMFIGHT_FENSTER_MS = 15_000  # Tode innerhalb 15s um einen eigenen Tod gelten als "gemeinsamer" Fight
 VISION_FENSTER_MS = 90_000  # eigene Ward "frisch", wenn sie <= 90s vor dem Tod gesetzt wurde
@@ -164,6 +172,7 @@ def baue_zeitstrahl(death_positions, timeline_extra, teams, puuid):
         killer = champs.get(death.get("killer_id"), "Unbekannt")
         eintraege.append({
             "typ": "tod", "label": "TOD", "farbe": "loss",
+            "icon": champion_icon_url(killer) if killer in champs.values() else None,
             "timestamp": death["timestamp"],
             "zeit": format_game_time(death["timestamp"]),
             "text": f"Gestorben (getötet von {killer})",
@@ -175,6 +184,7 @@ def baue_zeitstrahl(death_positions, timeline_extra, teams, puuid):
         opfer = champs.get(kill.get("victim_id"), "Unbekannt")
         eintraege.append({
             "typ": "kill", "label": "KILL", "farbe": "win",
+            "icon": champion_icon_url(opfer) if opfer in champs.values() else None,
             "timestamp": kill["timestamp"],
             "zeit": format_game_time(kill["timestamp"]),
             "text": f"Kill auf {opfer}",
@@ -189,6 +199,7 @@ def baue_zeitstrahl(death_positions, timeline_extra, teams, puuid):
         team_text = "dein Team" if str(obj.get("killer_team_id")) == str(mein_team_id) else "Gegner"
         eintraege.append({
             "typ": "objective", "label": "OBJ", "farbe": "gold",
+            "symbol": OBJECTIVE_ICONS.get(obj.get("monster_type"), "⭐"),
             "timestamp": obj["timestamp"],
             "zeit": format_game_time(obj["timestamp"]),
             "text": f"{name} erbeutet ({team_text})",
@@ -199,7 +210,7 @@ def baue_zeitstrahl(death_positions, timeline_extra, teams, puuid):
         if ward.get("creator_id") != mein_participant_id:
             continue
         eintraege.append({
-            "typ": "ward", "label": "WARD", "farbe": "accent2",
+            "typ": "ward", "label": "WARD", "farbe": "accent2", "icon": item_icon_url(WARD_ITEM_ID),
             "timestamp": ward["timestamp"],
             "zeit": format_game_time(ward["timestamp"]),
             "text": "Ward platziert",
@@ -377,7 +388,8 @@ def match_detail(match_id):
         SELECT p.champion, p.role, p.kills, p.deaths, p.assists, p.cs, p.vision_score,
                m.duration_seconds, p.win, p.items, p.perks, p.death_positions, p.item_timeline,
                m.team_lineup, m.gold_timeline, m.timeline_extra, pl.riot_name, pl.riot_tag,
-               p.skill_order
+               p.skill_order, p.damage_dealt, p.gold_earned, p.kill_participation, p.champ_level,
+               p.damage_share, m.played_at
         FROM participants p
         JOIN matches m ON p.match_id = m.match_id
         JOIN players pl ON p.puuid = pl.puuid
@@ -392,7 +404,8 @@ def match_detail(match_id):
 
     (champion, role, kills, deaths, assists, cs, vision, duration, win,
      items, perks, death_positions, item_timeline, team_lineup, gold_timeline, timeline_extra,
-     riot_name, riot_tag, skill_order) = row
+     riot_name, riot_tag, skill_order, damage_dealt, gold_earned, kill_participation, champ_level,
+     damage_share, played_at) = row
 
     # Timeline (Todes-Positionen + eigene Kills + Item-Kaufverlauf + Gold-Verlauf +
     # Objective-Kills + alle Tode + Ward-Platzierungen + Skill-Order) ist ein separater,
@@ -476,14 +489,15 @@ def match_detail(match_id):
             "zeit": format_game_time(death["timestamp"]),
         })
 
-    item_build = [
-        {
-            "icon": item_icon_url(kauf["itemId"], ddragon_version),
-            "zeit": format_game_time(kauf["timestamp"]),
-        }
-        for kauf in sorted(item_timeline, key=lambda k: k["timestamp"])
-        if kauf.get("itemId")
-    ]
+    # Käufe zu "Einkaufsrunden" zusammenfassen (alles innerhalb von 45s nach dem ersten Kauf
+    # einer Runde = ein Besuch im Shop) - übersichtlicher als eine lange Einzelkette
+    item_build = []
+    for kauf in sorted(item_timeline, key=lambda k: k["timestamp"]):
+        if not kauf.get("itemId"):
+            continue
+        if not item_build or kauf["timestamp"] - item_build[-1]["start"] > EINKAUFSRUNDE_MS:
+            item_build.append({"start": kauf["timestamp"], "zeit": format_game_time(kauf["timestamp"]), "kaeufe": []})
+        item_build[-1]["kaeufe"].append(item_icon_url(kauf["itemId"], ddragon_version))
 
     teams = None
     if team_lineup:
@@ -511,6 +525,10 @@ def match_detail(match_id):
     tod_analyse = analysiere_tode(death_positions, timeline_extra, teams, puuid, champion)
     zeitstrahl = baue_zeitstrahl(death_positions, timeline_extra, teams, puuid)
     team_vergleich = baue_team_vergleich(teams)
+    try:
+        spells = get_champion_spells(champion)
+    except Exception:
+        spells = None  # Skill-Raster dann nur mit Q/W/E/R-Buchstaben
 
     return render_template(
         "match_detail.html",
@@ -520,12 +538,23 @@ def match_detail(match_id):
         riot_tag=riot_tag,
         champion=champion,
         champion_icon=champion_icon_url(champion, ddragon_version),
+        champion_splash=champion_splash_url(champion),
         role=role,
+        rollen_name=ROLLEN_LABEL.get(role, "ARAM"),
+        rollen_icon=ROLLEN_ICON_URL.format(role.lower()) if role in ROLLEN_LABEL else None,
         win=win,
         kills=kills, deaths=deaths, assists=assists,
         kda=kda,
         cs=cs, cs_per_min=cs / minutes,
         vision=vision, vision_per_min=vision / minutes,
+        damage_dealt=damage_dealt, damage_share=damage_share,
+        gold_earned=gold_earned, kill_participation=kill_participation,
+        champ_level=champ_level,
+        dauer_text=f"{duration // 60}:{duration % 60:02d}",
+        minuten=minutes,
+        zeit_text=relative_zeit(played_at) if played_at else None,
+        skill_pfad=[s for s in (skill_order or []) if s in (1, 2, 3, 4)][:18],
+        spells=spells,
         item_slots=item_slots,
         item_build=item_build,
         runen=runen,
