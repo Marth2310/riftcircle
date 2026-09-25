@@ -12,6 +12,24 @@ class SummonerNotFound(Exception):
     (z.B. weil er nicht auf EUW/Europe spielt - dieses Tool ist auf diese Region beschränkt)."""
 
 
+class RiotApiNichtVerfuegbar(SummonerNotFound):
+    """Riot lehnt die Anfrage selbst ab (abgelaufener Dev-Key, Rate-Limit, Störung) - der
+    Account kann trotzdem existieren. Unterklasse von SummonerNotFound, damit bestehende
+    except-Blöcke weiter greifen, aber mit ehrlicher Meldung."""
+
+
+def _pruefe_api_antwort(resp):
+    if resp.status_code in (401, 403):
+        raise RiotApiNichtVerfuegbar(
+            "Riot nimmt gerade keine Anfragen von RiftCircle an (der API-Key ist vermutlich "
+            "abgelaufen). Bitte später nochmal versuchen."
+        )
+    if resp.status_code == 429:
+        raise RiotApiNichtVerfuegbar("Zu viele Anfragen an Riot gerade - bitte in einer Minute nochmal versuchen.")
+    if resp.status_code >= 500:
+        raise RiotApiNichtVerfuegbar("Die Riot-Server haben gerade eine Störung - bitte später nochmal versuchen.")
+
+
 def merke_spielernamen(cur, spieler):
     """Trägt [(puuid, name, tag), ...] in den Namens-Index für die Suche ohne Tag ein bzw.
     aktualisiert Namen (Riot-IDs können sich ändern) und den Zeitpunkt des letzten Auftauchens.
@@ -120,6 +138,7 @@ def finde_riot_account(headers, riot_name, riot_tag):
         f"{urllib.parse.quote(riot_name)}/{urllib.parse.quote(riot_tag)}"
     )
     resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    _pruefe_api_antwort(resp)
     if resp.status_code != 200:
         return None
     daten = resp.json()
@@ -141,6 +160,7 @@ def sync_player(cur, conn, headers, riot_name, riot_tag, anzahl_matches=20):
     """
     url = f"https://europe.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_name}/{riot_tag}"
     resp = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+    _pruefe_api_antwort(resp)
     account = resp.json()
     if resp.status_code != 200 or "puuid" not in account:
         raise SummonerNotFound(f"{riot_name}#{riot_tag} wurde nicht gefunden.")

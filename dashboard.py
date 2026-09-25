@@ -53,6 +53,7 @@ from riot_assets import (
     summoner_icon_url,
 )
 from riot_fetch import (
+    RiotApiNichtVerfuegbar,
     SummonerNotFound,
     fetch_match_teams,
     finde_riot_account,
@@ -1393,6 +1394,8 @@ def profil():
                 """, (puuid,))
                 for (gruppe_id,) in cur.fetchall():
                     benachrichtige_gruppe_sicher(cur, conn, gruppe_id)
+        except RiotApiNichtVerfuegbar as e:
+            fehler = str(e)
         except SummonerNotFound as e:
             if geraten:
                 fehler = (
@@ -1786,6 +1789,8 @@ KONTO_MELDUNGEN = {
     "abgelaufen": ("fehler", f"Die Bestätigung ist abgelaufen (nach {VERIFIZIERUNG_MINUTEN} Minuten) - bitte neu starten."),
     "keine_spiele": ("fehler", "Der Account ist bestätigt, aber es wurden keine EUW-Spiele gefunden."),
     "verknuepft": ("ok", "Riot-Account bestätigt und verknüpft! Du kannst dein Profil-Icon jetzt wieder zurückstellen."),
+    "riot_api": ("fehler", "Riot nimmt gerade keine Anfragen von RiftCircle an (API-Key abgelaufen, Rate-Limit oder "
+                           "Störung) - dein Account ist nicht das Problem. Bitte später nochmal versuchen."),
     "getrennt": ("ok", "Verknüpfung gelöst."),
 }
 
@@ -1934,7 +1939,12 @@ def konto_verknuepfen():
         return redirect(url_for("konto", meldung="riot_ungueltig"))
 
     name, tag = (teil.strip() for teil in eingabe.rsplit("#", 1))
-    account = finde_riot_account(headers, name, tag)
+    try:
+        account = finde_riot_account(headers, name, tag)
+    except RiotApiNichtVerfuegbar:
+        cur.close()
+        conn.close()
+        return redirect(url_for("konto", meldung="riot_api"))
     if not account:
         cur.close()
         conn.close()
@@ -1984,6 +1994,11 @@ def konto_pruefen():
         aktuelles_icon = get_summoner_icon_id(puuid, headers)
     except Exception:
         aktuelles_icon = None
+    if aktuelles_icon is None:
+        # Der Account wurde in Schritt 1 schon gefunden - kein Icon heißt hier: Riot antwortet nicht
+        cur.close()
+        conn.close()
+        return redirect(url_for("konto", meldung="riot_api"))
     if aktuelles_icon != ziel_icon:
         cur.close()
         conn.close()
@@ -1992,6 +2007,10 @@ def konto_pruefen():
     # Bestätigt. Spieler synchronisieren (legt ihn in players an, nötig für die Verknüpfung)
     try:
         sync_player(cur, conn, headers, name, tag)
+    except RiotApiNichtVerfuegbar:
+        cur.close()
+        conn.close()
+        return redirect(url_for("konto", meldung="riot_api"))
     except SummonerNotFound:
         cur.close()
         conn.close()
