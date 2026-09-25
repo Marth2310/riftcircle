@@ -297,6 +297,37 @@
   .treffer-chip { width: 100px; }
   .treffer-tag { color: var(--muted); font-size: 0.7rem; }
 
+  /* Rang-Verlauf */
+  .rang-card { margin-bottom: 28px; }
+  .rang-hinweis { margin: 0 0 12px; }
+  .rang-chart { position: relative; height: 240px; }
+
+  /* Nach Rolle + Duo-Partner */
+  .profil-zweispaltig { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 28px; }
+  .rollen-liste, .duo-liste { display: flex; flex-direction: column; gap: 8px; }
+  .rollen-zeile {
+    display: grid; grid-template-columns: 26px 64px 1fr auto; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+  }
+  .rollen-zeile.leer { opacity: 0.45; }
+  .rollen-zeile img { width: 24px; height: 24px; }
+  .rollen-name { font-weight: 700; font-size: 0.88rem; }
+  .rollen-balken { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .rollen-balken span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent2), var(--teal)); }
+  .rollen-werte { color: var(--muted); font-size: 0.78rem; text-align: right; white-space: nowrap; }
+  .rollen-werte b { margin-right: 4px; }
+  .duo-zeile {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+    text-decoration: none; color: inherit; transition: border-color 0.15s, transform 0.15s;
+  }
+  .duo-zeile:hover { border-color: var(--accent); transform: translateX(3px); }
+  .duo-name { font-weight: 700; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .duo-name .tag { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+  .duo-werte { font-size: 0.8rem; white-space: nowrap; display: flex; gap: 6px; align-items: baseline; }
+  .duo-leer { text-align: left; padding: 8px 0; font-size: 0.85rem; }
+  .duo-liste + .treffer-hint { margin-top: 10px; }
+
   /* Meistgespielte Champions */
   .main-grid {
     display: grid;
@@ -471,6 +502,64 @@
   </div>
   {% endif %}
 
+  {% if rang_verlauf %}
+  <h2 class="section-title">Rang-Verlauf</h2>
+  <div class="chart-card rang-card">
+    {% if rang_verlauf.tage < 2 %}
+    <p class="treffer-hint rang-hinweis">Riot liefert nur den aktuellen Rang, keine Historie - RiftCircle speichert deshalb ab jetzt bei jedem Profilaufruf den Tagesstand. Ab dem zweiten Tag entsteht hier eine Linie.</p>
+    {% endif %}
+    <div class="rang-chart"><canvas id="rangChart"></canvas></div>
+    <script type="application/json" id="rangDaten">{{ {"verlauf": rang_verlauf, "achse": tier_achse} | tojson }}</script>
+  </div>
+  {% endif %}
+
+  {% if rollen_stats or duo_partner %}
+  <div class="profil-zweispaltig">
+    {% if rollen_stats %}
+    <div>
+      <h2 class="section-title">Nach Rolle</h2>
+      <div class="rollen-liste">
+        {% for r in rollen_stats %}
+        <div class="rollen-zeile {{ 'leer' if not r.spiele else '' }}">
+          <img src="{{ rollen_icon_url.format(r.icon) }}" alt="">
+          <span class="rollen-name">{{ r.name }}</span>
+          {% if r.spiele %}
+          <span class="rollen-balken" title="{{ r.anteil }}% deiner Spiele"><span style="width: {{ r.anteil }}%;"></span></span>
+          <span class="rollen-werte">
+            <b class="{{ 'win-value' if r.winrate >= 50 else 'loss-value' }}">{{ r.winrate }}%</b>
+            {{ r.spiele }} Sp. &middot; {{ r.kda }} KDA
+          </span>
+          {% else %}
+          <span class="rollen-werte">nicht gespielt</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div>
+      <h2 class="section-title">Duo-Partner</h2>
+      {% if duo_partner %}
+      <div class="duo-liste">
+        {% for d in duo_partner %}
+        <a class="duo-zeile" href="{{ url_for('profil', riot_id=d.name ~ '#' ~ d.tag) }}">
+          <span class="duo-name">{{ d.name }} <span class="tag">#{{ d.tag }}</span></span>
+          <span class="duo-werte">
+            <b class="{{ 'win-value' if d.winrate >= 50 else 'loss-value' }}">{{ d.winrate }}%</b>
+            <span class="win-value">{{ d.siege }}S</span> <span class="loss-value">{{ d.niederlagen }}N</span>
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+      <p class="treffer-hint">Mitspieler im selben Team aus gespeicherten Spielen - sortiert nach gemeinsamen Spielen.</p>
+      {% else %}
+      <p class="empty duo-leer">Noch keine Mitspieler mit mindestens 2 gemeinsamen Spielen gefunden. Duo-Partner erscheinen, sobald eure gemeinsamen Spiele bei RiftCircle gespeichert sind - z.B. wenn ihr beide gesucht werdet oder in einer Gruppe seid.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
   <h2 class="section-title">Übersicht</h2>
   <div class="chart-grid">
     <div class="chart-card">
@@ -596,6 +685,53 @@
   Chart.defaults.color = "#a79fcf";
   Chart.defaults.borderColor = "rgba(150, 130, 240, 0.15)";
   Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+  (function () {
+    // Rang-Verlauf: Tier/Division/LP als durchgehende Punkteskala (siehe profil_statistik.py),
+    // die y-Achse zeigt wieder "Gold IV" usw.
+    var el = document.getElementById("rangDaten");
+    if (!el) return;
+    var daten = JSON.parse(el.textContent);
+    var farben = { solo: "#8b6cf5", flex: "#c04dff" };
+    var alle = [];
+    daten.verlauf.reihen.forEach(function (r) { r.punkte.forEach(function (p) { if (p !== null) alle.push(p); }); });
+    var min = Math.floor((Math.min.apply(null, alle) - 60) / 100) * 100;
+    var max = Math.ceil((Math.max.apply(null, alle) + 60) / 100) * 100;
+    new Chart(document.getElementById("rangChart"), {
+      type: "line",
+      data: {
+        labels: daten.verlauf.labels,
+        datasets: daten.verlauf.reihen.map(function (r) {
+          return { label: r.name, data: r.punkte, texte: r.text, borderColor: farben[r.queue], backgroundColor: farben[r.queue],
+                   tension: 0.25, spanGaps: true, pointRadius: 4, borderWidth: 2.5 };
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
+          tooltip: { callbacks: { label: function (c) {
+            var t = c.dataset.texte[c.dataIndex];
+            return t ? c.dataset.label + ": " + t : null;
+          } } }
+        },
+        scales: {
+          y: {
+            min: Math.max(min, 0), max: max,
+            ticks: {
+              stepSize: 100,
+              callback: function (wert) {
+                if (wert >= 2800) return "Master+ " + (wert - 2800) + " LP";
+                return daten.achse[wert] || "";
+              }
+            }
+          }
+        }
+      }
+    });
+  })();
 
   new Chart(document.getElementById("winrateChart"), {
     type: "doughnut",

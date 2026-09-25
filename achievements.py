@@ -19,6 +19,22 @@ ACHIEVEMENT_DEFINITIONEN = [
         "text": lambda r: f"Quadra Kill mit {r['champion']}",
     },
     {
+        # "siegesserie" berechnet baue_gruppen_feed() aus der Spielhistorie - nur an runden
+        # Marken, sonst käme bei einer 8er-Serie in jedem Spiel ab dem 5. ein Achievement
+        "id": "siegesserie",
+        "icon": "📈",
+        "prioritaet": 80,
+        "pruefung": lambda r: r.get("siegesserie") in (5, 10, 15, 20),
+        "text": lambda r: f"{r['siegesserie']} Siege in Folge - zuletzt mit {r['champion']}",
+    },
+    {
+        "id": "comeback",
+        "icon": "🔄",
+        "prioritaet": 65,
+        "pruefung": lambda r: r["win"] and (r.get("inhibitoren_verloren") or 0) >= 1,
+        "text": lambda r: f"Comeback-Sieg mit {r['champion']} - trotz verlorenem Inhibitor",
+    },
+    {
         "id": "perfect_kda",
         "icon": "🛡️",
         "prioritaet": 70,
@@ -52,6 +68,24 @@ ACHIEVEMENT_DEFINITIONEN = [
         "prioritaet": 35,
         "pruefung": lambda r: r["solo_kills"] >= 3,
         "text": lambda r: f"{r['solo_kills']} Solo-Kills mit {r['champion']}",
+    },
+    {
+        "id": "carry",
+        "icon": "💪",
+        "prioritaet": 30,
+        "pruefung": lambda r: r["damage_rank"] == 1 and not r["win"],
+        "text": lambda r: "Carry-Versuch: " + f"{r['damage_dealt']:,}".replace(",", ".")
+                          + f" Schaden (Platz 1) mit {r['champion']} - trotz Niederlage",
+    },
+    {
+        # "erstes_mal" berechnet baue_gruppen_feed(): erstes gespeichertes Spiel mit diesem
+        # Champion bei einem Spieler, der schon genug Historie hat
+        "id": "neuer_champion",
+        "icon": "🆕",
+        "prioritaet": 25,
+        "pruefung": lambda r: r.get("erstes_mal", False),
+        "text": lambda r: f"Zum ersten Mal {r['champion']} gespielt"
+                          + (" - und direkt gewonnen" if r["win"] else ""),
     },
 ]
 

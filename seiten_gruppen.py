@@ -66,6 +66,34 @@ ROLLEN_LISTE = [
     ("BOTTOM", "Bot"), ("UTILITY", "Support"),
 ]
 ROLLEN_LABEL = dict(ROLLEN_LISTE)
+# "Zum ersten Mal X gespielt" erst ab so vielen gespeicherten Spielen davor - bei neu
+# getrackten Spielern wäre sonst praktisch jedes Spiel ein "erstes Mal"
+MIN_HISTORIE_NEUER_CHAMPION = 20
+
+
+def _historie_merkmale(cur, puuids):
+    """(match_id, puuid) -> {"siegesserie": n, "erstes_mal": bool} aus der kompletten
+    gespeicherten Historie der Spieler. Die Serie zählt gespeicherte Spiele - fehlen
+    dazwischen welche (mehr als 20 Spiele zwischen zwei Profil-Aufrufen), ist sie ungenau."""
+    cur.execute("""
+        SELECT p.puuid, p.match_id, p.champion, p.win
+        FROM participants p JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid = ANY(%s)
+        ORDER BY p.puuid, m.played_at, p.match_id;
+    """, (list(puuids),))
+    merkmale = {}
+    aktueller, serie, gesehen, anzahl = None, 0, set(), 0
+    for puuid, match_id, champion, win in cur.fetchall():
+        if puuid != aktueller:
+            aktueller, serie, gesehen, anzahl = puuid, 0, set(), 0
+        serie = serie + 1 if win else 0
+        merkmale[(match_id, puuid)] = {
+            "siegesserie": serie,
+            "erstes_mal": champion not in gesehen and anzahl >= MIN_HISTORIE_NEUER_CHAMPION,
+        }
+        gesehen.add(champion)
+        anzahl += 1
+    return merkmale
 
 
 def baue_gruppen_feed(cur, mitglied_puuids):
@@ -81,7 +109,7 @@ def baue_gruppen_feed(cur, mitglied_puuids):
         SELECT p.match_id, p.puuid, pl.riot_name, pl.riot_tag, p.champion, p.role, p.win,
                p.kills, p.deaths, p.assists, p.cs, p.damage_dealt, p.damage_rank,
                p.objectives_stolen, p.solo_kills,
-               p.penta_kills, p.quadra_kills, p.triple_kills, p.double_kills,
+               p.penta_kills, p.quadra_kills, p.triple_kills, p.double_kills, p.inhibitoren_verloren,
                m.played_at, m.duration_seconds
         FROM participants p
         JOIN matches m ON p.match_id = m.match_id
@@ -90,12 +118,14 @@ def baue_gruppen_feed(cur, mitglied_puuids):
         ORDER BY m.played_at DESC
         LIMIT %s;
     """, (mitglied_puuids, GRUPPEN_FEED_LIMIT))
+    zeilen = cur.fetchall()
+    historie = _historie_merkmale(cur, {row[1] for row in zeilen})
 
     feed = []
-    for row in cur.fetchall():
+    for row in zeilen:
         (match_id, puuid, riot_name, riot_tag, champion, role, win, kills, deaths, assists,
          cs, damage_dealt, damage_rank, objectives_stolen, solo_kills, penta, quadra, triple, double,
-         played_at, duration_seconds) = row
+         inhibitoren_verloren, played_at, duration_seconds) = row
 
         achievement_zeile = {
             "champion": champion, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
@@ -103,6 +133,8 @@ def baue_gruppen_feed(cur, mitglied_puuids):
             "objectives_stolen": objectives_stolen or 0,
             "solo_kills": solo_kills or 0, "penta_kills": penta or 0, "quadra_kills": quadra or 0,
             "triple_kills": triple or 0, "double_kills": double or 0,
+            "inhibitoren_verloren": inhibitoren_verloren,
+            **historie.get((match_id, puuid), {}),
         }
 
         kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
@@ -121,19 +153,27 @@ def baue_gruppen_feed(cur, mitglied_puuids):
     return feed
 
 
-WOCHEN_ZEITRAUM = {
+# Zeitraum -> SQL-Bedingung (feste Texte, keine Nutzereingabe) und ob Multikills pro Spiel zählen
+RANGLISTEN_ZEITRAEUME = {
     # Anzeige auf der Gruppenseite: gleitend die letzten 7 Tage
-    False: "m.played_at >= now() - interval '7 days'",
+    "woche": ("m.played_at >= now() - interval '7 days'", False),
     # Discord-Wochensieger: die zuletzt abgeschlossene Kalenderwoche (Mo 00:00 bis Mo 00:00)
-    True: "m.played_at >= date_trunc('week', now()) - interval '7 days' AND m.played_at < date_trunc('week', now())",
+    "letzte_kalenderwoche": (
+        "m.played_at >= date_trunc('week', now()) - interval '7 days' AND m.played_at < date_trunc('week', now())",
+        False,
+    ),
+    "monat": ("m.played_at >= date_trunc('month', now())", True),
+    "gesamt": ("TRUE", True),
 }
+VERLAUF_WOCHEN = 8
 
 
-def baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=False):
-    """Wer war diese Woche am besten? Siehe wochenrueckblick.py für die Gewichtung. Leere
+def baue_rangliste(cur, mitglieder, zeitraum="woche"):
+    """Wer war im Zeitraum am besten? Siehe wochenrueckblick.py für die Gewichtung. Leere
     Liste, falls in der Gruppe in dem Zeitraum noch niemand gespielt hat."""
     if not mitglieder:
         return []
+    bedingung, multikills_pro_spiel = RANGLISTEN_ZEITRAEUME[zeitraum]
 
     puuids = [m["puuid"] for m in mitglieder]
     cur.execute("""
@@ -145,7 +185,7 @@ def baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=False):
                SUM(COALESCE(p.triple_kills, 0)) AS triples, SUM(COALESCE(p.double_kills, 0)) AS doubles
         FROM participants p
         JOIN matches m ON p.match_id = m.match_id
-        WHERE p.puuid = ANY(%s) AND """ + WOCHEN_ZEITRAUM[letzte_kalenderwoche] + """
+        WHERE p.puuid = ANY(%s) AND """ + bedingung + """
         GROUP BY p.puuid;
     """, (puuids,))
 
@@ -165,10 +205,49 @@ def baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=False):
             "spiele": spiele, "siege": siege, "winrate": round(siege / spiele * 100),
             "avg_kda": round(avg_kda, 2),
             "pentas": pentas, "quadras": quadras, "triples": triples, "doubles": doubles,
-            "score": berechne_score(stats),
+            "score": berechne_score(stats, multikills_pro_spiel),
         })
     rangliste.sort(key=lambda r: r["score"], reverse=True)
     return rangliste
+
+
+def baue_verlauf(cur, mitglieder):
+    """Winrate, Ø-KDA und Spielanzahl je Mitglied pro Kalenderwoche der letzten VERLAUF_WOCHEN
+    Wochen (für das Liniendiagramm). Wochen ohne Spiele sind None (Lücke statt 0% Winrate).
+    Nur Mitglieder mit mindestens einem Spiel im Zeitraum."""
+    if not mitglieder:
+        return None
+    cur.execute("""
+        SELECT generate_series(
+            date_trunc('week', now()) - %s * interval '1 week', date_trunc('week', now()), interval '1 week'
+        )::date;
+    """, (VERLAUF_WOCHEN - 1,))
+    wochen = [row[0] for row in cur.fetchall()]
+    cur.execute("""
+        SELECT p.puuid, date_trunc('week', m.played_at)::date,
+               COUNT(*), SUM(CASE WHEN p.win THEN 1 ELSE 0 END), SUM(p.kills), SUM(p.deaths), SUM(p.assists)
+        FROM participants p JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid = ANY(%s) AND m.played_at >= date_trunc('week', now()) - %s * interval '1 week'
+        GROUP BY 1, 2;
+    """, ([m["puuid"] for m in mitglieder], VERLAUF_WOCHEN - 1))
+    werte = {(puuid, woche): (spiele, siege, k, d, a) for puuid, woche, spiele, siege, k, d, a in cur.fetchall()}
+
+    reihen = []
+    for m in mitglieder:
+        eintraege = [werte.get((m["puuid"], w)) for w in wochen]
+        if not any(eintraege):
+            continue
+        reihen.append({
+            "name": m["name"],
+            "farbe": m["farbe"],
+            "winrate": [round(e[1] / e[0] * 100) if e else None for e in eintraege],
+            "kda": [round((e[2] + e[4]) / e[3], 2) if e and e[3] else (float(e[2] + e[4]) if e else None)
+                    for e in eintraege],
+            "spiele": [e[0] if e else 0 for e in eintraege],
+        })
+    if not reihen:
+        return None
+    return {"labels": [f"KW {w.isocalendar()[1]}" for w in wochen], "reihen": reihen}
 
 
 def _discord_beanspruchen(cur, conn, gruppe_id, typ, schluessel):
@@ -277,7 +356,7 @@ def benachrichtige_gruppe(cur, conn, gruppe_id, feed=None, mitglieder=None):
     """, (seit,))
     woche_key, kw, nach_verbinden = cur.fetchone()
     if nach_verbinden:
-        rangliste = baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=True)
+        rangliste = baue_rangliste(cur, mitglieder, "letzte_kalenderwoche")
         if rangliste and _discord_beanspruchen(cur, conn, gruppe_id, "woche", woche_key):
             sieger_id = discord_ids.get(rangliste[0]["puuid"])
             _discord_senden(
@@ -321,7 +400,8 @@ def gruppe_ansehen(gruppe_id):
 
     feed = baue_gruppen_feed(cur, [p for p, _, _ in mitglieder_rows])
     achievement_feed = [f for f in feed if f["achievement"]]
-    wochenrangliste = baue_wochenrueckblick(cur, mitglieder)
+    ranglisten = {z: baue_rangliste(cur, mitglieder, z) for z in ("woche", "monat", "gesamt")}
+    verlauf = baue_verlauf(cur, mitglieder)
 
     benachrichtige_gruppe_sicher(cur, conn, gruppe_id, feed=feed, mitglieder=mitglieder)
     # Erst NACH dem Benachrichtigen lesen - ein in Discord gelöschter Webhook wird dabei getrennt
@@ -358,7 +438,7 @@ def gruppe_ansehen(gruppe_id):
 
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
-        feed=feed, achievement_feed=achievement_feed, wochenrangliste=wochenrangliste,
+        feed=feed, achievement_feed=achievement_feed, ranglisten=ranglisten, verlauf=verlauf,
         gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
         discord_verbunden=discord_verbunden,
         discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,

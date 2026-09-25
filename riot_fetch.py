@@ -83,14 +83,20 @@ def speichere_participant(cur, match_id, p, info):
         None
     )
     gold_diff = p["goldEarned"] - lane_gegner["goldEarned"] if lane_gegner else None
+    # Vom Gegner zerstörte Inhibitoren - für das "Comeback-Sieg"-Achievement
+    gegner_team = next((t for t in info.get("teams", []) if t.get("teamId") != p["teamId"]), None)
+    inhibitoren_verloren = (
+        gegner_team.get("objectives", {}).get("inhibitor", {}).get("kills", 0) if gegner_team else None
+    )
 
     cur.execute("""
         INSERT INTO participants
         (match_id, puuid, champion, role, win, kills, deaths, assists, cs, vision_score,
          gold_earned, damage_dealt, damage_taken, kill_participation, damage_share,
          turret_takedowns, objectives_stolen, solo_kills, items, perks, champ_level,
-         damage_rank, gold_diff, penta_kills, quadra_kills, triple_kills, double_kills)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         damage_rank, gold_diff, penta_kills, quadra_kills, triple_kills, double_kills,
+         inhibitoren_verloren)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (match_id, puuid) DO UPDATE SET
             champion = EXCLUDED.champion,
             role = EXCLUDED.role,
@@ -116,7 +122,8 @@ def speichere_participant(cur, match_id, p, info):
             penta_kills = EXCLUDED.penta_kills,
             quadra_kills = EXCLUDED.quadra_kills,
             triple_kills = EXCLUDED.triple_kills,
-            double_kills = EXCLUDED.double_kills;
+            double_kills = EXCLUDED.double_kills,
+            inhibitoren_verloren = EXCLUDED.inhibitoren_verloren;
     """, (
         match_id, p["puuid"], p["championName"], p["teamPosition"], p["win"],
         p["kills"], p["deaths"], p["assists"],
@@ -128,6 +135,7 @@ def speichere_participant(cur, match_id, p, info):
         json.dumps(items), json.dumps(perks), champ_level,
         damage_rank, gold_diff,
         p.get("pentaKills", 0), p.get("quadraKills", 0), p.get("tripleKills", 0), p.get("doubleKills", 0),
+        inhibitoren_verloren,
     ))
 
 

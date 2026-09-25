@@ -35,7 +35,9 @@ from riot_fetch import (
     get_top_mastery_champion_ids,
     sync_player,
 )
+from profil_statistik import duo_partner, rang_speichern, rang_verlauf, rollen_statistik, tier_achse
 from riot_runes import keystone_and_secondary_icons
+from seiten_champions import ROLLEN_ICON_URL
 from seiten_gruppen import benachrichtige_gruppe_sicher
 from web_hilfen import (
     GRUPPEN_ICONS,
@@ -185,6 +187,12 @@ def profil():
     ich = angemeldeter_nutzer()
     ist_mein_profil = bool(ich and ich.get("puuid") == puuid)
 
+    rang_speichern(cur, puuid, ranks)
+    conn.commit()
+    verlauf_rang = rang_verlauf(cur, puuid)
+    rollen_stats = rollen_statistik(cur, puuid)
+    partner = duo_partner(cur, puuid)
+
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
         cur.execute("UPDATE players SET profile_icon_id = %s WHERE puuid = %s;", (profile_icon_id, puuid))
@@ -299,6 +307,11 @@ def profil():
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
         hero_splash=hero_splash,
         meistgespielte=meistgespielte,
+        rang_verlauf=verlauf_rang,
+        tier_achse=tier_achse(),
+        rollen_stats=rollen_stats,
+        rollen_icon_url=ROLLEN_ICON_URL,
+        duo_partner=partner,
         gespeicherte_spiele=gespeicherte_spiele,
         profil_discord=profil_discord,
         ist_mein_profil=ist_mein_profil,

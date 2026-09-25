@@ -90,7 +90,7 @@ def achievement_embed(spiel, gruppe_name, gruppe_icon, match_url):
 
 
 def wochen_embed(rangliste, kalenderwoche, gruppe_name, gruppe_icon, gruppen_url):
-    """rangliste = baue_wochenrueckblick() für die abgeschlossene Kalenderwoche."""
+    """rangliste = baue_rangliste(..., "letzte_kalenderwoche") aus seiten_gruppen.py."""
     sieger = rangliste[0]
     multikills = [
         f"{anzahl}x {name}" for anzahl, name in (

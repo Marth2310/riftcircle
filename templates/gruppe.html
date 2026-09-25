@@ -235,6 +235,13 @@
   .vorschlag-chip:hover { color: var(--text); border-color: var(--accent); }
   .vorschlag-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
+  /* Verlauf der Mitglieder (Chart.js) */
+  .verlauf-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .verlauf-hinweis { color: var(--muted); font-size: 0.8rem; }
+  .verlauf-umschalter { display: flex; gap: 6px; }
+  .verlauf-chart { position: relative; height: 280px; }
+  .rangliste-tabs { margin-bottom: 16px; }
+
   /* Hinweiskarten für Besucher (Anmelden / Verknüpfen / Beitreten / Discord-Kanal) */
   .hinweis-karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 18px; }
   .hinweis-karte {
@@ -502,42 +509,68 @@
     </form>
   </div>
 
-  {% if wochenrangliste %}
+  {% set zeitraum_namen = {"woche": "Diese Woche", "monat": "Dieser Monat", "gesamt": "Gesamt"} %}
+  {% set zeitraum_leer = {"woche": "diese Woche", "monat": "diesen Monat", "gesamt": "bisher"} %}
   <div class="panel">
-    <h2 class="section-title">Diese Woche</h2>
-    {% set sieger = wochenrangliste[0] %}
-    <div class="woche-winner">
-      <div class="crown">👑</div>
-      <div class="circle" style="background: {{ sieger.farbe }};">{{ sieger.name[0] | upper }}</div>
-      <div class="woche-winner-info">
-        <div class="woche-winner-name">{{ sieger.name }}</div>
-        <div class="woche-winner-stats">
-          {{ sieger.spiele }} Spiel{{ "e" if sieger.spiele != 1 else "" }} &middot; {{ sieger.winrate }}% Winrate &middot; {{ sieger.avg_kda }} Ø-KDA
-          {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
-          {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
-          {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
-        </div>
-        <div class="woche-winner-score">Wochen-Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl)</div>
-      </div>
-    </div>
-
-    {% if wochenrangliste[1:] %}
-    <div class="woche-liste">
-      {% for w in wochenrangliste[1:] %}
-      <div class="woche-zeile">
-        <span class="rang">#{{ loop.index + 1 }}</span>
-        <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
-        <span class="name">{{ w.name }}</span>
-        <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA &middot; Score {{ w.score }}</span>
-      </div>
+    <h2 class="section-title">Rangliste</h2>
+    <div class="tab-nav rangliste-tabs">
+      {% for z in ["woche", "monat", "gesamt"] %}
+      <button type="button" class="tab-btn rangliste-tab {{ 'active' if loop.first else '' }}" data-zeitraum="{{ z }}">{{ zeitraum_namen[z] }}</button>
       {% endfor %}
     </div>
-    {% endif %}
+
+    {% for z in ["woche", "monat", "gesamt"] %}
+    {% set liste = ranglisten[z] %}
+    <div class="rangliste-inhalt" data-zeitraum="{{ z }}" {{ 'hidden' if not loop.first else '' }}>
+      {% if liste %}
+      {% set sieger = liste[0] %}
+      <div class="woche-winner">
+        <div class="crown">👑</div>
+        <div class="circle" style="background: {{ sieger.farbe }};">{{ sieger.name[0] | upper }}</div>
+        <div class="woche-winner-info">
+          <div class="woche-winner-name">{{ sieger.name }}</div>
+          <div class="woche-winner-stats">
+            {{ sieger.spiele }} Spiel{{ "e" if sieger.spiele != 1 else "" }} &middot; {{ sieger.winrate }}% Winrate &middot; {{ sieger.avg_kda }} Ø-KDA
+            {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
+            {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
+            {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
+          </div>
+          <div class="woche-winner-score">Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl{{ " - Multikills pro Spiel gerechnet" if z != "woche" else "" }})</div>
+        </div>
+      </div>
+
+      {% if liste[1:] %}
+      <div class="woche-liste">
+        {% for w in liste[1:] %}
+        <div class="woche-zeile">
+          <span class="rang">#{{ loop.index + 1 }}</span>
+          <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
+          <span class="name">{{ w.name }}</span>
+          <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA &middot; Score {{ w.score }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="empty">Noch niemand aus der Gruppe hat {{ zeitraum_leer[z] }} gespielt.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
-  {% else %}
+
+  {% if verlauf %}
   <div class="panel">
-    <h2 class="section-title">Diese Woche</h2>
-    <p class="empty">Noch niemand aus der Gruppe hat diese Woche gespielt.</p>
+    <h2 class="section-title">Verlauf</h2>
+    <div class="verlauf-kopf">
+      <span class="verlauf-hinweis">Pro Kalenderwoche, letzte {{ verlauf.labels | length }} Wochen</span>
+      <div class="verlauf-umschalter">
+        <button type="button" class="filter-chip active" data-kennzahl="winrate">Winrate</button>
+        <button type="button" class="filter-chip" data-kennzahl="kda">Ø-KDA</button>
+        <button type="button" class="filter-chip" data-kennzahl="spiele">Spiele</button>
+      </div>
+    </div>
+    <div class="verlauf-chart"><canvas id="verlaufChart"></canvas></div>
+    <script type="application/json" id="verlaufDaten">{{ verlauf | tojson }}</script>
   </div>
   {% endif %}
 
@@ -858,6 +891,73 @@
   })();
 </script>
 
+{% if verlauf %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>{% endif %}
+<script>
+  (function () {
+    // Rangliste: Woche / Monat / Gesamt
+    document.querySelectorAll(".rangliste-tab").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        var z = tab.getAttribute("data-zeitraum");
+        document.querySelectorAll(".rangliste-tab").forEach(function (t) { t.classList.toggle("active", t === tab); });
+        document.querySelectorAll(".rangliste-inhalt").forEach(function (el) { el.hidden = el.getAttribute("data-zeitraum") !== z; });
+      });
+    });
+
+    // Verlauf: ein Diagramm, Kennzahl per Umschalter
+    var datenEl = document.getElementById("verlaufDaten");
+    if (!datenEl || !window.Chart) return;
+    var daten = JSON.parse(datenEl.textContent);
+    var stil = getComputedStyle(document.documentElement);
+    function cssFarbe(wert) {
+      var m = /var\((--[\w-]+)\)/.exec(wert);
+      return m ? stil.getPropertyValue(m[1]).trim() : wert;
+    }
+    var gedaempft = cssFarbe("var(--muted)");
+    var raster = "rgba(150, 130, 240, 0.12)";
+    var achsen = {
+      winrate: { min: 0, max: 100, einheit: "%" },
+      kda: { min: 0, einheit: "" },
+      spiele: { min: 0, einheit: "" }
+    };
+    var chart = new Chart(document.getElementById("verlaufChart"), {
+      type: "line",
+      data: {
+        labels: daten.labels,
+        datasets: daten.reihen.map(function (r) {
+          var f = cssFarbe(r.farbe);
+          return { label: r.name, data: r.winrate, borderColor: f, backgroundColor: f,
+                   tension: 0.3, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5 };
+        })
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: gedaempft, usePointStyle: true, boxWidth: 8 } },
+          tooltip: { callbacks: { label: function (c) {
+            return c.dataset.label + ": " + (c.parsed.y === null ? "-" : c.parsed.y + achsen[aktuell].einheit);
+          } } }
+        },
+        scales: {
+          x: { ticks: { color: gedaempft }, grid: { color: raster } },
+          y: { min: 0, max: 100, ticks: { color: gedaempft }, grid: { color: raster } }
+        }
+      }
+    });
+    var aktuell = "winrate";
+    document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (knopf) {
+      knopf.addEventListener("click", function () {
+        aktuell = knopf.getAttribute("data-kennzahl");
+        document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (k) { k.classList.toggle("active", k === knopf); });
+        chart.data.datasets.forEach(function (ds, i) { ds.data = daten.reihen[i][aktuell]; });
+        chart.options.scales.y.min = achsen[aktuell].min;
+        chart.options.scales.y.max = achsen[aktuell].max;
+        chart.update();
+      });
+    });
+  })();
+</script>
 <script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

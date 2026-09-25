@@ -211,6 +211,23 @@ CREATE TABLE IF NOT EXISTS nutzer_zuletzt_gesehen (
 );
 """)
 
+# Vom Gegner zerstörte Inhibitoren (für "Comeback-Sieg") - nur für ab jetzt geladene Spiele
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS inhibitoren_verloren INTEGER;")
+
+# Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
+# Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
+cur.execute("""
+CREATE TABLE IF NOT EXISTS rang_verlauf (
+    puuid TEXT REFERENCES players(puuid) ON DELETE CASCADE,
+    queue TEXT NOT NULL,
+    tag DATE NOT NULL DEFAULT CURRENT_DATE,
+    tier TEXT NOT NULL,
+    division TEXT,
+    lp INTEGER NOT NULL,
+    PRIMARY KEY (puuid, queue, tag)
+);
+""")
+
 # Seitenaufrufe fürs eigene Statistik-Dashboard (/stats/<secret>) - visitor_hash ist ein
 # gesalzener Hash aus IP+User-Agent, nie die rohe IP selbst, siehe dashboard.py.
 cur.execute("""

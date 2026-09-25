@@ -11,8 +11,11 @@ MULTIKILL_PUNKTE = {"penta": 40, "quadra": 15, "triple": 5, "double": 1}
 VOLUMEN_DECKEL = 15  # ab so vielen Spielen gibt mehr Volumen keinen zusätzlichen Bonus mehr
 
 
-def berechne_score(stats):
-    """stats: dict mit spiele, siege, kills, deaths, assists, pentas, quadras, triples, doubles."""
+def berechne_score(stats, multikills_pro_spiel=False):
+    """stats: dict mit spiele, siege, kills, deaths, assists, pentas, quadras, triples, doubles.
+    multikills_pro_spiel: für lange Zeiträume (Monat/Gesamt) - dort würden absolute Multikill-
+    Punkte sonst mit der Spielanzahl immer weiter wachsen und Vielspieler automatisch nach
+    vorne bringen. Stattdessen zählt die Multikill-Rate, hochgerechnet auf VOLUMEN_DECKEL Spiele."""
     if stats["spiele"] == 0:
         return 0.0
 
@@ -28,6 +31,8 @@ def berechne_score(stats):
         + stats["triples"] * MULTIKILL_PUNKTE["triple"]
         + stats["doubles"] * MULTIKILL_PUNKTE["double"]
     )
+    if multikills_pro_spiel:
+        multikill_punkte = multikill_punkte / stats["spiele"] * VOLUMEN_DECKEL
     qualitaet = avg_kda * 8 + winrate * 25
     volumen_bonus = min(stats["spiele"], VOLUMEN_DECKEL) * 1.0
 
