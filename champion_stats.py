@@ -69,6 +69,25 @@ def _haeufigster_skill_pfad(sequenzen, prioritaet_slots):
     return {"pfad": pfad, "daten_bis": len(pfad) if daten_bis is None else daten_bis}
 
 
+def skill_prioritaet(skill_order):
+    """(Reihenfolge, in der Q/W/E zuerst 5 Punkte erreichen, Anzahl tatsächlich maximierter
+    Skills). R folgt eigenen Regeln. Nicht maximierte Skills (z.B. sehr kurze Spiele) hängen
+    in Q-W-E-Reihenfolge ans Ende - deshalb die Anzahl, um solche Fälle erkennen zu können."""
+    punkte = {1: 0, 2: 0, 3: 0}
+    erreicht = []
+    for slot in skill_order or []:
+        if slot not in punkte:
+            continue
+        punkte[slot] += 1
+        if punkte[slot] == 5 and slot not in erreicht:
+            erreicht.append(slot)
+    maximiert = len(erreicht)
+    for slot in (1, 2, 3):
+        if slot not in erreicht:
+            erreicht.append(slot)
+    return erreicht, maximiert
+
+
 def _hat_vollstaendige_runen(perks):
     styles = (perks or {}).get("styles") or []
     return (
@@ -148,7 +167,7 @@ def berechne_runen_varianten(zeilen):
 
 
 def _get_item_info():
-    """item_id -> {tags, gold, hat_upgrade}. "hat_upgrade" = Data Dragon "into" ist nicht
+    """item_id -> {tags, gold, hat_upgrade, name}. "hat_upgrade" = Data Dragon "into" ist nicht
     leer, d.h. das Item ist eine unfertige Zwischenstufe (z.B. Pickaxe, Dagger) und kein
     fertiges Enditem (z.B. Infinity Edge) - genau der Marker, den Riot selbst benutzt, um
     Komponenten von fertigen Items zu unterscheiden."""
@@ -162,6 +181,7 @@ def _get_item_info():
                 "tags": set(d.get("tags", [])),
                 "gold": d.get("gold", {}).get("total", 0),
                 "hat_upgrade": bool(d.get("into")),
+                "name": d.get("name", ""),
             }
             for iid, d in data.items()
         }
@@ -332,19 +352,7 @@ def berechne_champion_stats(cur, champion_key):
         if not skill_order:
             continue
         skill_order_spiele += 1
-        # Priorität = Reihenfolge, in der Q/W/E (R folgt eigenen Regeln) zuerst 5 Punkte
-        # erreichen - fehlende Skills (z.B. bei sehr kurzen Spielen) hängen ans Ende.
-        punkte = {1: 0, 2: 0, 3: 0}
-        erreicht = []
-        for slot in skill_order:
-            if slot not in punkte:
-                continue
-            punkte[slot] += 1
-            if punkte[slot] == 5 and slot not in erreicht:
-                erreicht.append(slot)
-        for slot in (1, 2, 3):
-            if slot not in erreicht:
-                erreicht.append(slot)
+        erreicht, _ = skill_prioritaet(skill_order)
         prioritaet = " > ".join(SKILL_BUCHSTABEN[s] for s in erreicht)
         order_counter[prioritaet] = order_counter.get(prioritaet, 0) + 1
         order_details.setdefault(prioritaet, (erreicht, []))[1].append(

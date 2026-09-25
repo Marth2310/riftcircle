@@ -3,10 +3,13 @@ import json
 
 from flask import abort, redirect, render_template, request, url_for
 
+from analysis import get_player_ranks
 from app_core import app, headers
+from benchmarks import normalize_tier
 from champion_mobility import hat_escape
 from db import get_connection
-from profil_statistik import ROLLEN
+from match_tipps import erstelle_tipps
+from profil_statistik import ROLLEN, rang_speichern
 from riot_assets import champion_icon_url, champion_splash_url, get_champion_spells, get_ddragon_version, item_icon_url
 from riot_fetch import fetch_match_teams, merke_spielernamen
 from riot_runes import build_rune_display, keystone_and_secondary_icons
@@ -378,6 +381,26 @@ def vergleich_ansehen():
     return render_template("vergleich.html", a=a, b=b, zeilen=zeilen, saetze=saetze)
 
 
+def _rang_fuer_tipps(cur, conn, puuid):
+    """Solo/Duo-Tier für die Richtwerte: zuerst der gespeicherte Rang-Verlauf (kein API-Call),
+    sonst einmal bei Riot nachfragen und gleich mitspeichern. (tier, ob bekannt)."""
+    cur.execute(
+        "SELECT tier FROM rang_verlauf WHERE puuid = %s AND queue = 'solo' ORDER BY tag DESC LIMIT 1;", (puuid,)
+    )
+    row = cur.fetchone()
+    if row:
+        return normalize_tier(row[0]), True
+    try:
+        ranks = get_player_ranks(puuid, headers)
+    except Exception:
+        return "GOLD", False
+    if ranks.get("solo"):
+        rang_speichern(cur, puuid, ranks)
+        conn.commit()
+        return normalize_tier(ranks["solo"]["tier"]), True
+    return "GOLD", False
+
+
 @app.route("/match/<match_id>")
 def match_detail(match_id):
     puuid = request.args.get("puuid", "")
@@ -522,6 +545,17 @@ def match_detail(match_id):
 
     lane_vergleich = baue_lane_vergleich(teams, puuid, gold_timeline)
     rollen_tipps = tipps_fuer_rolle(role)
+    conn = get_connection()
+    cur = conn.cursor()
+    tier, tier_bekannt = _rang_fuer_tipps(cur, conn, puuid)
+    match_tipps = erstelle_tipps(
+        cur, puuid=puuid, match_id=match_id, tier=tier, tier_bekannt=tier_bekannt, teams=teams,
+        lane_vergleich=baue_lane_vergleich(teams, puuid, gold_timeline), death_positions=death_positions,
+        timeline_extra=timeline_extra, item_timeline=item_timeline, skill_order=skill_order,
+        version=ddragon_version,
+    )
+    cur.close()
+    conn.close()
     tod_analyse = analysiere_tode(death_positions, timeline_extra, teams, puuid, champion)
     zeitstrahl = baue_zeitstrahl(death_positions, timeline_extra, teams, puuid)
     team_vergleich = baue_team_vergleich(teams)
@@ -565,4 +599,5 @@ def match_detail(match_id):
         teams=teams,
         lane_vergleich=lane_vergleich,
         rollen_tipps=rollen_tipps,
+        match_tipps=match_tipps,
     )
