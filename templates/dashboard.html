@@ -414,6 +414,16 @@
         <span class="rank-badge"><span class="rank-label">Solo/Duo</span> {{ rang_solo }}</span>
         <span class="rank-badge flex"><span class="rank-label">Flex</span> {{ rang_flex }}</span>
       </div>
+      {% if profil_discord or ist_mein_profil %}
+      <div class="profil-discord">
+        {% if profil_discord %}
+        <span class="discord-pill" title="Mit Discord verknüpft und per Profil-Icon bestätigt">
+          <img src="{{ profil_discord.avatar }}" alt="">{{ profil_discord.name }}
+        </span>
+        {% endif %}
+        {% if ist_mein_profil %}<span class="du-pill">Das bist du</span>{% endif %}
+      </div>
+      {% endif %}
     </div>
   </div>
 

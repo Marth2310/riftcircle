@@ -328,6 +328,29 @@ h2.section-title::before {
   .konto-knopf.angemeldet { padding: 4px; }
 }
 
+/* Discord-Verknüpfung eines Spielers + "Das bist du" - Profilseite und Gruppen */
+.profil-discord { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.discord-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 11px 3px 3px;
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.2);
+  border: 1px solid rgba(88, 101, 242, 0.55);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.discord-pill img { width: 20px; height: 20px; border-radius: 50%; }
+.du-pill {
+  display: inline-flex; align-items: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--teal), var(--accent2));
+  color: #0a0818;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
 /* Vorschlagsliste der Spielersuche (static/spielersuche.js) - hängt am <body> */
 .suche-vorschlaege {
   position: absolute;

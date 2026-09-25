@@ -25,21 +25,28 @@ def ist_gueltige_webhook_url(url):
     return bool(WEBHOOK_MUSTER.match(url or ""))
 
 
-def sende(webhook_url, embeds, basis_url):
+def erwaehnung(discord_ids, anlass):
+    """Nachrichtentext, der die verknüpften Spieler anpingt - Erwähnungen in Embeds lösen
+    in Discord keine Benachrichtigung aus, nur im normalen Nachrichtentext."""
+    if not discord_ids:
+        return None
+    return f"{anlass} " + " ".join(f"<@{i}>" for i in discord_ids)
+
+
+def sende(webhook_url, embeds, basis_url, inhalt=None, erwaehnte_ids=()):
     """Schickt eine Nachricht mit bis zu 10 Embeds. Gibt den HTTP-Status zurück (0 bei
     Netzwerkfehler) - 204 heißt angekommen, 401/404 heißt der Webhook wurde in Discord
-    gelöscht."""
+    gelöscht. Gepingt werden ausschließlich erwaehnte_ids (kein @everyone, keine Rollen)."""
+    nachricht = {
+        "username": "RiftCircle",
+        "avatar_url": f"{basis_url}/static/apple-touch-icon.png",
+        "embeds": embeds[:MAX_EMBEDS_PRO_NACHRICHT],
+        "allowed_mentions": {"parse": [], "users": list(erwaehnte_ids)[:100]},
+    }
+    if inhalt:
+        nachricht["content"] = inhalt
     try:
-        resp = requests.post(
-            webhook_url,
-            json={
-                "username": "RiftCircle",
-                "avatar_url": f"{basis_url}/static/apple-touch-icon.png",
-                "embeds": embeds[:MAX_EMBEDS_PRO_NACHRICHT],
-                "allowed_mentions": {"parse": []},  # Spielernamen dürfen niemanden pingen
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
+        resp = requests.post(webhook_url, json=nachricht, timeout=REQUEST_TIMEOUT)
         return resp.status_code
     except requests.RequestException:
         return 0

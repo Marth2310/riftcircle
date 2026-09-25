@@ -190,6 +190,27 @@ CREATE TABLE IF NOT EXISTS nutzer (
 );
 """)
 
+# Ob der Nutzer in Discord-Posts seiner Gruppen erwähnt (gepingt) werden möchte
+cur.execute("ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS discord_erwaehnen BOOLEAN DEFAULT TRUE;")
+# "Meine Gruppen" und "Zuletzt gesehen" für angemeldete Nutzer - geräteübergreifend statt nur
+# im Browser-Cookie
+cur.execute("""
+CREATE TABLE IF NOT EXISTS nutzer_gruppen (
+    discord_id TEXT REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    gruppe_id TEXT REFERENCES gruppen(id) ON DELETE CASCADE,
+    zuletzt_besucht TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (discord_id, gruppe_id)
+);
+""")
+cur.execute("""
+CREATE TABLE IF NOT EXISTS nutzer_zuletzt_gesehen (
+    discord_id TEXT REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    puuid TEXT REFERENCES players(puuid) ON DELETE CASCADE,
+    zuletzt TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (discord_id, puuid)
+);
+""")
+
 # Seitenaufrufe fürs eigene Statistik-Dashboard (/stats/<secret>) - visitor_hash ist ein
 # gesalzener Hash aus IP+User-Agent, nie die rohe IP selbst, siehe dashboard.py.
 cur.execute("""

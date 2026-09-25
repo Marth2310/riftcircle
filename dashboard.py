@@ -7,7 +7,7 @@ import urllib.parse
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, make_response, redirect, render_template, request, session, url_for
+from flask import Flask, abort, g, jsonify, make_response, redirect, render_template, request, session, url_for
 
 from achievements import bestes_achievement
 from analysis import (
@@ -36,6 +36,7 @@ from discord_login import hole_discord_nutzer, login_url
 from discord_webhook import (
     MAX_EMBEDS_PRO_NACHRICHT,
     achievement_embed,
+    erwaehnung,
     ist_gueltige_webhook_url,
     sende,
     test_embed,
@@ -462,10 +463,47 @@ MAX_ZULETZT_GESEHEN = 10
 
 
 def _lese_zuletzt_gesehen():
-    """Zuletzt von DIESEM Browser gesuchte Profile - rein über ein Cookie, keine Server-
-    Session/Login nötig. Jeder Besucher sieht nur seine eigene Liste (vorher war "bekannte
-    Spieler" global für alle sichtbar - das war explizit nicht gewünscht).
-    Der Cookie-Wert ist selbst URL-kodiert (statt Werkzeug/dem Client das Quoting des rohen
+    """Zuletzt angesehene Profile: angemeldet aus der DB (geräteübergreifend), sonst aus dem
+    Cookie DIESES Browsers. Jeder sieht nur seine eigene Liste. Pro Request nur einmal aus der
+    DB gelesen (wird z.B. in profil() mehrfach gebraucht)."""
+    discord_id = _angemeldete_discord_id()
+    if not discord_id:
+        return _cookie_zuletzt_gesehen()
+    if "zuletzt_gesehen" not in g:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT pl.puuid, pl.riot_name, pl.riot_tag
+            FROM nutzer_zuletzt_gesehen z JOIN players pl ON pl.puuid = z.puuid
+            WHERE z.discord_id = %s
+            ORDER BY z.zuletzt DESC
+            LIMIT %s;
+        """, (discord_id, MAX_ZULETZT_GESEHEN))
+        g.zuletzt_gesehen = [{"puuid": p, "name": n, "tag": t} for p, n, t in cur.fetchall()]
+        cur.close()
+        conn.close()
+    return list(g.zuletzt_gesehen)
+
+
+def _merke_zuletzt_gesehen(puuid):
+    """Angemeldet: Profilaufruf zusätzlich in der DB merken (das Cookie schreibt profil())."""
+    discord_id = _angemeldete_discord_id()
+    if not discord_id:
+        return
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO nutzer_zuletzt_gesehen (discord_id, puuid) VALUES (%s, %s)
+        ON CONFLICT (discord_id, puuid) DO UPDATE SET zuletzt = now();
+    """, (discord_id, puuid))
+    conn.commit()
+    cur.close()
+    conn.close()
+    g.pop("zuletzt_gesehen", None)
+
+
+def _cookie_zuletzt_gesehen():
+    """Der Cookie-Wert ist selbst URL-kodiert (statt Werkzeug/dem Client das Quoting des rohen
     JSON überlassen - manche HTTP-Clients verschlucken sich an verschachtelten
     Anführungszeichen in einem gequoteten Cookie-Wert)."""
     roh = request.cookies.get(ZULETZT_GESEHEN_COOKIE)
@@ -540,10 +578,38 @@ MAX_MEINE_GRUPPEN = 20
 
 
 def _lese_meine_gruppen():
-    """Gruppen, die DIESER Browser erstellt oder besucht hat - genau wie zuletzt_gesehen rein
-    übers Cookie. Die Gruppe selbst lebt in der DB und ist über ihre ID für jeden mit dem Link
-    sichtbar (Community/Rivalen-Gedanke, kein Login) - das Cookie merkt sich nur, welche
-    Gruppen-Links DIESER Browser kennt, für den Schnellzugriff auf Startseite/Profil."""
+    """Schnellzugriff "Meine Gruppen". Angemeldet aus der DB: besuchte/erstellte Gruppen PLUS
+    automatisch jede Gruppe, in der der verknüpfte Riot-Account Mitglied ist - Name und Icon
+    immer aktuell. Nicht angemeldet: nur die Gruppen-Links, die DIESER Browser kennt (Cookie)."""
+    discord_id = _angemeldete_discord_id()
+    if not discord_id:
+        return _cookie_meine_gruppen()
+    if "meine_gruppen" not in g:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT gr.id, gr.name, COALESCE(gr.icon, '🛡️'), MAX(t.zeit) AS zeit
+            FROM (
+                SELECT gruppe_id, zuletzt_besucht AS zeit FROM nutzer_gruppen WHERE discord_id = %s
+                UNION ALL
+                SELECT gm.gruppe_id, gm.hinzugefuegt_am
+                FROM gruppen_mitglieder gm JOIN nutzer n ON n.riot_puuid = gm.puuid
+                WHERE n.discord_id = %s
+            ) t
+            JOIN gruppen gr ON gr.id = t.gruppe_id
+            GROUP BY gr.id, gr.name, gr.icon
+            ORDER BY zeit DESC
+            LIMIT %s;
+        """, (discord_id, discord_id, MAX_MEINE_GRUPPEN))
+        g.meine_gruppen = [{"id": i, "name": n, "icon": ic} for i, n, ic, _ in cur.fetchall()]
+        cur.close()
+        conn.close()
+    return list(g.meine_gruppen)
+
+
+def _cookie_meine_gruppen():
+    """Die Gruppe selbst lebt in der DB und ist über ihre ID für jeden mit dem Link sichtbar
+    (kein Login nötig) - das Cookie merkt sich nur, welche Gruppen-Links DIESER Browser kennt."""
     roh = request.cookies.get(MEINE_GRUPPEN_COOKIE)
     if not roh:
         return []
@@ -561,7 +627,19 @@ def _lese_meine_gruppen():
 
 
 def _meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon="🛡️"):
-    bisherige = [e for e in _lese_meine_gruppen() if e["id"] != gruppe_id]
+    discord_id = _angemeldete_discord_id()
+    if discord_id:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO nutzer_gruppen (discord_id, gruppe_id) VALUES (%s, %s)
+            ON CONFLICT (discord_id, gruppe_id) DO UPDATE SET zuletzt_besucht = now();
+        """, (discord_id, gruppe_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        g.pop("meine_gruppen", None)
+    bisherige = [e for e in _cookie_meine_gruppen() if e["id"] != gruppe_id]
     neu = ([{"id": gruppe_id, "name": name, "icon": icon}] + bisherige)[:MAX_MEINE_GRUPPEN]
     resp.set_cookie(
         MEINE_GRUPPEN_COOKIE, urllib.parse.quote(json.dumps(neu)),
@@ -929,9 +1007,20 @@ def _discord_freigeben(cur, conn, gruppe_id, typ, schluessel):
     conn.commit()
 
 
-def _discord_senden(cur, conn, gruppe_id, webhook, embeds, typ, schluessel):
+def _discord_ids_zum_erwaehnen(cur, puuids):
+    """puuid -> Discord-ID für verknüpfte Spieler, die Erwähnungen nicht abgeschaltet haben."""
+    if not puuids:
+        return {}
+    cur.execute("""
+        SELECT riot_puuid, discord_id FROM nutzer
+        WHERE riot_puuid = ANY(%s) AND COALESCE(discord_erwaehnen, TRUE);
+    """, (list(puuids),))
+    return dict(cur.fetchall())
+
+
+def _discord_senden(cur, conn, gruppe_id, webhook, embeds, typ, schluessel, erwaehnte_ids=(), anlass=""):
     """Sendet und räumt bei Fehlern auf. False = abbrechen (nichts weiter senden)."""
-    status = sende(webhook, embeds, PUBLIC_BASE_URL)
+    status = sende(webhook, embeds, PUBLIC_BASE_URL, erwaehnung(erwaehnte_ids, anlass), erwaehnte_ids)
     if 200 <= status < 300:
         return True
     _discord_freigeben(cur, conn, gruppe_id, typ, schluessel)
@@ -976,6 +1065,7 @@ def benachrichtige_gruppe(cur, conn, gruppe_id, feed=None, mitglieder=None):
         f for f in neue
         if _discord_beanspruchen(cur, conn, gruppe_id, "achievement", f"{f['match_id']}:{f['puuid']}")
     ]
+    discord_ids = _discord_ids_zum_erwaehnen(cur, {f["puuid"] for f in offen} | {m["puuid"] for m in mitglieder})
     for i in range(0, len(offen), MAX_EMBEDS_PRO_NACHRICHT):
         teil = offen[i:i + MAX_EMBEDS_PRO_NACHRICHT]
         embeds = [
@@ -985,8 +1075,11 @@ def benachrichtige_gruppe(cur, conn, gruppe_id, feed=None, mitglieder=None):
             )
             for f in teil
         ]
+        # Jeden verknüpften Spieler einmal pro Nachricht erwähnen, in Reihenfolge der Achievements
+        erwaehnte = list(dict.fromkeys(discord_ids[f["puuid"]] for f in teil if f["puuid"] in discord_ids))
         if not _discord_senden(cur, conn, gruppe_id, webhook, embeds, "achievement",
-                               [f"{f['match_id']}:{f['puuid']}" for f in offen[i:]]):
+                               [f"{f['match_id']}:{f['puuid']}" for f in offen[i:]],
+                               erwaehnte, "🎉 Neues Achievement für"):
             return
 
     # Wochensieger der zuletzt abgeschlossenen Kalenderwoche - nur Wochen, die nach dem
@@ -1000,10 +1093,12 @@ def benachrichtige_gruppe(cur, conn, gruppe_id, feed=None, mitglieder=None):
     if nach_verbinden:
         rangliste = baue_wochenrueckblick(cur, mitglieder, letzte_kalenderwoche=True)
         if rangliste and _discord_beanspruchen(cur, conn, gruppe_id, "woche", woche_key):
+            sieger_id = discord_ids.get(rangliste[0]["puuid"])
             _discord_senden(
                 cur, conn, gruppe_id, webhook,
                 [wochen_embed(rangliste, f"KW {int(kw)}", name, icon, gruppen_url)],
                 "woche", [woche_key],
+                [sieger_id] if sieger_id else [], "👑 Glückwunsch zum Wochensieg,",
             )
 
 
@@ -1054,9 +1149,18 @@ def gruppe_ansehen(gruppe_id):
     for f in feed:
         if f["puuid"] not in zuletzt_aktiv:
             zuletzt_aktiv[f["puuid"]] = f["zeit_text"]
+    # Discord-Verknüpfungen der Mitglieder ("Das bist du" + Discord-Avatar am Mitglied)
+    cur.execute(
+        "SELECT riot_puuid, discord_name, discord_avatar FROM nutzer WHERE riot_puuid = ANY(%s);",
+        ([m["puuid"] for m in mitglieder],),
+    )
+    discord_je_puuid = {p: {"name": n, "avatar": a} for p, n, a in cur.fetchall()}
     for m in mitglieder:
         m["zuletzt_aktiv"] = zuletzt_aktiv.get(m["puuid"])
+        m["discord"] = discord_je_puuid.get(m["puuid"])
     mitglieder = _mit_summoner_icons(mitglieder)
+    ich = _angemeldeter_nutzer()
+    meine_puuid = ich.get("puuid") if ich else None
 
     # Schnellauswahl beim Mitglied-Hinzufügen: eigene "Zuletzt gesehen"-Profile, die noch
     # nicht in der Gruppe sind.
@@ -1073,6 +1177,8 @@ def gruppe_ansehen(gruppe_id):
         discord_verbunden=discord_verbunden,
         discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,
         discord_meldung=discord_meldung,
+        ich=ich, meine_puuid=meine_puuid,
+        bin_mitglied=bool(meine_puuid) and meine_puuid in mitglied_puuids,
     ))
     # Wer den Link öffnet, bekommt die Gruppe automatisch in sein eigenes "Meine Gruppen" -
     # genau wie eine besuchte Profilseite in "Zuletzt gesehen" landet.
@@ -1109,6 +1215,29 @@ def gruppe_mitglied_hinzufuegen(gruppe_id):
         except SummonerNotFound:
             pass  # Stiller Fehlschlag - die Gruppe zeigt einfach weiterhin nur die gültigen Mitglieder
 
+    cur.close()
+    conn.close()
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/beitreten", methods=["POST"])
+def gruppe_beitreten(gruppe_id):
+    """Ein Klick: den eigenen, per Discord verknüpften Riot-Account zur Gruppe hinzufügen."""
+    ich = _angemeldeter_nutzer()
+    if not ich or not ich.get("puuid"):
+        return redirect(url_for("konto"))
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM gruppen WHERE id = %s;", (gruppe_id,))
+    if cur.fetchone() is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    cur.execute(
+        "INSERT INTO gruppen_mitglieder (gruppe_id, puuid) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+        (gruppe_id, ich["puuid"]),
+    )
+    conn.commit()
     cur.close()
     conn.close()
     return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
@@ -1160,7 +1289,7 @@ def gruppe_loeschen(gruppe_id):
 
     resp = make_response(redirect(url_for("landing")))
     # Auch aus dem eigenen "Meine Gruppen"-Cookie entfernen, sonst bleibt ein toter Link stehen.
-    verbleibend = [e for e in _lese_meine_gruppen() if e["id"] != gruppe_id]
+    verbleibend = [e for e in _cookie_meine_gruppen() if e["id"] != gruppe_id]
     resp.set_cookie(
         MEINE_GRUPPEN_COOKIE, urllib.parse.quote(json.dumps(verbleibend)),
         max_age=60 * 60 * 24 * 365, httponly=True, samesite="Lax",
@@ -1476,6 +1605,11 @@ def profil():
     champ_zeilen = cur.fetchall()
     cur.execute("SELECT COUNT(*) FROM participants WHERE puuid = %s;", (puuid,))
     gespeicherte_spiele = cur.fetchone()[0]
+    cur.execute("SELECT discord_name, discord_avatar FROM nutzer WHERE riot_puuid = %s;", (puuid,))
+    discord_row = cur.fetchone()
+    profil_discord = {"name": discord_row[0], "avatar": discord_row[1]} if discord_row else None
+    ich = _angemeldeter_nutzer()
+    ist_mein_profil = bool(ich and ich.get("puuid") == puuid)
 
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
@@ -1573,6 +1707,7 @@ def profil():
     # direkt fürs Rendern wiederverwendet, damit es sofort oben auftaucht statt erst beim
     # nächsten Request.
     neue_liste = _neue_zuletzt_gesehen_liste(puuid, riot_name, riot_tag)
+    _merke_zuletzt_gesehen(puuid)
 
     resp = make_response(render_template(
         "dashboard.html",
@@ -1591,6 +1726,8 @@ def profil():
         hero_splash=hero_splash,
         meistgespielte=meistgespielte,
         gespeicherte_spiele=gespeicherte_spiele,
+        profil_discord=profil_discord,
+        ist_mein_profil=ist_mein_profil,
         anzahl_spiele=len(spiele),
         siege=siege,
         niederlagen=len(spiele) - siege,
@@ -1792,6 +1929,7 @@ KONTO_MELDUNGEN = {
     "riot_api": ("fehler", "Riot nimmt gerade keine Anfragen von RiftCircle an (API-Key abgelaufen, Rate-Limit oder "
                            "Störung) - dein Account ist nicht das Problem. Bitte später nochmal versuchen."),
     "getrennt": ("ok", "Verknüpfung gelöst."),
+    "gespeichert": ("ok", "Einstellung gespeichert."),
 }
 
 
@@ -1815,15 +1953,48 @@ def _angemeldete_discord_id():
     return nutzer["id"] if nutzer else None
 
 
+def _angemeldeter_nutzer():
+    """Session-Daten des angemeldeten Nutzers (id, name, avatar, riot, puuid) oder None.
+    Sitzungen von vor der "puuid"-Erweiterung werden dabei einmalig aus der DB ergänzt."""
+    if not _angemeldete_discord_id():
+        return None
+    if "puuid" not in session["nutzer"]:
+        conn = get_connection()
+        cur = conn.cursor()
+        _session_riot_aktualisieren(cur, session["nutzer"]["id"])
+        cur.close()
+        conn.close()
+    return session["nutzer"]
+
+
 def _session_riot_aktualisieren(cur, discord_id):
     cur.execute("""
-        SELECT pl.riot_name, pl.riot_tag FROM nutzer n JOIN players pl ON pl.puuid = n.riot_puuid
+        SELECT pl.puuid, pl.riot_name, pl.riot_tag FROM nutzer n JOIN players pl ON pl.puuid = n.riot_puuid
         WHERE n.discord_id = %s;
     """, (discord_id,))
     row = cur.fetchone()
     nutzer = dict(session["nutzer"])
-    nutzer["riot"] = f"{row[0]}#{row[1]}" if row else None
+    nutzer["puuid"] = row[0] if row else None
+    nutzer["riot"] = f"{row[1]}#{row[2]}" if row else None
     session["nutzer"] = nutzer
+    g.pop("meine_gruppen", None)  # Mitgliedschaften des Riot-Accounts zählen dort mit
+
+
+def _cookie_listen_uebernehmen(cur, discord_id):
+    """Beim Login: was dieser Browser bisher (ohne Konto) gesammelt hat, ins Konto übernehmen -
+    Reihenfolge bleibt erhalten, ältere Einträge bekommen etwas frühere Zeitstempel."""
+    for i, e in enumerate(_cookie_zuletzt_gesehen()):
+        cur.execute("""
+            INSERT INTO nutzer_zuletzt_gesehen (discord_id, puuid, zuletzt)
+            SELECT %s, puuid, now() - %s * interval '1 second' FROM players WHERE puuid = %s
+            ON CONFLICT (discord_id, puuid) DO NOTHING;
+        """, (discord_id, i + 1, e["puuid"]))
+    for i, e in enumerate(_cookie_meine_gruppen()):
+        cur.execute("""
+            INSERT INTO nutzer_gruppen (discord_id, gruppe_id, zuletzt_besucht)
+            SELECT %s, id, now() - %s * interval '1 second' FROM gruppen WHERE id = %s
+            ON CONFLICT (discord_id, gruppe_id) DO NOTHING;
+        """, (discord_id, i + 1, e["id"]))
 
 
 @app.route("/auth/discord/login")
@@ -1859,6 +2030,7 @@ def discord_callback():
         ON CONFLICT (discord_id) DO UPDATE SET
             discord_name = EXCLUDED.discord_name, discord_avatar = EXCLUDED.discord_avatar, zuletzt_login = now();
     """, (daten["id"], daten["name"], daten["avatar"]))
+    _cookie_listen_uebernehmen(cur, daten["id"])
     conn.commit()
     session.permanent = True
     session["nutzer"] = {"id": daten["id"], "name": daten["name"], "avatar": daten["avatar"], "riot": None}
@@ -1888,7 +2060,8 @@ def konto():
     cur.execute("""
         SELECT n.discord_name, n.discord_avatar, n.riot_puuid, pl.riot_name, pl.riot_tag, pl.profile_icon_id,
                n.verknuepft_am, n.pruef_name, n.pruef_tag, n.pruef_icon,
-               n.pruef_seit IS NOT NULL AND n.pruef_seit > now() - %s * interval '1 minute'
+               n.pruef_seit IS NOT NULL AND n.pruef_seit > now() - %s * interval '1 minute',
+               COALESCE(n.discord_erwaehnen, TRUE)
         FROM nutzer n LEFT JOIN players pl ON pl.puuid = n.riot_puuid
         WHERE n.discord_id = %s;
     """, (VERIFIZIERUNG_MINUTEN, discord_id))
@@ -1901,11 +2074,12 @@ def konto():
         return render_template("konto.html", nutzer=None, meldung=meldung)
 
     (name, avatar, riot_puuid, riot_name, riot_tag, icon_id, verknuepft_am,
-     pruef_name, pruef_tag, pruef_icon, pruef_aktiv) = row
+     pruef_name, pruef_tag, pruef_icon, pruef_aktiv, erwaehnen) = row
     version = get_ddragon_version()
     return render_template(
         "konto.html", meldung=meldung,
-        nutzer={"name": name, "avatar": avatar},
+        nutzer={"name": name, "avatar": avatar, "erwaehnen": erwaehnen},
+        meine_gruppen=_lese_meine_gruppen(),
         riot={
             "name": riot_name, "tag": riot_tag,
             "icon": summoner_icon_url(icon_id, version) if icon_id is not None else None,
@@ -2029,6 +2203,23 @@ def konto_pruefen():
     cur.close()
     conn.close()
     return redirect(url_for("konto", meldung="verknuepft"))
+
+
+@app.route("/konto/einstellungen", methods=["POST"])
+def konto_einstellungen():
+    discord_id = _angemeldete_discord_id()
+    if not discord_id:
+        return redirect(url_for("konto"))
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE nutzer SET discord_erwaehnen = %s WHERE discord_id = %s;",
+        (request.form.get("erwaehnen") == "1", discord_id),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for("konto", meldung="gespeichert"))
 
 
 @app.route("/konto/trennen", methods=["POST"])

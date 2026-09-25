@@ -235,6 +235,59 @@
   .vorschlag-chip:hover { color: var(--text); border-color: var(--accent); }
   .vorschlag-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
+  /* Hinweiskarten für Besucher (Anmelden / Verknüpfen / Beitreten / Discord-Kanal) */
+  .hinweis-karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .hinweis-karte {
+    position: relative;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(88, 101, 242, 0.5);
+    background: linear-gradient(150deg, rgba(88, 101, 242, 0.22), var(--panel) 75%);
+    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+  }
+  .hinweis-karte.discord-kanal { border-color: rgba(61, 214, 198, 0.45); background: linear-gradient(150deg, rgba(61, 214, 198, 0.16), var(--panel) 75%); }
+  .hinweis-titel { font-weight: 800; font-size: 1rem; margin: 0 24px 6px 0; }
+  .hinweis-karte p { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin: 0 0 14px; }
+  .hinweis-karte p b { color: var(--text); }
+  .hinweis-knopf {
+    display: inline-block;
+    padding: 9px 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--teal), var(--accent2));
+    color: #0a0818;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .hinweis-knopf.discord { background: #5865f2; color: #fff; }
+  .hinweis-knopf:hover { filter: brightness(1.1); }
+  .hinweis-weg {
+    position: absolute; top: 10px; right: 10px;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .hinweis-weg:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+
+  /* Mitglied mit Discord-Verknüpfung: kleiner Discord-Avatar unten rechts am Icon */
+  .member-avatar { position: relative; display: inline-block; }
+  .member-discord {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid #5865f2;
+    background: var(--panel);
+  }
+  .member-cell.ich .circle { box-shadow: 0 0 0 3px var(--teal), 0 8px 20px rgba(10, 6, 30, 0.4); }
+  .member-cell .du-pill { padding: 1px 8px; font-size: 0.62rem; }
+
   /* Discord - in Discords eigenem Blurple, damit der Bereich sofort erkennbar ist */
   .discord-panel { --discord: #5865f2; }
   .discord-logo { width: 22px; height: 22px; color: var(--discord); }
@@ -363,22 +416,66 @@
     </span>
   </p>
 
+  {# Hinweise für Besucher: je nach Stand genau der nächste sinnvolle Schritt #}
+  {% set hinweis_konto = login_aktiv and (not ich or not meine_puuid or not bin_mitglied) %}
+  {% if hinweis_konto or not discord_verbunden %}
+  <div class="hinweis-karten">
+    {% if login_aktiv and not ich %}
+    <div class="hinweis-karte konto" data-hinweis="login">
+      <button type="button" class="hinweis-weg" title="Ausblenden" aria-label="Ausblenden">&times;</button>
+      <div class="hinweis-titel">Neu in der Gruppe? Melde dich mit Discord an</div>
+      <p>Die Gruppe landet dann auf all deinen Geräten unter „Meine Gruppen“. Verknüpfst du danach deinen Riot-Account, trittst du mit einem Klick bei und wirst bei deinen Achievements im Discord erwähnt.</p>
+      <a class="hinweis-knopf discord" href="{{ url_for('discord_login', weiter=request.path) }}">Mit Discord anmelden</a>
+    </div>
+    {% elif login_aktiv and not meine_puuid %}
+    <div class="hinweis-karte konto" data-hinweis="verknuepfen">
+      <button type="button" class="hinweis-weg" title="Ausblenden" aria-label="Ausblenden">&times;</button>
+      <div class="hinweis-titel">Verknüpfe deinen Riot-Account</div>
+      <p>Dann kannst du der Gruppe mit einem Klick beitreten und wirst bei deinen Achievements im Discord erwähnt.</p>
+      <a class="hinweis-knopf discord" href="{{ url_for('konto') }}">Riot-Account verknüpfen</a>
+    </div>
+    {% elif login_aktiv and not bin_mitglied %}
+    <div class="hinweis-karte konto" data-hinweis="beitreten">
+      <button type="button" class="hinweis-weg" title="Ausblenden" aria-label="Ausblenden">&times;</button>
+      <div class="hinweis-titel">Spielst du mit, {{ ich.name }}?</div>
+      <p>Tritt mit deinem verknüpften Account <b>{{ ich.riot }}</b> bei - deine Spiele erscheinen dann hier im Feed und in der Wochen-Rangliste.</p>
+      <form method="post" action="{{ url_for('gruppe_beitreten', gruppe_id=gruppe_id) }}" data-laden>
+        <button type="submit" class="hinweis-knopf">Der Gruppe beitreten</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if not discord_verbunden %}
+    <div class="hinweis-karte discord-kanal" data-hinweis="kanal">
+      <button type="button" class="hinweis-weg" title="Ausblenden" aria-label="Ausblenden">&times;</button>
+      <div class="hinweis-titel">Noch kein Discord-Kanal verbunden</div>
+      <p>Verbinde euren Server, dann postet RiftCircle Pentakills, perfekte Spiele und den Wochensieger automatisch in euren Kanal. Dauert eine Minute.</p>
+      <a class="hinweis-knopf discord" href="#discord">Discord-Kanal verbinden</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="panel">
     <h2 class="section-title">Mitglieder</h2>
     {% if mitglieder %}
     <div class="avatar-grid">
       {% for m in mitglieder %}
-      <div class="avatar-chip member-cell">
+      <div class="avatar-chip member-cell {{ 'ich' if m.puuid == meine_puuid else '' }}">
         <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
           <button type="submit" class="member-remove" title="Entfernen">&times;</button>
         </form>
         <a class="member-link" href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
-          {% if m.icon_url %}
-          <div class="circle has-icon" style="background: {{ m.farbe }};"><img src="{{ m.icon_url }}" alt=""></div>
-          {% else %}
-          <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
-          {% endif %}
+          <span class="member-avatar">
+            {% if m.icon_url %}
+            <div class="circle has-icon" style="background: {{ m.farbe }};"><img src="{{ m.icon_url }}" alt=""></div>
+            {% else %}
+            <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+            {% endif %}
+            {% if m.discord %}<img class="member-discord" src="{{ m.discord.avatar }}" alt="" title="Discord: {{ m.discord.name }}">{% endif %}
+          </span>
           <div class="name">{{ m.name }}</div>
+          {% if m.puuid == meine_puuid %}<span class="du-pill">Du</span>{% endif %}
           {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
         </a>
       </div>
@@ -611,6 +708,27 @@
     // 20-30s zum Synchronisieren brauchen, ohne Feedback wirkt das wie eingefroren.
     var overlay = document.getElementById("loadingOverlay");
     var loadingText = document.getElementById("loadingText");
+
+    // Hinweiskarten: weggeklickt bleibt weg (pro Gruppe, nur in diesem Browser)
+    function hinweisSchluessel(karte) {
+      return "rc-hinweis-{{ gruppe_id }}-" + karte.getAttribute("data-hinweis");
+    }
+    document.querySelectorAll(".hinweis-karte").forEach(function (karte) {
+      try {
+        if (localStorage.getItem(hinweisSchluessel(karte))) karte.hidden = true;
+      } catch (e) {}
+      karte.querySelector(".hinweis-weg").addEventListener("click", function () {
+        karte.hidden = true;
+        try { localStorage.setItem(hinweisSchluessel(karte), "1"); } catch (e) {}
+      });
+    });
+    document.querySelectorAll(".hinweis-karte form[data-laden]").forEach(function (form) {
+      form.addEventListener("submit", function () {
+        loadingText.textContent = "Wird gespeichert...";
+        overlay.classList.add("active");
+      });
+    });
+
     document.getElementById("addMemberForm").addEventListener("submit", function () {
       loadingText.textContent = "Profil wird synchronisiert - bei neuen Profilen kann das wegen Riots Rate-Limit bis zu 30 Sekunden dauern...";
       overlay.classList.add("active");
