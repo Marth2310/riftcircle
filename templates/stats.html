@@ -22,6 +22,7 @@
 
   .top-liste { display: flex; flex-direction: column; gap: 6px; }
   .top-zeile { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 8px; background: var(--panel-2); font-size: 0.82rem; }
+  .top-liste > .top-zeile:nth-child(even) { background: var(--panel-alt); }
   .top-zeile .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .top-zeile .n { color: var(--muted); font-size: 0.78rem; flex-shrink: 0; }
   .top-zeile .bar-track { width: 60px; height: 5px; border-radius: 3px; background: rgba(150,130,240,0.14); overflow: hidden; flex-shrink: 0; }

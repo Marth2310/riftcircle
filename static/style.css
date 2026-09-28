@@ -14,6 +14,10 @@
   --loss: #f76c8a;
   --gold: #d4af6a;
   --teal: #3dd6c6;
+  /* Für Zebra-Streifen in Listen: abwechselnd normaler Panel-Ton und dieser dunklere -
+     gibt Listen (Champion-Tierliste, Rangliste, Rollen/Duo-Zeilen) mehr Struktur, statt dass
+     alle Zeilen gleich grau ineinanderlaufen */
+  --panel-alt: #0f0824;
 }
 * { box-sizing: border-box; }
 /* Sonst gewinnt z.B. ein "display: flex" einer Klasse gegen das hidden-Attribut und per JS

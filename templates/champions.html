@@ -142,7 +142,9 @@
     color: inherit;
     transition: background 0.15s;
   }
-  .tier-zeile:hover { background: rgba(139, 108, 245, 0.08); }
+  /* Zebra-Streifen statt durchgehend gleichem Grau - mehr Struktur in der langen Liste */
+  #tierZeilen > .tier-zeile:nth-child(even) { background: var(--panel-alt); }
+  .tier-zeile:hover { background: rgba(139, 108, 245, 0.14); }
   .tier-rang { color: var(--muted); font-weight: 700; font-size: 0.9rem; }
   .tier-champ { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .tier-champ img { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; }

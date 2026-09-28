@@ -340,6 +340,8 @@
 
   .woche-liste { display: flex; flex-direction: column; gap: 6px; }
   .woche-zeile { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 8px; background: var(--panel-2); font-size: 0.82rem; flex-wrap: wrap; }
+  /* Zebra-Streifen: abwechselnd der normale Panel-2-Ton und ein dunklerer */
+  .woche-liste > .woche-zeile:nth-child(even) { background: var(--panel-alt); }
   .woche-zeile .rang { color: var(--muted); font-weight: 700; width: 18px; flex-shrink: 0; }
   .woche-zeile .circle-sm {
     width: 24px; height: 24px; border-radius: 50%;
