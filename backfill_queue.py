@@ -1,14 +1,20 @@
 """Füllt matches.queue_id (Spielmodus: Ranked/Normal/ARAM/...) für Matches nach, die von
 vor der Einführung der Spalte stammen.
 
-- Matches, an denen NUR Meta-Stichproben (harvest_meta.py) teilnehmen, sind per
-  Konstruktion Ranked Solo/Duo (Queue 420) - die werden ohne API-Call gesetzt.
+- Matches aus harvest_meta.py (nur Meta-Stichproben oder alle 10 Teilnehmer gespeichert)
+  sind per Konstruktion Ranked Solo/Duo (Queue 420) - die werden ohne API-Call gesetzt.
 - Alle anderen (Spiele echter Profile) kosten einen Match-Call; neueste zuerst, damit die
   sichtbaren Match-Historien als erstes vollständig sind. Idempotent/resumable.
 
-Nutzung: python backfill_queue.py
+Standardmäßig nur für "wichtige" Profile (Gruppenmitglieder, zuletzt gesehene Spieler
+angemeldeter Nutzer, verknüpfte Konten) - der Rest sind >13k Matches, die mit dem Dev-Key
+Stunden dauern und dessen Rate-Limit der Live-Seite wegnehmen würden.
+
+Nutzung: python backfill_queue.py          (nur wichtige Profile)
+         python backfill_queue.py --alle   (alles - erst mit Production Key)
 """
 import os
+import sys
 import time
 
 import requests
@@ -37,9 +43,32 @@ def main():
           );
     """, (RANKED_SOLO,))
     print(f"{cur.rowcount} Meta-Matches direkt auf Ranked Solo/Duo gesetzt.")
+    # Alle 10 Teilnehmer gespeichert = von harvest_meta.py geholt (sync_player speichert nur
+    # den gesuchten Spieler) - und der Harvest holt ausschließlich Queue 420. Teilnehmer mit
+    # echtem Namen machen das Match dabei nicht zu einem "echten" Profil-Match.
+    cur.execute("""
+        UPDATE matches m SET queue_id = %s
+        WHERE m.queue_id IS NULL
+          AND (SELECT COUNT(*) FROM participants p WHERE p.match_id = m.match_id) >= 10;
+    """, (RANKED_SOLO,))
+    print(f"{cur.rowcount} Harvest-Matches (10 Teilnehmer) direkt auf Ranked Solo/Duo gesetzt.")
     conn.commit()
 
-    cur.execute("SELECT match_id FROM matches WHERE queue_id IS NULL ORDER BY played_at DESC;")
+    if "--alle" in sys.argv:
+        cur.execute("SELECT match_id FROM matches WHERE queue_id IS NULL ORDER BY played_at DESC;")
+    else:
+        cur.execute("""
+            SELECT m.match_id FROM matches m
+            WHERE m.queue_id IS NULL AND EXISTS (
+                SELECT 1 FROM participants p
+                WHERE p.match_id = m.match_id AND p.puuid IN (
+                    SELECT puuid FROM gruppen_mitglieder
+                    UNION SELECT puuid FROM nutzer_zuletzt_gesehen
+                    UNION SELECT riot_puuid FROM nutzer WHERE riot_puuid IS NOT NULL
+                )
+            )
+            ORDER BY m.played_at DESC;
+        """)
     match_ids = [row[0] for row in cur.fetchall()]
     print(f"{len(match_ids)} Matches brauchen einen API-Call.")
 
