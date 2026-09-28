@@ -39,6 +39,7 @@ from profil_statistik import duo_partner, rang_speichern, rang_verlauf, rollen_s
 from riot_runes import keystone_and_secondary_icons
 from seiten_champions import ROLLEN_ICON_URL
 from seiten_gruppen import benachrichtige_gruppe_sicher
+from spielmodus import KATEGORIEN as MODUS_KATEGORIEN
 from web_hilfen import (
     GRUPPEN_ICONS,
     angemeldeter_nutzer,
@@ -297,6 +298,7 @@ def profil():
     resp = make_response(render_template(
         "dashboard.html",
         kein_spieler=False,
+        modus_kategorien=MODUS_KATEGORIEN,
         fehler=fehler,
         riot_id_input=riot_id_input,
         zuletzt_gesehen=mit_farbe(neue_liste),

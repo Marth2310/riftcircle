@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS matches (
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_lineup JSONB;")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS timeline_extra JSONB;")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS gold_timeline JSONB;")
+cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS queue_id INTEGER;")
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS participants (

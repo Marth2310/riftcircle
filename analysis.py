@@ -3,6 +3,7 @@ import math
 import requests
 
 from riot_assets import REQUEST_TIMEOUT
+from spielmodus import spielmodus
 from benchmarks import (
     DAMAGE_SHARE_MIN_NON_SUPPORT,
     KDA_BENCHMARKS,
@@ -20,7 +21,7 @@ MATCH_QUERY = """
            m.duration_seconds, p.win, p.kill_participation, p.damage_share,
            p.turret_takedowns, p.objectives_stolen, p.solo_kills,
            p.items, p.champ_level, m.played_at, p.damage_rank, p.gold_earned, p.gold_diff,
-           p.damage_dealt, p.perks
+           p.damage_dealt, p.perks, m.queue_id
     FROM participants p JOIN matches m ON p.match_id = m.match_id
     WHERE p.puuid = %s
     ORDER BY m.played_at DESC
@@ -66,7 +67,9 @@ def match_metrics(row, tier):
     (match_id, champion, role, kills, deaths, assists, cs, vision, duration, win,
      kill_participation, damage_share, turret_takedowns, objectives_stolen, solo_kills,
      items, champ_level, played_at, damage_rank, gold_earned, gold_diff,
-     damage_dealt, perks) = row
+     damage_dealt, perks, *rest) = row
+    queue_id = rest[0] if rest else None
+    modus_name, modus_kategorie = spielmodus(queue_id)
 
     minutes = duration / 60
     kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
@@ -89,6 +92,7 @@ def match_metrics(row, tier):
         "duration_seconds": duration,
         "damage_rank": damage_rank, "gold_earned": gold_earned, "gold_diff": gold_diff,
         "damage_dealt": damage_dealt, "perks": perks,
+        "queue_id": queue_id, "modus": modus_name, "modus_kategorie": modus_kategorie,
     }
 
     vergleich = {"kda": (kda, KDA_BENCHMARKS[tier])}

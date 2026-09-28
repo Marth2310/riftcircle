@@ -144,6 +144,8 @@
   .match-meta .result { font-weight: 700; font-size: 0.95rem; }
   .match-row.win .match-meta .result { color: var(--win); }
   .match-row.loss .match-meta .result { color: var(--loss); }
+  .match-meta .modus-badge { margin-top: 5px; }
+  .modus-filter { margin-bottom: 14px; }
   .match-meta .zeit, .match-meta .dauer { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
 
   /* Champion + Halbkreis-Bogen aus Ring-Diagrammen (von oben nach unten kaskadierend) */
@@ -648,12 +650,24 @@
   {% endif %}
 
   <h2 class="section-title">Letzte Spiele</h2>
+  {% set modus_anzahl = {} %}
+  {% for s in spiele if s.modus_kategorie %}{% set _ = modus_anzahl.update({s.modus_kategorie: modus_anzahl.get(s.modus_kategorie, 0) + 1}) %}{% endfor %}
+  {% if modus_anzahl %}
+  <div class="filter-chips modus-filter" id="modusFilter">
+    <button type="button" class="filter-chip active" data-modus="alle">Alle <span class="anzahl">{{ spiele|length }}</span></button>
+    {% for key, label in modus_kategorien.items() if modus_anzahl.get(key) or key != 'sonstige' %}
+    <button type="button" class="filter-chip" data-modus="{{ key }}">{{ label }} <span class="anzahl">{{ modus_anzahl.get(key, 0) }}</span></button>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <p class="empty" id="modusLeer" hidden>Keine Spiele in diesem Modus unter den letzten {{ spiele|length }}.</p>
   <div class="match-list">
     {% for s in spiele %}
-    <a class="match-row {{ 'win' if s.win else 'loss' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">
+    <a class="match-row {{ 'win' if s.win else 'loss' }}" data-modus="{{ s.modus_kategorie or '' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">
 
       <div class="match-meta">
         <div class="result">{{ "Sieg" if s.win else "Niederlage" }}</div>
+        {% if s.modus %}<span class="modus-badge modus-{{ s.modus_kategorie }}">{{ s.modus }}</span>{% endif %}
         <div class="zeit">{{ s.zeit_text }}</div>
         <div class="dauer">{{ s.duration_seconds // 60 }} Min. {{ s.duration_seconds % 60 }} Sek.</div>
       </div>
@@ -666,7 +680,7 @@
           </div>
           <div>
             <div class="champ-name">{{ s.champion }}</div>
-            <div class="champ-role">{{ s.role or "ARAM" }}</div>
+            <div class="champ-role">{{ s.role or s.modus or "–" }}</div>
           </div>
           <div class="note-badge {{ s.note_klasse }}" title="Gesamt-Note aus KDA, CS/Min, Vision/Min und Kill-Participation">{{ s.note }}</div>
         </div>
@@ -869,6 +883,23 @@
         showLoading("Profil wird geladen...");
       });
     });
+
+    var modusFilter = document.getElementById("modusFilter");
+    if (modusFilter) {
+      modusFilter.addEventListener("click", function (e) {
+        var chip = e.target.closest(".filter-chip");
+        if (!chip) return;
+        modusFilter.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.toggle("active", c === chip); });
+        var modus = chip.getAttribute("data-modus");
+        var sichtbar = 0;
+        document.querySelectorAll(".match-list .match-row").forEach(function (row) {
+          var passt = modus === "alle" || row.getAttribute("data-modus") === modus;
+          row.hidden = !passt;
+          if (passt) sichtbar++;
+        });
+        document.getElementById("modusLeer").hidden = sichtbar > 0;
+      });
+    }
 
     document.querySelectorAll(".match-row").forEach(function (a) {
       a.addEventListener("click", function () {

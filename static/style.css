@@ -497,3 +497,37 @@ h2.section-title::before {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-text { color: var(--text); font-size: 0.95rem; text-align: center; max-width: 320px; padding: 0 16px; }
+
+/* Filter-Chips (Gruppen-Feed, Match-History im Profil) */
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.filter-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.filter-chip:hover { color: var(--text); border-color: var(--accent); }
+.filter-chip.active { color: #0a0818; background: linear-gradient(90deg, var(--accent), var(--void)); border-color: transparent; font-weight: 700; }
+.filter-chip .anzahl { opacity: 0.7; font-weight: 600; }
+
+/* Spielmodus-Badge (Ranked / Normal / ARAM / Sonstige) */
+.modus-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid currentColor;
+  background: rgba(10, 8, 24, 0.55);
+  white-space: nowrap;
+}
+.modus-badge.modus-ranked { color: var(--gold); }
+.modus-badge.modus-normal { color: var(--accent); }
+.modus-badge.modus-aram { color: var(--teal); }
+.modus-badge.modus-sonstige { color: var(--void-2); }

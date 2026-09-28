@@ -99,10 +99,11 @@ def main():
             continue
 
         cur.execute("""
-            INSERT INTO matches (match_id, played_at, duration_seconds, patch)
-            VALUES (%s, to_timestamp(%s), %s, %s)
-            ON CONFLICT (match_id) DO NOTHING;
-        """, (match_id, info["gameStartTimestamp"] / 1000, info["gameDuration"], info["gameVersion"]))
+            INSERT INTO matches (match_id, played_at, duration_seconds, patch, queue_id)
+            VALUES (%s, to_timestamp(%s), %s, %s, %s)
+            ON CONFLICT (match_id) DO UPDATE SET queue_id = COALESCE(matches.queue_id, EXCLUDED.queue_id);
+        """, (match_id, info["gameStartTimestamp"] / 1000, info["gameDuration"], info["gameVersion"],
+              info.get("queueId")))
 
         for p in info["participants"]:
             # ON CONFLICT DO NOTHING: falls der Teilnehmer zufällig schon ein echtes
