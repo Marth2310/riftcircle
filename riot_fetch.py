@@ -6,6 +6,9 @@ import requests
 
 from riot_assets import REQUEST_TIMEOUT
 
+# Für das "Objective-Monopol"-Achievement in achievements.py - siehe speichere_participant()
+MONOPOL_OBJEKTE = ("dragon", "baron", "riftHerald")
+
 
 class SummonerNotFound(Exception):
     """Riot-Account wurde nicht gefunden, oder seine Spiele konnten nicht geladen werden
@@ -88,6 +91,18 @@ def speichere_participant(cur, match_id, p, info):
     inhibitoren_verloren = (
         gegner_team.get("objectives", {}).get("inhibitor", {}).get("kills", 0) if gegner_team else None
     )
+    # Objective-Monopol: eigenes Team hat jeden Drachen/Herald/Baron geholt, der Gegner keinen
+    # einzigen - "horde"/"atakhan" bewusst ausgeschlossen, die spawnen nicht in jedem Spiel und
+    # ein 0:0 dort wäre fälschlich als Monopol gewertet worden
+    eigenes_team = next((t for t in info.get("teams", []) if t.get("teamId") == p["teamId"]), None)
+    objective_monopol = None
+    if eigenes_team and gegner_team:
+        def _kills(team, typ):
+            return team.get("objectives", {}).get(typ, {}).get("kills", 0)
+        objective_monopol = all(
+            _kills(eigenes_team, typ) >= 1 and _kills(gegner_team, typ) == 0
+            for typ in MONOPOL_OBJEKTE
+        )
 
     cur.execute("""
         INSERT INTO participants
@@ -95,8 +110,8 @@ def speichere_participant(cur, match_id, p, info):
          gold_earned, damage_dealt, damage_taken, kill_participation, damage_share,
          turret_takedowns, objectives_stolen, solo_kills, items, perks, champ_level,
          damage_rank, gold_diff, penta_kills, quadra_kills, triple_kills, double_kills,
-         inhibitoren_verloren)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+         inhibitoren_verloren, objective_monopol)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (match_id, puuid) DO UPDATE SET
             champion = EXCLUDED.champion,
             role = EXCLUDED.role,
@@ -123,7 +138,8 @@ def speichere_participant(cur, match_id, p, info):
             quadra_kills = EXCLUDED.quadra_kills,
             triple_kills = EXCLUDED.triple_kills,
             double_kills = EXCLUDED.double_kills,
-            inhibitoren_verloren = EXCLUDED.inhibitoren_verloren;
+            inhibitoren_verloren = EXCLUDED.inhibitoren_verloren,
+            objective_monopol = EXCLUDED.objective_monopol;
     """, (
         match_id, p["puuid"], p["championName"], p["teamPosition"], p["win"],
         p["kills"], p["deaths"], p["assists"],
@@ -135,7 +151,7 @@ def speichere_participant(cur, match_id, p, info):
         json.dumps(items), json.dumps(perks), champ_level,
         damage_rank, gold_diff,
         p.get("pentaKills", 0), p.get("quadraKills", 0), p.get("tripleKills", 0), p.get("doubleKills", 0),
-        inhibitoren_verloren,
+        inhibitoren_verloren, objective_monopol,
     ))
 
 

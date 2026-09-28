@@ -215,6 +215,10 @@ CREATE TABLE IF NOT EXISTS nutzer_zuletzt_gesehen (
 # Vom Gegner zerstörte Inhibitoren (für "Comeback-Sieg") - nur für ab jetzt geladene Spiele
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS inhibitoren_verloren INTEGER;")
 
+# Team hat jeden Drachen/Herald/Baron geholt, der Gegner keinen einzigen (für das Achievement
+# "Objective-Monopol") - nur für ab jetzt geladene Spiele, siehe backfill_objective_monopol.py
+cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS objective_monopol BOOLEAN;")
+
 # Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
 # Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
 cur.execute("""

@@ -14,9 +14,16 @@ WEBHOOK_MUSTER = re.compile(
 )
 MAX_EMBEDS_PRO_NACHRICHT = 10  # Limit von Discord
 
-FARBE_ACHIEVEMENT = 0xD4AF6A  # --gold
+FARBE_ACHIEVEMENT = 0xD4AF6A  # --gold (Fallback, falls mal kein tier gesetzt ist)
 FARBE_WOCHE = 0x3DD6C6  # --teal (Gruppen-Farbe)
 FARBE_INFO = 0x8B6CF5  # --accent
+
+# Je nach Achievement-Klasse (siehe achievements.py) eine eigene Embed-Farbe
+FARBE_JE_TIER = {
+    "legendaer": 0xFF3B3B,
+    "episch": 0x3ED17E,
+    "achievement": FARBE_ACHIEVEMENT,
+}
 
 MEDAILLEN = ["🥇", "🥈", "🥉", "4.", "5."]
 
@@ -83,9 +90,9 @@ def achievement_embed(spiel, gruppe_name, gruppe_icon, match_url):
             f"{spiel['kills']}/{spiel['deaths']}/{spiel['assists']} · {spiel['dauer_min']} Min."
         ),
         "url": match_url,
-        "color": FARBE_ACHIEVEMENT,
+        "color": FARBE_JE_TIER.get(spiel["achievement"]["tier"], FARBE_ACHIEVEMENT),
         "thumbnail": {"url": spiel["champion_icon"]},
-        "footer": {"text": f"{gruppe_icon} {gruppe_name}"},
+        "footer": {"text": f"{spiel['achievement']['tier_label']} · {gruppe_icon} {gruppe_name}"},
     }
 
 

@@ -118,7 +118,10 @@
   .feed-card:hover { transform: translateY(-3px); }
   .feed-card.win { border-top-color: var(--win); }
   .feed-card.loss { border-top-color: var(--loss); }
-  .feed-card.has-achievement { border-color: var(--gold); box-shadow: 0 0 14px rgba(212, 175, 106, 0.25); }
+  .feed-card.has-achievement { border-color: var(--tier-color, var(--gold)); box-shadow: 0 0 14px var(--tier-glow, rgba(212, 175, 106, 0.25)); }
+  .feed-card.tier-legendaer { --tier-color: #ff3b3b; --tier-glow: rgba(255, 59, 59, 0.3); }
+  .feed-card.tier-episch { --tier-color: #3ed17e; --tier-glow: rgba(62, 209, 126, 0.25); }
+  .feed-card.tier-achievement { --tier-color: var(--gold); --tier-glow: rgba(212, 175, 106, 0.25); }
   .feed-card::before {
     content: "";
     position: absolute; inset: 0;
@@ -134,7 +137,7 @@
   .feed-card-badge {
     position: absolute; top: 8px; right: 8px;
     font-size: 1.1rem;
-    filter: drop-shadow(0 0 4px rgba(212, 175, 106, 0.7));
+    filter: drop-shadow(0 0 4px var(--tier-color, rgba(212, 175, 106, 0.7)));
   }
   .feed-card-champ { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--border); }
   .feed-card.win .feed-card-champ { border-color: var(--win); }
@@ -146,11 +149,112 @@
   .feed-card-stats { color: var(--muted); font-size: 0.68rem; }
   .feed-card-achievement-text {
     font-size: 0.68rem;
-    color: var(--gold);
+    color: var(--tier-color, var(--gold));
     line-height: 1.35;
     margin-top: 4px;
   }
   .feed-card-time { color: var(--muted); font-size: 0.66rem; margin-top: 4px; }
+
+  /* Achievement-Schaukasten: eigener, deutlich wertigerer Kartentyp je Klasse
+     (legendaer=rot/pulsierend+Blitze+Schimmer, episch=grün/sanft pulsierend, achievement=gold/statisch) */
+  .ach-panel {
+    background:
+      linear-gradient(160deg, rgba(255, 59, 59, 0.05), rgba(62, 209, 126, 0.04) 45%, rgba(212, 175, 106, 0.05) 100%),
+      var(--panel);
+  }
+  .ach-subtitle { color: var(--muted); font-size: 0.82rem; margin: -6px 0 16px; }
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .ach-card {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: 26px 16px 16px;
+    border-radius: 18px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    text-decoration: none; color: inherit;
+    overflow: hidden;
+    transition: transform 0.15s;
+  }
+  .ach-card:hover { transform: translateY(-3px); }
+  .ach-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 18%;
+    opacity: 0.16;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 65%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 65%);
+    pointer-events: none;
+  }
+  .ach-card > * { position: relative; }
+
+  .ach-card.tier-legendaer { --tier: #ff3b3b; border-color: var(--tier); animation: ach-pulse-legendaer 2.6s ease-in-out infinite; }
+  .ach-card.tier-episch { --tier: #3ed17e; border-color: var(--tier); animation: ach-pulse-episch 4s ease-in-out infinite; }
+  .ach-card.tier-achievement { --tier: var(--gold); border-color: var(--tier); box-shadow: 0 0 14px rgba(212, 175, 106, 0.22); }
+
+  @keyframes ach-pulse-legendaer {
+    0%, 100% { box-shadow: 0 0 16px 1px rgba(255, 59, 59, 0.45), inset 0 0 18px rgba(255, 59, 59, 0.08); }
+    50% { box-shadow: 0 0 32px 5px rgba(255, 59, 59, 0.8), inset 0 0 24px rgba(255, 59, 59, 0.16); }
+  }
+  @keyframes ach-pulse-episch {
+    0%, 100% { box-shadow: 0 0 12px 1px rgba(62, 209, 126, 0.3); }
+    50% { box-shadow: 0 0 20px 3px rgba(62, 209, 126, 0.5); }
+  }
+  .ach-card.tier-legendaer::after {
+    content: "";
+    position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+    background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: skewX(-20deg);
+    animation: ach-shimmer 3.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ach-shimmer { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+
+  .ach-bolt {
+    position: absolute;
+    width: 18px; height: 28px;
+    background: linear-gradient(160deg, #fff, var(--tier));
+    clip-path: polygon(35% 0%, 65% 0%, 45% 40%, 75% 40%, 30% 100%, 40% 55%, 15% 55%);
+    filter: drop-shadow(0 0 5px var(--tier));
+    opacity: 0.85;
+    pointer-events: none;
+  }
+  .ach-bolt.tl { top: 10px; left: 10px; transform: rotate(-14deg); }
+  .ach-bolt.br { bottom: 10px; right: 10px; transform: rotate(166deg); }
+
+  .ach-ribbon {
+    padding: 3px 14px;
+    border-radius: 999px;
+    background: var(--tier);
+    color: #0a0818;
+    font-size: 0.62rem; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .ach-emblem {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, var(--panel) 72%);
+    border: 2px solid var(--tier);
+    margin: 6px 0 2px;
+    flex-shrink: 0;
+  }
+  .ach-icon { font-size: 1.5rem; filter: drop-shadow(0 0 6px var(--tier)); }
+  .ach-headline { font-weight: 700; font-size: 0.86rem; line-height: 1.35; min-height: 2.7em; }
+  .ach-foot { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 0.76rem; color: var(--muted); }
+  .ach-champ { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); }
+  .ach-player { font-weight: 700; color: var(--text); }
+  .ach-kda .deaths { color: var(--loss); }
+  .ach-time { color: var(--muted); font-size: 0.66rem; margin-top: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ach-card.tier-legendaer, .ach-card.tier-episch { animation: none; }
+    .ach-card.tier-legendaer::after { animation: none; display: none; }
+  }
 
   .rename-trigger {
     background: none; border: none; color: var(--muted);
@@ -498,7 +602,7 @@
   {% set zeitraum_namen = {"woche": "Diese Woche", "monat": "Dieser Monat", "gesamt": "Gesamt"} %}
   {% set zeitraum_leer = {"woche": "diese Woche", "monat": "diesen Monat", "gesamt": "bisher"} %}
   <div class="panel">
-    <h2 class="section-title">Rangliste</h2>
+    <h2 class="section-title accent-gold">Rangliste</h2>
     <div class="tab-nav rangliste-tabs">
       {% for z in ["woche", "monat", "gesamt"] %}
       <button type="button" class="tab-btn rangliste-tab {{ 'active' if loop.first else '' }}" data-zeitraum="{{ z }}">{{ zeitraum_namen[z] }}</button>
@@ -567,10 +671,10 @@
              data-match="{{ f.match_id }}" data-puuid="{{ f.puuid }}"
              data-label="{{ f.riot_name }} ({{ f.champion }})">
     </label>
-    <a class="feed-card {{ 'win' if f.win else 'loss' }} {{ 'has-achievement' if f.achievement else '' }}"
+    <a class="feed-card {{ 'win' if f.win else 'loss' }} {{ 'has-achievement tier-' + f.achievement.tier if f.achievement else '' }}"
        href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
        style="--splash: url('{{ f.champion_splash }}');">
-      {% if f.achievement %}<div class="feed-card-badge">{{ f.achievement.icon }}</div>{% endif %}
+      {% if f.achievement %}<div class="feed-card-badge" title="{{ f.achievement.tier_label }}">{{ f.achievement.icon }}</div>{% endif %}
       <img class="feed-card-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
       <div class="feed-card-name">{{ f.riot_name }}</div>
       <div class="feed-card-champ-name">{{ f.champion }}</div>
@@ -582,17 +686,38 @@
   </div>
   {% endmacro %}
 
+  {% macro achievement_karte(f) %}
+  <a class="ach-card tier-{{ f.achievement.tier }}"
+     href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
+     style="--splash: url('{{ f.champion_splash }}');">
+    {% if f.achievement.tier == 'legendaer' %}
+    <span class="ach-bolt tl" aria-hidden="true"></span>
+    <span class="ach-bolt br" aria-hidden="true"></span>
+    {% endif %}
+    <span class="ach-ribbon">{{ f.achievement.tier_label }}</span>
+    <div class="ach-emblem"><span class="ach-icon">{{ f.achievement.icon }}</span></div>
+    <div class="ach-headline">{{ f.achievement.text }}</div>
+    <div class="ach-foot">
+      <img class="ach-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
+      <span class="ach-player">{{ f.riot_name }}</span>
+      <span class="ach-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</span>
+    </div>
+    <div class="ach-time">{{ f.zeit_text }}</div>
+  </a>
+  {% endmacro %}
+
   {% if achievement_feed %}
-  <div class="panel">
-    <h2 class="section-title">Achievements</h2>
-    <div class="card-grid">
-      {% for f in achievement_feed %}{{ spiel_karte(f) }}{% endfor %}
+  <div class="panel ach-panel">
+    <h2 class="section-title accent-achievements">Achievements</h2>
+    <p class="ach-subtitle">{{ achievement_feed|length }} Achievement{{ "s" if achievement_feed|length != 1 else "" }} in den letzten {{ feed|length }} Spielen der Gruppe</p>
+    <div class="ach-grid">
+      {% for f in achievement_feed %}{{ achievement_karte(f) }}{% endfor %}
     </div>
   </div>
   {% endif %}
 
   <div class="panel">
-    <h2 class="section-title">Letzte Spiele</h2>
+    <h2 class="section-title accent-teal">Letzte Spiele</h2>
     {% if feed %}
     <div class="feed-filters">
       <div class="filter-group">
