@@ -119,7 +119,7 @@
   .feed-card.win { border-top-color: var(--win); }
   .feed-card.loss { border-top-color: var(--loss); }
   .feed-card.has-achievement { border-color: var(--tier-color, var(--gold)); box-shadow: 0 0 14px var(--tier-glow, rgba(212, 175, 106, 0.25)); }
-  .feed-card.tier-legendaer { --tier-color: #64748b; --tier-glow: rgba(100, 116, 139, 0.35); }
+  .feed-card.tier-legendaer { --tier-color: #4767d6; --tier-glow: rgba(122, 31, 46, 0.4); border-width: 3px; }
   .feed-card.tier-episch { --tier-color: #7c3aed; --tier-glow: rgba(124, 58, 237, 0.28); }
   .feed-card.tier-achievement { --tier-color: #a5b4fc; --tier-glow: transparent; }
   .feed-card::before {
@@ -165,8 +165,12 @@
       linear-gradient(160deg, rgba(100, 116, 139, 0.06), rgba(124, 58, 237, 0.05) 45%, rgba(125, 211, 252, 0.05) 100%),
       var(--panel);
   }
-  .ach-subtitle { color: var(--muted); font-size: 0.82rem; margin: -6px 0 16px; }
-  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .ach-subtitle { color: var(--muted); font-size: 0.82rem; margin: -6px 0 14px; }
+  .ach-tier-filter { margin-bottom: 20px; }
+  .ach-tier-filter .tier-chip-legendaer.active { background: linear-gradient(90deg, #8b96b3, #1a2a6b); color: #fff; }
+  .ach-tier-filter .tier-chip-episch.active { background: linear-gradient(90deg, #6d28d9, #2e1065); color: #fff; }
+  .ach-tier-filter .tier-chip-achievement.active { background: linear-gradient(90deg, #7dd3fc, #c4b5fd); color: #0a0818; }
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px; }
   .ach-card {
     position: relative;
     display: flex; flex-direction: column; align-items: center;
@@ -196,21 +200,37 @@
   }
   .ach-card > * { position: relative; }
 
-  /* Legendär: Grau/Dunkelblau vermischend, mit kleinen "Sternen" am Rand statt Blitzen -
-     der Rand selbst ist der Verlauf (Doppel-Background-Trick: innen deckt der Kartenhintergrund
-     die Fläche ab, außen im 2px-Rand schimmert der Nebel-Verlauf durch) */
+  /* Legendär: Darkmatter-Optik - Grau vermischt mit deutlich sichtbarem Dunkelblau UND
+     dunkelroten Energie-Adern, dazu ein paar "Sterne"/Funken am Rand (statt Blitzen). Nimmt
+     außerdem 2 Grid-Spalten ein und bekommt einen größeren Emblem/Glow als die anderen beiden
+     Klassen - soll auf den ersten Blick klar als das Besondere herausstechen. */
   .ach-card.tier-legendaer {
-    --tier: #64748b; --tier-a: #8b96b3; --tier-b: #182238;
+    --tier: #4767d6; --tier-a: #8b96b3; --tier-b: #1c3fae;
+    border-width: 4px;
+    padding: 32px 22px 20px;
     background-image:
       linear-gradient(var(--panel-2), var(--panel-2)),
-      radial-gradient(circle at 12% 22%, #f2f5ff 0 1.6px, rgba(210, 220, 255, 0.5) 1.6px 3.2px, transparent 4px),
-      radial-gradient(circle at 85% 15%, #e4eaff 0 1.4px, rgba(210, 220, 255, 0.45) 1.4px 3px, transparent 4px),
-      radial-gradient(circle at 65% 90%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4px),
-      radial-gradient(circle at 30% 75%, #dce3ff 0 1.2px, rgba(210, 220, 255, 0.4) 1.2px 2.6px, transparent 4px),
-      linear-gradient(135deg, var(--tier-a), var(--tier-b) 45%, #33507a 75%, var(--tier-a));
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 260% 260%;
-    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%;
+      radial-gradient(circle at 10% 20%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.55) 1.6px 3.4px, transparent 4.5px),
+      radial-gradient(circle at 88% 14%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 22% 82%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 68% 90%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.5) 1.4px 3px, transparent 4.5px),
+      radial-gradient(circle at 50% 45%, #e4eaff 0 1.2px, rgba(210, 220, 255, 0.4) 1.2px 2.6px, transparent 4px),
+      linear-gradient(115deg, var(--tier-a) 0%, #8a2436 24%, var(--tier-b) 50%, #4767d6 76%, var(--tier-a) 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 135% 135%;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%;
     animation: ach-pulse-legendaer 2.8s ease-in-out infinite, ach-nebel-drift 11s ease-in-out infinite;
+  }
+  .ach-card.tier-legendaer .ach-emblem { width: 68px; height: 68px; }
+  .ach-card.tier-legendaer .ach-icon { font-size: 1.85rem; }
+  .ach-card.tier-legendaer .ach-headline { font-size: 1rem; }
+  .ach-card.tier-legendaer .ach-ribbon {
+    font-size: 0.68rem; padding: 4px 16px;
+    background: linear-gradient(90deg, var(--tier-a), #7a1f2e 45%, var(--tier-b));
+  }
+  /* 2 Grid-Spalten nur ab genug Platz - sonst würde "span 2" in einer schmalen
+     Auto-Fill-Spalte (Mobile) den Grid-Track sprengen */
+  @media (min-width: 620px) {
+    .ach-card.tier-legendaer { grid-column: span 2; }
   }
   /* Episch: verschiedene dunkle Lila-Töne als Verlauf, sanftes Pulsieren, kein Drift */
   .ach-card.tier-episch {
@@ -229,8 +249,14 @@
   }
 
   @keyframes ach-pulse-legendaer {
-    0%, 100% { box-shadow: 0 0 16px 1px rgba(100, 116, 139, 0.45), inset 0 0 18px rgba(140, 160, 210, 0.10); }
-    50% { box-shadow: 0 0 30px 5px rgba(120, 145, 200, 0.7), inset 0 0 24px rgba(160, 180, 230, 0.16); }
+    0%, 100% {
+      box-shadow: 0 0 18px 1px rgba(139, 30, 46, 0.4), 0 0 26px 3px rgba(47, 79, 176, 0.4),
+        inset 0 0 20px rgba(140, 160, 210, 0.1);
+    }
+    50% {
+      box-shadow: 0 0 32px 6px rgba(163, 40, 58, 0.65), 0 0 46px 9px rgba(60, 100, 210, 0.65),
+        inset 0 0 30px rgba(160, 180, 230, 0.18);
+    }
   }
   @keyframes ach-pulse-episch {
     0%, 100% { box-shadow: 0 0 12px 1px rgba(124, 58, 237, 0.32); }
@@ -238,8 +264,8 @@
   }
   /* Langsames Driften des Nebel-Verlaufs im Rand von Legendär-Karten - "Space-Materie" */
   @keyframes ach-nebel-drift {
-    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%; }
-    50% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 100% 50%; }
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%; }
+    50% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 100% 50%; }
   }
   .ach-card.tier-legendaer::after {
     content: "";
@@ -714,7 +740,7 @@
   {% endmacro %}
 
   {% macro achievement_karte(f) %}
-  <a class="ach-card tier-{{ f.achievement.tier }}"
+  <a class="ach-card tier-{{ f.achievement.tier }}" data-tier="{{ f.achievement.tier }}"
      href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
      style="--splash: url('{{ f.champion_splash }}');">
     <span class="ach-ribbon">{{ f.achievement.tier_label }}</span>
@@ -730,10 +756,19 @@
   {% endmacro %}
 
   {% if achievement_feed %}
+  {% set ach_tier_anzahl = {} %}
+  {% for f in achievement_feed %}{% set _ = ach_tier_anzahl.update({f.achievement.tier: ach_tier_anzahl.get(f.achievement.tier, 0) + 1}) %}{% endfor %}
   <div class="panel ach-panel">
     <h2 class="section-title accent-achievements">Achievements</h2>
     <p class="ach-subtitle">{{ achievement_feed|length }} Achievement{{ "s" if achievement_feed|length != 1 else "" }} in den letzten {{ feed|length }} Spielen der Gruppe</p>
-    <div class="ach-grid">
+    <div class="filter-chips ach-tier-filter" id="achTierFilter">
+      <button type="button" class="filter-chip active" data-tier="alle">Alle <span class="anzahl">{{ achievement_feed|length }}</span></button>
+      {% for key, label in [("legendaer", "Legendär"), ("episch", "Episch"), ("achievement", "Achievement")] if ach_tier_anzahl.get(key) %}
+      <button type="button" class="filter-chip tier-chip-{{ key }}" data-tier="{{ key }}">{{ label }} <span class="anzahl">{{ ach_tier_anzahl[key] }}</span></button>
+      {% endfor %}
+    </div>
+    <p class="empty" id="achTierEmpty" style="display: none;">Keine Achievements in dieser Klasse unter den letzten {{ feed|length }} Spielen.</p>
+    <div class="ach-grid" id="achGrid">
       {% for f in achievement_feed %}{{ achievement_karte(f) }}{% endfor %}
     </div>
   </div>
@@ -979,6 +1014,27 @@
         }
         // "neu" = ursprüngliche Reihenfolge, die schon chronologisch vom Server kommt
         sortiert.forEach(function (karte) { feedGrid.appendChild(karte); });
+      });
+    }
+
+    // Klassen-Filter (Legendär/Episch/Achievement) für den Achievement-Schaukasten
+    var achTierFilter = document.getElementById("achTierFilter");
+    if (achTierFilter) {
+      var achGrid = document.getElementById("achGrid");
+      var achKarten = Array.prototype.slice.call(achGrid.querySelectorAll(".ach-card"));
+      var achEmpty = document.getElementById("achTierEmpty");
+      achTierFilter.addEventListener("click", function (e) {
+        var chip = e.target.closest(".filter-chip");
+        if (!chip) return;
+        achTierFilter.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.toggle("active", c === chip); });
+        var tier = chip.getAttribute("data-tier");
+        var sichtbar = 0;
+        achKarten.forEach(function (karte) {
+          var zeigen = tier === "alle" || karte.getAttribute("data-tier") === tier;
+          karte.style.display = zeigen ? "" : "none";
+          if (zeigen) sichtbar++;
+        });
+        achEmpty.style.display = sichtbar === 0 ? "block" : "none";
       });
     }
 
