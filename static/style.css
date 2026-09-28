@@ -35,10 +35,14 @@ body {
 .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px 56px; position: relative; z-index: 1; }
 
 /* Sternenhimmel: dieselbe "Space-Materie"-Idee wie bei den Legendär-Achievements, jetzt als
-   durchgehendes Motiv auf JEDER Seite statt nur dort - ein Pseudo-Element auf body, kein
-   Template muss dafür angefasst werden. Fixed + sehr niedrige Opazität, dezentes Twinkle,
-   respektiert reduzierte Bewegung. Positionen von Hand über eine 460x460px-Kachel verteilt
-   (nicht zufällig generiert), damit kein sichtbares Wiederholungsraster entsteht. */
+   durchgehendes Motiv auf JEDER Seite statt nur dort - zwei Pseudo-Elemente auf body, kein
+   Template muss dafür angefasst werden. Nach Vorbild eines Hubble-Sternfelds: body::before
+   ist das dichte Feld winziger Punkte (weiß/lila/gold gemischt, kleine Kachel = wirkt dicht),
+   body::after sind die paar große, funkelnde "Sparkle"-Sterne mit Strahlenkreuz (wie die
+   hellen Sterne im Referenzbild) - eigenes Pseudo-Element, weil es eine eigene, größere
+   Kachelgröße braucht und sich sonst mit den Punkten von ::before nicht sauber mischen lässt.
+   Fixed + niedrige Opazität, dezentes Twinkle, respektiert reduzierte Bewegung. Positionen von
+   Hand verteilt (nicht zufällig generiert), damit kein sichtbares Wiederholungsraster entsteht. */
 body::before {
   content: "";
   position: fixed;
@@ -46,34 +50,56 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background-repeat: repeat;
-  background-size: 460px 460px;
+  background-size: 260px 260px;
   background-image:
-    radial-gradient(1.5px 1.5px at 30px 40px, rgba(255, 255, 255, 0.9), transparent),
-    radial-gradient(1px 1px at 95px 110px, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 150px 25px, rgba(200, 190, 255, 0.7), transparent),
-    radial-gradient(2px 2px at 210px 160px, rgba(255, 255, 255, 0.85), transparent),
-    radial-gradient(1px 1px at 270px 70px, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1.5px 1.5px at 340px 200px, rgba(200, 190, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 400px 40px, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 60px 220px, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1px 1px at 130px 280px, rgba(200, 190, 255, 0.55), transparent),
-    radial-gradient(2px 2px at 190px 340px, rgba(255, 255, 255, 0.9), transparent),
-    radial-gradient(1px 1px at 250px 400px, rgba(255, 255, 255, 0.5), transparent),
-    radial-gradient(1.5px 1.5px at 310px 320px, rgba(200, 190, 255, 0.7), transparent),
-    radial-gradient(1px 1px at 380px 380px, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 420px 250px, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 20px 330px, rgba(200, 190, 255, 0.5), transparent),
-    radial-gradient(1px 1px at 440px 150px, rgba(255, 255, 255, 0.65), transparent),
-    radial-gradient(1.5px 1.5px at 170px 420px, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1px 1px at 350px 60px, rgba(200, 190, 255, 0.6), transparent);
+    radial-gradient(1.3px 1.3px at 17px 23px, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(0.9px 0.9px at 54px 62px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(0.9px 0.9px at 73px 6px, rgba(224, 196, 130, 0.65), transparent),
+    radial-gradient(1.8px 1.8px at 85px 14px, rgba(200, 190, 255, 0.7), transparent),
+    radial-gradient(1.6px 1.6px at 119px 90px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(0.9px 0.9px at 153px 40px, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.3px 1.3px at 130px 107px, rgba(224, 196, 130, 0.6), transparent),
+    radial-gradient(1.3px 1.3px at 192px 113px, rgba(200, 190, 255, 0.75), transparent),
+    radial-gradient(0.9px 0.9px at 226px 23px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.3px 1.3px at 34px 124px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(0.9px 0.9px at 73px 158px, rgba(200, 190, 255, 0.5), transparent),
+    radial-gradient(1.8px 1.8px at 107px 192px, rgba(255, 255, 255, 0.85), transparent),
+    radial-gradient(0.9px 0.9px at 141px 226px, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.3px 1.3px at 175px 181px, rgba(224, 196, 130, 0.65), transparent),
+    radial-gradient(0.9px 0.9px at 215px 215px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.3px 1.3px at 237px 141px, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(0.9px 0.9px at 11px 186px, rgba(200, 190, 255, 0.45), transparent),
+    radial-gradient(0.9px 0.9px at 249px 85px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.3px 1.3px at 96px 237px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(0.9px 0.9px at 198px 34px, rgba(224, 196, 130, 0.55), transparent);
   animation: sterne-twinkle 7s ease-in-out infinite;
 }
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-repeat: repeat;
+  background-size: 780px 780px, 960px 960px;
+  background-position: 60px 90px, 480px 520px;
+  background-image:
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3ODAiIGhlaWdodD0iNzgwIiB2aWV3Qm94PSIwIDAgNzgwIDc4MCI+CjxkZWZzPjxyYWRpYWxHcmFkaWVudCBpZD0iZyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj4KPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZmZmZiIgc3RvcC1vcGFjaXR5PSIwLjg1Ii8+CjxzdG9wIG9mZnNldD0iNDUlIiBzdG9wLWNvbG9yPSIjZmZmZmZmIiBzdG9wLW9wYWNpdHk9IjAuMjIiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjZmZmZmZmIiBzdG9wLW9wYWNpdHk9IjAiLz4KPC9yYWRpYWxHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjM5MC4wIiBjeT0iMzkwLjAiIHI9IjUuOCIgZmlsbD0idXJsKCNnKSIvPgo8cGF0aCBkPSJNMzkwLjAgMzY3LjAgTDM5MS44IDM3OC43IEw0MTMuMCAzOTAuMCBMMzkxLjggNDAxLjMgTDM5MC4wIDQxMy4wIEwzODguMiA0MDEuMyBMMzY3LjAgMzkwLjAgTDM4OC4yIDM3OC43IFoiIGZpbGw9IiNmZmZmZmYiIG9wYWNpdHk9IjAuNiIvPgo8L3N2Zz4="),
+    url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NjAiIGhlaWdodD0iOTYwIiB2aWV3Qm94PSIwIDAgOTYwIDk2MCI+CjxkZWZzPjxyYWRpYWxHcmFkaWVudCBpZD0iZyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj4KPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2YzZDlhMCIgc3RvcC1vcGFjaXR5PSIwLjg1Ii8+CjxzdG9wIG9mZnNldD0iNDUlIiBzdG9wLWNvbG9yPSIjZjNkOWEwIiBzdG9wLW9wYWNpdHk9IjAuMjIiLz4KPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjZjNkOWEwIiBzdG9wLW9wYWNpdHk9IjAiLz4KPC9yYWRpYWxHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjQ4MC4wIiBjeT0iNDgwLjAiIHI9IjUuMiIgZmlsbD0idXJsKCNnKSIvPgo8cGF0aCBkPSJNNDgwLjAgNDU5LjUgTDQ4MS42IDQ2OS45IEw1MDAuNSA0ODAuMCBMNDgxLjYgNDkwLjEgTDQ4MC4wIDUwMC41IEw0NzguNCA0OTAuMSBMNDU5LjUgNDgwLjAgTDQ3OC40IDQ2OS45IFoiIGZpbGw9IiNlNmM5OGEiIG9wYWNpdHk9IjAuNTUiLz4KPC9zdmc+");
+  opacity: 0.8;
+  animation: sterne-sparkle 9s ease-in-out infinite;
+}
 @keyframes sterne-twinkle {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.75; }
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.8; }
+}
+@keyframes sterne-sparkle {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
 }
 @media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; opacity: 0.55; }
+  body::before { animation: none; opacity: 0.6; }
+  body::after { animation: none; opacity: 0.7; }
 }
 
 /* Void-Glow: ambiente, unscharfe Farbflecken im Hintergrund - referenziert die violett/
