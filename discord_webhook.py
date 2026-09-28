@@ -14,15 +14,16 @@ WEBHOOK_MUSTER = re.compile(
 )
 MAX_EMBEDS_PRO_NACHRICHT = 10  # Limit von Discord
 
-FARBE_ACHIEVEMENT = 0xD4AF6A  # --gold (Fallback, falls mal kein tier gesetzt ist)
+FARBE_ACHIEVEMENT = 0xA5B4FC  # Fallback, falls mal kein tier gesetzt ist
 FARBE_WOCHE = 0x3DD6C6  # --teal (Gruppen-Farbe)
 FARBE_INFO = 0x8B6CF5  # --accent
 
-# Je nach Achievement-Klasse (siehe achievements.py) eine eigene Embed-Farbe
+# Je nach Achievement-Klasse (siehe achievements.py) eine eigene Embed-Farbe - im
+# Lila/Galaxie-Schema der Seite statt Ampelfarben (siehe .ach-card in gruppe.html)
 FARBE_JE_TIER = {
-    "legendaer": 0xFF3B3B,
-    "episch": 0x3ED17E,
-    "achievement": FARBE_ACHIEVEMENT,
+    "legendaer": 0x64748B,
+    "episch": 0x7C3AED,
+    "achievement": 0xA5B4FC,
 }
 
 MEDAILLEN = ["🥇", "🥈", "🥉", "4.", "5."]

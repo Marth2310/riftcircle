@@ -113,7 +113,7 @@ h2.section-title::before {
 /* Themenfarbe je Sektion (Gruppenseite: Rangliste gold, Feed teal, Achievements alle 3 Klassen) */
 h2.section-title.accent-gold::before { background: var(--gold); }
 h2.section-title.accent-teal::before { background: var(--teal); }
-h2.section-title.accent-achievements::before { background: conic-gradient(#ff3b3b, #3ed17e, var(--gold), #ff3b3b); }
+h2.section-title.accent-achievements::before { background: conic-gradient(#64748b, #7c3aed, #a5b4fc, #64748b); }
 
 /* Panel + Back-Link - von mehreren Seiten geteilt (Match-Detail, Champion-Datenbank) */
 .panel {

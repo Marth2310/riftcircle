@@ -119,9 +119,9 @@
   .feed-card.win { border-top-color: var(--win); }
   .feed-card.loss { border-top-color: var(--loss); }
   .feed-card.has-achievement { border-color: var(--tier-color, var(--gold)); box-shadow: 0 0 14px var(--tier-glow, rgba(212, 175, 106, 0.25)); }
-  .feed-card.tier-legendaer { --tier-color: #ff3b3b; --tier-glow: rgba(255, 59, 59, 0.3); }
-  .feed-card.tier-episch { --tier-color: #3ed17e; --tier-glow: rgba(62, 209, 126, 0.25); }
-  .feed-card.tier-achievement { --tier-color: var(--gold); --tier-glow: rgba(212, 175, 106, 0.25); }
+  .feed-card.tier-legendaer { --tier-color: #64748b; --tier-glow: rgba(100, 116, 139, 0.35); }
+  .feed-card.tier-episch { --tier-color: #7c3aed; --tier-glow: rgba(124, 58, 237, 0.28); }
+  .feed-card.tier-achievement { --tier-color: #a5b4fc; --tier-glow: transparent; }
   .feed-card::before {
     content: "";
     position: absolute; inset: 0;
@@ -155,11 +155,14 @@
   }
   .feed-card-time { color: var(--muted); font-size: 0.66rem; margin-top: 4px; }
 
-  /* Achievement-Schaukasten: eigener, deutlich wertigerer Kartentyp je Klasse
-     (legendaer=rot/pulsierend+Blitze+Schimmer, episch=grün/sanft pulsierend, achievement=gold/statisch) */
+  /* Achievement-Schaukasten: eigener, deutlich wertigerer Kartentyp je Klasse - alle drei
+     im Lila/Galaxie-Schema der Seite statt Ampelfarben:
+     legendaer = Grau/Dunkelblau, wie Space-Materie am Rand, pulsierend + langsam driftend
+     episch    = verschiedene dunkle Lila-Töne, sanft pulsierend
+     achievement = helles Blau/Lila, komplett statisch, kein Glühen */
   .ach-panel {
     background:
-      linear-gradient(160deg, rgba(255, 59, 59, 0.05), rgba(62, 209, 126, 0.04) 45%, rgba(212, 175, 106, 0.05) 100%),
+      linear-gradient(160deg, rgba(100, 116, 139, 0.06), rgba(124, 58, 237, 0.05) 45%, rgba(125, 211, 252, 0.05) 100%),
       var(--panel);
   }
   .ach-subtitle { color: var(--muted); font-size: 0.82rem; margin: -6px 0 16px; }
@@ -171,8 +174,10 @@
     gap: 6px;
     padding: 26px 16px 16px;
     border-radius: 18px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+    border: 3px solid transparent;
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
+    background-image: linear-gradient(var(--panel-2), var(--panel-2)), linear-gradient(var(--border), var(--border));
     text-decoration: none; color: inherit;
     overflow: hidden;
     transition: transform 0.15s;
@@ -191,49 +196,71 @@
   }
   .ach-card > * { position: relative; }
 
-  .ach-card.tier-legendaer { --tier: #ff3b3b; border-color: var(--tier); animation: ach-pulse-legendaer 2.6s ease-in-out infinite; }
-  .ach-card.tier-episch { --tier: #3ed17e; border-color: var(--tier); animation: ach-pulse-episch 4s ease-in-out infinite; }
-  .ach-card.tier-achievement { --tier: var(--gold); border-color: var(--tier); box-shadow: 0 0 14px rgba(212, 175, 106, 0.22); }
+  /* Legendär: Grau/Dunkelblau vermischend, mit kleinen "Sternen" am Rand statt Blitzen -
+     der Rand selbst ist der Verlauf (Doppel-Background-Trick: innen deckt der Kartenhintergrund
+     die Fläche ab, außen im 2px-Rand schimmert der Nebel-Verlauf durch) */
+  .ach-card.tier-legendaer {
+    --tier: #64748b; --tier-a: #8b96b3; --tier-b: #182238;
+    background-image:
+      linear-gradient(var(--panel-2), var(--panel-2)),
+      radial-gradient(circle at 12% 22%, #f2f5ff 0 1.6px, rgba(210, 220, 255, 0.5) 1.6px 3.2px, transparent 4px),
+      radial-gradient(circle at 85% 15%, #e4eaff 0 1.4px, rgba(210, 220, 255, 0.45) 1.4px 3px, transparent 4px),
+      radial-gradient(circle at 65% 90%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4px),
+      radial-gradient(circle at 30% 75%, #dce3ff 0 1.2px, rgba(210, 220, 255, 0.4) 1.2px 2.6px, transparent 4px),
+      linear-gradient(135deg, var(--tier-a), var(--tier-b) 45%, #33507a 75%, var(--tier-a));
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 260% 260%;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%;
+    animation: ach-pulse-legendaer 2.8s ease-in-out infinite, ach-nebel-drift 11s ease-in-out infinite;
+  }
+  /* Episch: verschiedene dunkle Lila-Töne als Verlauf, sanftes Pulsieren, kein Drift */
+  .ach-card.tier-episch {
+    --tier: #7c3aed; --tier-a: #6d28d9; --tier-b: #2e1065;
+    background-image:
+      linear-gradient(var(--panel-2), var(--panel-2)),
+      linear-gradient(135deg, var(--tier-a), var(--tier-b) 55%, #4c1d95);
+    animation: ach-pulse-episch 4s ease-in-out infinite;
+  }
+  /* Achievement: helles Blau/Lila, statisch, kein Glühen */
+  .ach-card.tier-achievement {
+    --tier: #a5b4fc; --tier-a: #7dd3fc; --tier-b: #c4b5fd;
+    background-image:
+      linear-gradient(var(--panel-2), var(--panel-2)),
+      linear-gradient(135deg, var(--tier-a), var(--tier-b));
+  }
 
   @keyframes ach-pulse-legendaer {
-    0%, 100% { box-shadow: 0 0 16px 1px rgba(255, 59, 59, 0.45), inset 0 0 18px rgba(255, 59, 59, 0.08); }
-    50% { box-shadow: 0 0 32px 5px rgba(255, 59, 59, 0.8), inset 0 0 24px rgba(255, 59, 59, 0.16); }
+    0%, 100% { box-shadow: 0 0 16px 1px rgba(100, 116, 139, 0.45), inset 0 0 18px rgba(140, 160, 210, 0.10); }
+    50% { box-shadow: 0 0 30px 5px rgba(120, 145, 200, 0.7), inset 0 0 24px rgba(160, 180, 230, 0.16); }
   }
   @keyframes ach-pulse-episch {
-    0%, 100% { box-shadow: 0 0 12px 1px rgba(62, 209, 126, 0.3); }
-    50% { box-shadow: 0 0 20px 3px rgba(62, 209, 126, 0.5); }
+    0%, 100% { box-shadow: 0 0 12px 1px rgba(124, 58, 237, 0.32); }
+    50% { box-shadow: 0 0 20px 3px rgba(124, 58, 237, 0.52); }
+  }
+  /* Langsames Driften des Nebel-Verlaufs im Rand von Legendär-Karten - "Space-Materie" */
+  @keyframes ach-nebel-drift {
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%; }
+    50% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 100% 50%; }
   }
   .ach-card.tier-legendaer::after {
     content: "";
     position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
-    background: linear-gradient(115deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    background: linear-gradient(115deg, transparent, rgba(200, 210, 255, 0.26), transparent);
     transform: skewX(-20deg);
     animation: ach-shimmer 3.4s ease-in-out infinite;
     pointer-events: none;
   }
   @keyframes ach-shimmer { 0% { left: -60%; } 55%, 100% { left: 130%; } }
 
-  .ach-bolt {
-    position: absolute;
-    width: 18px; height: 28px;
-    background: linear-gradient(160deg, #fff, var(--tier));
-    clip-path: polygon(35% 0%, 65% 0%, 45% 40%, 75% 40%, 30% 100%, 40% 55%, 15% 55%);
-    filter: drop-shadow(0 0 5px var(--tier));
-    opacity: 0.85;
-    pointer-events: none;
-  }
-  .ach-bolt.tl { top: 10px; left: 10px; transform: rotate(-14deg); }
-  .ach-bolt.br { bottom: 10px; right: 10px; transform: rotate(166deg); }
-
   .ach-ribbon {
     padding: 3px 14px;
     border-radius: 999px;
-    background: var(--tier);
-    color: #0a0818;
+    background: linear-gradient(90deg, var(--tier-a), var(--tier-b));
+    color: var(--tier-ribbon-text, #0a0818);
     font-size: 0.62rem; font-weight: 800;
     letter-spacing: 0.08em; text-transform: uppercase;
     white-space: nowrap;
   }
+  .ach-card.tier-legendaer .ach-ribbon, .ach-card.tier-episch .ach-ribbon { --tier-ribbon-text: #f2f4ff; }
   .ach-emblem {
     width: 56px; height: 56px;
     border-radius: 50%;
@@ -690,10 +717,6 @@
   <a class="ach-card tier-{{ f.achievement.tier }}"
      href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
      style="--splash: url('{{ f.champion_splash }}');">
-    {% if f.achievement.tier == 'legendaer' %}
-    <span class="ach-bolt tl" aria-hidden="true"></span>
-    <span class="ach-bolt br" aria-hidden="true"></span>
-    {% endif %}
     <span class="ach-ribbon">{{ f.achievement.tier_label }}</span>
     <div class="ach-emblem"><span class="ach-icon">{{ f.achievement.icon }}</span></div>
     <div class="ach-headline">{{ f.achievement.text }}</div>
