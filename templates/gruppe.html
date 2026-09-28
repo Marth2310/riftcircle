@@ -11,6 +11,7 @@
 <style>
   .page-head { text-align: center; margin: 4px 0 8px; }
   .page-head .gruppe-icon { font-size: 2.4rem; line-height: 1; margin-bottom: 4px; }
+  .page-head .gruppe-icon img { width: 56px; height: 56px; object-fit: contain; }
   .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
 
   .share-hint {
@@ -542,7 +543,10 @@
   <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
 
   <div class="page-head">
-    <div class="gruppe-icon">{{ gruppe_icon }}</div>
+    <div class="gruppe-icon">
+      {% set gruppe_icon_bild = gruppen_icon_bild(gruppe_icon) %}
+      {% if gruppe_icon_bild %}<img src="{{ gruppe_icon_bild }}" alt="">{% else %}{{ gruppe_icon }}{% endif %}
+    </div>
     <h1>{{ gruppe_name }}</h1>
     <button type="button" class="rename-trigger" id="renameTrigger">Umbenennen</button>
 
@@ -553,7 +557,9 @@
       <input type="hidden" name="icon" id="renameIconInput" value="{{ gruppe_icon }}">
       <div class="icon-picker">
         {% for icon in gruppen_icons %}
-        <button type="button" class="icon-choice {{ 'selected' if icon == gruppe_icon else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
+        <button type="button" class="icon-choice {{ 'selected' if icon == gruppe_icon else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
+          <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
+        </button>
         {% endfor %}
       </div>
       <button type="submit">Speichern</button>

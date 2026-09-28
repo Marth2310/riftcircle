@@ -5,6 +5,7 @@ import re
 import requests
 
 from riot_assets import REQUEST_TIMEOUT
+from web_hilfen import GRUPPEN_ICONS
 
 # Nur echte Discord-Webhook-URLs - der Server schickt an diese Adresse POST-Requests, eine
 # beliebige URL wäre also ein Einfallstor, um RiftCircle Anfragen an fremde Server schicken
@@ -60,9 +61,17 @@ def sende(webhook_url, embeds, basis_url, inhalt=None, erwaehnte_ids=()):
         return 0
 
 
+def _icon_praefix(gruppe_icon):
+    """"🛡️ " vor dem Gruppennamen in Discord-Texten - nur für die alten Emoji-Icons. Die
+    neueren Gruppen-Icons (Clash-Team-Embleme, siehe web_hilfen.GRUPPEN_ICONS) sind Bilder,
+    die sich nicht in reinen Discord-Text einbetten lassen, deshalb einfach weglassen statt
+    z.B. buchstäblich "dragon Meine Gruppe" zu schreiben."""
+    return "" if gruppe_icon in GRUPPEN_ICONS else f"{gruppe_icon} "
+
+
 def verbunden_embed(gruppe_name, gruppe_icon, gruppen_url):
     return {
-        "title": f"{gruppe_icon} {gruppe_name} ist mit RiftCircle verbunden",
+        "title": f"{_icon_praefix(gruppe_icon)}{gruppe_name} ist mit RiftCircle verbunden",
         "description": (
             "Ab jetzt landen hier **Achievements** (Pentakill, perfektes Spiel, gestohlene "
             "Objectives, ...) aus neuen Spielen der Gruppe und nach jeder Woche der **Wochensieger**."
@@ -75,7 +84,7 @@ def verbunden_embed(gruppe_name, gruppe_icon, gruppen_url):
 def test_embed(gruppe_name, gruppe_icon, gruppen_url):
     return {
         "title": "Testnachricht",
-        "description": f"Die Verbindung von **{gruppe_icon} {gruppe_name}** zu diesem Kanal funktioniert.",
+        "description": f"Die Verbindung von **{_icon_praefix(gruppe_icon)}{gruppe_name}** zu diesem Kanal funktioniert.",
         "url": gruppen_url,
         "color": FARBE_INFO,
     }
@@ -93,7 +102,7 @@ def achievement_embed(spiel, gruppe_name, gruppe_icon, match_url):
         "url": match_url,
         "color": FARBE_JE_TIER.get(spiel["achievement"]["tier"], FARBE_ACHIEVEMENT),
         "thumbnail": {"url": spiel["champion_icon"]},
-        "footer": {"text": f"{spiel['achievement']['tier_label']} · {gruppe_icon} {gruppe_name}"},
+        "footer": {"text": f"{spiel['achievement']['tier_label']} · {_icon_praefix(gruppe_icon)}{gruppe_name}"},
     }
 
 
@@ -119,5 +128,5 @@ def wochen_embed(rangliste, kalenderwoche, gruppe_name, gruppe_icon, gruppen_url
         "url": gruppen_url,
         "color": FARBE_WOCHE,
         "fields": [{"name": "Rangliste", "value": "\n".join(zeilen)}],
-        "footer": {"text": f"{gruppe_icon} {gruppe_name} · Qualität zählt mehr als reine Spielanzahl"},
+        "footer": {"text": f"{_icon_praefix(gruppe_icon)}{gruppe_name} · Qualität zählt mehr als reine Spielanzahl"},
     }

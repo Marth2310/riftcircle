@@ -4,9 +4,9 @@ import json
 import urllib.parse
 from datetime import datetime
 
-from flask import g, request, session
+from flask import g, request, session, url_for
 
-from app_core import LOGIN_AKTIV, headers
+from app_core import LOGIN_AKTIV, app, headers
 from db import get_connection
 from riot_assets import get_ddragon_version, get_summoner_icon_id, summoner_icon_url
 
@@ -216,7 +216,36 @@ def meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon="🛡️"):
     return resp
 
 
-GRUPPEN_ICONS = ["🛡️", "⚔️", "🔥", "🐉", "👑", "🎯", "💀", "🏆", "⚡", "🌙", "🦂", "🩸"]
+# Gruppen-Icons: die Team-Embleme aus League of Legends' Clash-Modus (Riots offizielles Wiki,
+# selbst gehostet unter static/gruppen-icons/ statt von dort verlinkt - siehe dort für Details).
+# Gespeichert wird nur der Schlüssel (z.B. "dragon"); ältere Gruppen haben noch ein Emoji aus
+# der Zeit vor dieser Umstellung gespeichert - gruppen_icon_bild() gibt dafür None zurück,
+# Templates zeigen dann weiterhin das Emoji als Text an statt eines Bildes.
+GRUPPEN_ICONS = [
+    "dragon", "wolves", "baronnashor", "riftherald", "voidling", "krug", "raptor", "gromp",
+    "scuttlecrab", "poro", "tibbers", "urf", "demacia", "noxus", "piltover", "zaun",
+    "freljord", "ionia", "shurima", "shadowisles",
+]
+GRUPPEN_ICON_NAMEN = {
+    "dragon": "Drache", "wolves": "Wölfe", "baronnashor": "Baron Nashor",
+    "riftherald": "Herold", "voidling": "Voidling", "krug": "Krug", "raptor": "Raptor",
+    "gromp": "Gromp", "scuttlecrab": "Krebs", "poro": "Poro", "tibbers": "Tibbers", "urf": "Urf",
+    "demacia": "Demacia", "noxus": "Noxus", "piltover": "Piltover", "zaun": "Zaun",
+    "freljord": "Freljord", "ionia": "Ionia", "shurima": "Shurima", "shadowisles": "Shadow Isles",
+}
+
+
+def gruppen_icon_bild(icon):
+    """Bild-URL für ein Gruppen-Icon aus GRUPPEN_ICONS, sonst None (altes Emoji-Icon - siehe
+    oben). Als Jinja-Global registriert, damit jedes Template es direkt aufrufen kann, ohne
+    dass jede Route es einzeln durchreichen muss."""
+    if icon not in GRUPPEN_ICONS:
+        return None
+    return url_for("static", filename=f"gruppen-icons/{icon}.png")
+
+
+app.add_template_global(gruppen_icon_bild, name="gruppen_icon_bild")
+app.add_template_global(GRUPPEN_ICON_NAMEN, name="gruppen_icon_namen")
 
 
 MAX_NAMENS_TREFFER = 25

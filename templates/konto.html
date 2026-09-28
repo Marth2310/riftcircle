@@ -232,7 +232,10 @@
     <div class="group-grid">
       {% for gr in meine_gruppen %}
       <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=gr.id) }}">
-        <div class="group-card-icon">{{ gr.icon }}</div>
+        <div class="group-card-icon">
+          {% set bild = gruppen_icon_bild(gr.icon) %}
+          {% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ gr.icon }}{% endif %}
+        </div>
         <div class="group-card-name">{{ gr.name }}</div>
       </a>
       {% endfor %}

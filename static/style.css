@@ -212,6 +212,7 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
   font-size: 0.8rem;
 }
 .known-players a:hover { color: var(--text); border-color: var(--accent); }
+.gruppen-pill-icon { width: 16px; height: 16px; object-fit: contain; vertical-align: -3px; }
 
 .gruppe-form {
   display: flex;
@@ -244,10 +245,11 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
   align-self: flex-start;
 }
 
-/* Icon-Picker beim Gruppe-Anlegen */
+/* Icon-Picker beim Gruppe-Anlegen - Clash-Team-Embleme statt Emoji, daher etwas größer als
+   vorher, damit die Embleme noch erkennbar sind */
 .icon-picker { display: flex; gap: 6px; flex-wrap: wrap; }
 .icon-picker button {
-  width: 36px; height: 36px;
+  width: 44px; height: 44px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--panel-2);
@@ -256,6 +258,7 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
   display: flex; align-items: center; justify-content: center;
   transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
+.icon-picker button img { width: 32px; height: 32px; object-fit: contain; }
 .icon-picker button:hover { border-color: var(--accent); transform: translateY(-1px); }
 .icon-picker button.selected { border-color: var(--gold); background: rgba(212, 175, 106, 0.18); }
 
@@ -276,6 +279,7 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
 }
 .group-card:hover { transform: translateY(-3px); border-color: var(--teal); box-shadow: 0 8px 22px rgba(61, 214, 198, 0.18); }
 .group-card .group-card-icon { font-size: 2.2rem; line-height: 1; }
+.group-card .group-card-icon img { width: 44px; height: 44px; object-fit: contain; }
 .group-card .group-card-name { font-weight: 700; font-size: 0.92rem; }
 
 /* "VS"-Vergleich - geteilt zwischen Lane-Vergleich (Match-Detail) und dem eigenständigen

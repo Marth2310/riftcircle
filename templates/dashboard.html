@@ -449,7 +449,8 @@
   <div class="known-players-label">Meine Gruppen</div>
   <div class="known-players">
     {% for g in meine_gruppen %}
-      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{{ g.icon }} {{ g.name }}</a>
+      {% set bild = gruppen_icon_bild(g.icon) %}
+      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{% if bild %}<img class="gruppen-pill-icon" src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %} {{ g.name }}</a>
     {% endfor %}
   </div>
   {% endif %}
@@ -460,7 +461,9 @@
     <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
     <div class="icon-picker">
       {% for icon in gruppen_icons %}
-      <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}">{{ icon }}</button>
+      <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
+        <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
+      </button>
       {% endfor %}
     </div>
     <button type="submit">Anlegen</button>
