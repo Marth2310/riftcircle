@@ -345,7 +345,9 @@
   .duo-leer { text-align: left; padding: 8px 0; font-size: 0.85rem; }
   .duo-liste + .treffer-hint { margin-top: 10px; }
 
-  /* Meistgespielte Champions */
+  /* Meistgespielte Champions - Splash-Hintergrund + Winrate-Ring, gleiche Optik wie die
+     Spiel-Karten im Gruppen-Feed (.feed-card in gruppe.html), damit sich das Profil nicht
+     wie eine andere Seite anfühlt. */
   .main-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -353,24 +355,46 @@
     margin-bottom: 28px;
   }
   .main-card {
+    position: relative;
     display: flex; align-items: center; gap: 12px;
     padding: 12px 14px;
     border-radius: 14px;
     background: var(--panel);
     border: 1px solid var(--border);
     text-decoration: none; color: inherit;
-    transition: transform 0.15s, border-color 0.15s;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   }
-  .main-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-  .main-card img { width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; }
+  .main-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.16;
+    -webkit-mask-image: linear-gradient(100deg, #000 0%, transparent 65%);
+    mask-image: linear-gradient(100deg, #000 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .main-card > * { position: relative; }
+  .main-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 20px rgba(139, 108, 245, 0.16); }
+  .main-ring {
+    --pct: 0;
+    --ring-color: var(--win);
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255, 255, 255, 0.1) 0);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    padding: 3px;
+  }
+  .main-ring img { width: 100%; height: 100%; border-radius: 50%; display: block; border: 2px solid var(--panel); }
   .main-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
   .main-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .main-name { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .main-wr { font-weight: 800; font-size: 0.95rem; }
   .main-wr.gut { color: var(--win); }
   .main-wr.schlecht { color: var(--loss); }
-  .main-bar { height: 6px; border-radius: 999px; background: var(--loss); overflow: hidden; }
-  .main-bar-win { height: 100%; background: var(--win); }
   .main-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.74rem; }
 
 </style>
@@ -535,15 +559,14 @@
   <p class="treffer-hint">Aus allen {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spielen dieses Profils.</p>
   <div class="main-grid">
     {% for c in meistgespielte %}
-    <a class="main-card" href="{{ url_for('champion_detail', key=c.champion) }}">
-      <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+    <a class="main-card" href="{{ url_for('champion_detail', key=c.champion) }}" style="--splash: url('{{ c.splash }}');">
+      <div class="main-ring" style="--pct: {{ c.winrate }}; --ring-color: {{ 'var(--win)' if c.winrate >= 50 else 'var(--loss)' }};" title="{{ c.siege }} Siege / {{ c.niederlagen }} Niederlagen">
+        <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+      </div>
       <div class="main-info">
         <div class="main-head">
           <span class="main-name">{{ c.name }}</span>
           <span class="main-wr {{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</span>
-        </div>
-        <div class="main-bar" title="{{ c.siege }} Siege / {{ c.niederlagen }} Niederlagen">
-          <div class="main-bar-win" style="width: {{ c.winrate }}%;"></div>
         </div>
         <div class="main-meta">
           <span><b class="win-value">{{ c.siege }}S</b> <b class="loss-value">{{ c.niederlagen }}N</b> &middot; {{ c.spiele }} Spiel{{ "e" if c.spiele != 1 else "" }}</span>

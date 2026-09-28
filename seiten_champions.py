@@ -41,6 +41,27 @@ ROLLEN_ICON_URL = (
 MIN_SPIELE_JE_ROLLE = 5
 
 
+# team_position (Riot-Wert) -> Icon-Name, fürs Rollen-Badge auf der Champion-Grid-Karte
+ROLLEN_ICON_VON_POSITION = {pos: icon for _, (pos, _, icon) in CHAMPION_ROLLEN.items()}
+
+
+def _haupt_rollen(cur):
+    """Meistgespielte Lane je Champion (über alle Rollen hinweg) - fürs Rollen-Badge in der
+    Grid-Ansicht der Champion-Datenbank."""
+    cur.execute("""
+        SELECT champion, role, COUNT(*)
+        FROM participants
+        WHERE role IN ('TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY')
+        GROUP BY champion, role;
+    """)
+    bestwert = {}
+    for champion, role, anzahl in cur.fetchall():
+        bisher = bestwert.get(champion)
+        if bisher is None or anzahl > bisher[1]:
+            bestwert[champion] = (role, anzahl)
+    return {champion: role for champion, (role, _) in bestwert.items()}
+
+
 def _rollen_statistik(cur, team_position):
     """Winrate + Pickrate je Champion auf einer Position. Pickrate wie bei OP.GG/U.GG: in wie
     viel Prozent der Spiele (Matches) mit dieser Position der Champion dort gespielt wurde -
@@ -108,16 +129,19 @@ def champions():
         "SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END) FROM participants GROUP BY champion;"
     )
     gespielt = {champ: (anzahl, siege) for champ, anzahl, siege in cur.fetchall()}
+    haupt_rollen = _haupt_rollen(cur)
     cur.close()
     conn.close()
 
     champs = []
     for c in alle_champions:
         anzahl, siege = gespielt.get(c["key"], (0, 0))
+        rolle_position = haupt_rollen.get(c["key"])
         champs.append({
             **c,
             "anzahl_spiele": anzahl,
             "winrate": round(siege / anzahl * 100) if anzahl else None,
+            "rolle_icon": ROLLEN_ICON_URL.format(ROLLEN_ICON_VON_POSITION[rolle_position]) if rolle_position else None,
         })
     if suche:
         champs = [c for c in champs if suche in c["name"].lower()]

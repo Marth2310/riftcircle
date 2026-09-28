@@ -226,6 +226,7 @@ def profil():
             "champion": champion,
             "name": champ_info["name"] if champ_info else champion,  # "Twisted Fate" statt "TwistedFate"
             "icon": champion_icon_url(champion, ddragon_version),
+            "splash": champion_splash_url(champion),
             "spiele": spiele_anzahl,
             "siege": siege_anzahl,
             "niederlagen": spiele_anzahl - siege_anzahl,

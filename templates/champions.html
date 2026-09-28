@@ -48,6 +48,7 @@
     gap: 12px;
   }
   .champ-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -59,10 +60,24 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 16px 10px;
-    transition: transform 0.15s, border-color 0.15s;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
   }
-  .champ-card:hover { transform: translateY(-3px); border-color: var(--void); }
-  .champ-card img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--border); }
+  .champ-card:hover { transform: translateY(-3px); border-color: var(--void); box-shadow: 0 8px 20px rgba(124, 58, 237, 0.16); }
+  /* Winrate-getönter Rahmen - grober Fingerprint auf den ersten Blick, bevor man das Badge liest */
+  .champ-card.wr-gut { border-color: rgba(52, 211, 153, 0.4); }
+  .champ-card.wr-schlecht { border-color: rgba(247, 108, 138, 0.4); }
+  .champ-card.wr-gut:hover { box-shadow: 0 8px 20px rgba(52, 211, 153, 0.16); }
+  .champ-card.wr-schlecht:hover { box-shadow: 0 8px 20px rgba(247, 108, 138, 0.16); }
+  .champ-card .rolle-badge {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .champ-card .rolle-badge img { width: 13px; height: 13px; opacity: 0.85; }
+  .champ-card img.icon { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--border); }
   .champ-card .name { font-weight: 700; font-size: 0.88rem; }
   .champ-card .tags { color: var(--muted); font-size: 0.7rem; }
   .champ-card .badge-row { display: flex; gap: 5px; }
@@ -260,8 +275,10 @@
 
   <div class="champ-grid" id="champGrid">
     {% for c in champions %}
-    <a class="champ-card" href="{{ url_for('champion_detail', key=c.key) }}" data-name="{{ c.name|lower }}">
-      <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+    <a class="champ-card {{ 'wr-gut' if c.winrate is not none and c.winrate >= 50 else ('wr-schlecht' if c.winrate is not none else '') }}"
+       href="{{ url_for('champion_detail', key=c.key) }}" data-name="{{ c.name|lower }}">
+      {% if c.rolle_icon %}<div class="rolle-badge"><img src="{{ c.rolle_icon }}" alt=""></div>{% endif %}
+      <img class="icon" src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
       <div class="name">{{ c.name }}</div>
       <div class="tags">{{ c.tags|join(" / ") }}</div>
       {% if c.anzahl_spiele %}

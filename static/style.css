@@ -130,6 +130,26 @@ body::before {
   animation: mark-spin 10s linear infinite;
   z-index: 0;
 }
+/* Zweiter, pulsierender Glow hinter dem rotierenden Ring - eigenes Pseudo-Element, damit
+   Rotation und Puls unabhängig voneinander laufen (unterschiedliche Timing-Funktionen). */
+.void-orb::after {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent2) 0%, transparent 70%);
+  filter: blur(32px);
+  opacity: 0.22;
+  z-index: 0;
+  animation: orb-pulse 4.5s ease-in-out infinite;
+}
+@keyframes orb-pulse {
+  0%, 100% { opacity: 0.18; transform: scale(0.94); }
+  50% { opacity: 0.4; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .void-orb::before, .void-orb::after { animation: none; }
+}
 .void-orb img {
   position: relative;
   z-index: 1;
@@ -159,6 +179,7 @@ h2.section-title::before {
 /* Themenfarbe je Sektion (Gruppenseite: Rangliste gold, Feed teal, Achievements alle 3 Klassen) */
 h2.section-title.accent-gold::before { background: var(--gold); }
 h2.section-title.accent-teal::before { background: var(--teal); }
+h2.section-title.accent-discord::before { background: #5865f2; }
 h2.section-title.accent-achievements::before { background: conic-gradient(#64748b, #7c3aed, #a5b4fc, #64748b); }
 
 /* Panel + Back-Link - von mehreren Seiten geteilt (Match-Detail, Champion-Datenbank) */

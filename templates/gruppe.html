@@ -123,7 +123,10 @@
   .feed-card:hover { transform: translateY(-3px); }
   .feed-card.win { border-top-color: var(--win); }
   .feed-card.loss { border-top-color: var(--loss); }
+  .feed-card.win:hover { box-shadow: 0 8px 20px rgba(52, 211, 153, 0.18); }
+  .feed-card.loss:hover { box-shadow: 0 8px 20px rgba(247, 108, 138, 0.18); }
   .feed-card.has-achievement { border-color: var(--tier-color, var(--gold)); box-shadow: 0 0 14px var(--tier-glow, rgba(212, 175, 106, 0.25)); }
+  .feed-card.has-achievement:hover { box-shadow: 0 10px 26px var(--tier-glow, rgba(212, 175, 106, 0.3)); }
   .feed-card.tier-legendaer { --tier-color: #4767d6; --tier-glow: rgba(122, 31, 46, 0.4); border-width: 3px; }
   .feed-card.tier-episch { --tier-color: #7c3aed; --tier-glow: rgba(124, 58, 237, 0.28); }
   .feed-card.tier-achievement { --tier-color: #a5b4fc; --tier-glow: transparent; }

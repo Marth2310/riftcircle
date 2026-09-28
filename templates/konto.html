@@ -35,8 +35,8 @@
   .login-klein { color: var(--muted); font-size: 0.75rem; margin-top: 14px; }
 
   .person { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .person img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid #5865f2; }
-  .person .riot-icon { border-color: var(--accent); }
+  .person img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid #5865f2; box-shadow: 0 0 16px rgba(88, 101, 242, 0.32); }
+  .person .riot-icon { border-color: var(--accent); box-shadow: 0 0 16px rgba(139, 108, 245, 0.32); }
   .person-info { flex: 1; min-width: 160px; }
   .person-name { font-weight: 800; font-size: 1.15rem; }
   .person-name .tag { color: var(--muted); font-weight: 600; }
@@ -54,9 +54,11 @@
     text-decoration: none;
     cursor: pointer;
     font-family: inherit;
+    transition: transform 0.15s, filter 0.15s, border-color 0.15s, color 0.15s;
   }
+  .knopf:hover { transform: translateY(-1px); filter: brightness(1.08); }
   .knopf.leise { background: none; border: 1px solid var(--border); color: var(--muted); }
-  .knopf.leise:hover { color: var(--text); border-color: var(--accent); }
+  .knopf.leise:hover { color: var(--text); border-color: var(--accent); filter: none; }
   .knopf.gefahr:hover { color: var(--loss); border-color: var(--loss); }
 
   .hinweis { color: var(--muted); font-size: 0.88rem; line-height: 1.55; margin: 0 0 14px; }
@@ -150,7 +152,7 @@
 
   {% else %}
   <div class="panel">
-    <h2 class="section-title">Discord</h2>
+    <h2 class="section-title accent-discord">Discord</h2>
     <div class="person">
       <img src="{{ nutzer.avatar }}" alt="">
       <div class="person-info">
@@ -227,7 +229,7 @@
   {% endif %}
 
   <div class="panel">
-    <h2 class="section-title">Deine Gruppen</h2>
+    <h2 class="section-title accent-teal">Deine Gruppen</h2>
     {% if meine_gruppen %}
     <div class="group-grid">
       {% for gr in meine_gruppen %}
