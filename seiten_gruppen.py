@@ -3,7 +3,7 @@ import json
 import secrets
 import urllib.parse
 
-from flask import abort, make_response, redirect, render_template, request, url_for
+from flask import abort, jsonify, make_response, redirect, render_template, request, url_for
 
 from achievements import bestes_achievement
 from app_core import PUBLIC_BASE_URL, app, headers
@@ -94,6 +94,22 @@ def _historie_merkmale(cur, puuids):
         gesehen.add(champion)
         anzahl += 1
     return merkmale
+
+
+def _stimmen_fuer_feed(cur, achievement_zeilen, mein_discord_id):
+    """(match_id, puuid) -> {"anzahl": n, "hat_gestimmt": bool} für jede Feed-Zeile mit
+    Achievement - Grundlage für den Upvote-Knopf im Gruppen-Feed. mein_discord_id darf None
+    sein (nicht angemeldet), dann ist hat_gestimmt für jede Zeile False."""
+    match_ids = list({f["match_id"] for f in achievement_zeilen})
+    if not match_ids:
+        return {}
+    cur.execute("""
+        SELECT match_id, puuid, COUNT(*), COALESCE(BOOL_OR(discord_id = %s), FALSE)
+        FROM achievement_stimmen
+        WHERE match_id = ANY(%s)
+        GROUP BY match_id, puuid;
+    """, (mein_discord_id, match_ids))
+    return {(m, p): {"anzahl": n, "hat_gestimmt": gestimmt} for m, p, n, gestimmt in cur.fetchall()}
 
 
 def baue_gruppen_feed(cur, mitglied_puuids):
@@ -193,10 +209,24 @@ def baue_rangliste(cur, mitglieder, zeitraum="woche"):
         WHERE p.puuid = ANY(%s) AND """ + bedingung + """
         GROUP BY p.puuid;
     """, (puuids,))
+    zeilen = cur.fetchall()
+
+    # Achievement-Upvotes fließen nur in den Monats-Score ein (siehe /gruppe/<id>/stimme) -
+    # gezählt werden Stimmen auf Achievements aus Spielen DIESES Zeitraums, nicht danach
+    # abgegebene Stimmen auf ältere Spiele.
+    stimmen_je_puuid = {}
+    if zeitraum == "monat" and zeilen:
+        cur.execute("""
+            SELECT s.puuid, COUNT(*)
+            FROM achievement_stimmen s JOIN matches m ON m.match_id = s.match_id
+            WHERE s.puuid = ANY(%s) AND """ + bedingung + """
+            GROUP BY s.puuid;
+        """, (puuids,))
+        stimmen_je_puuid = dict(cur.fetchall())
 
     mitglied_by_puuid = {m["puuid"]: m for m in mitglieder}
     rangliste = []
-    for row in cur.fetchall():
+    for row in zeilen:
         (puuid, spiele, siege, kills, deaths, assists, pentas, quadras, triples, doubles) = row
         stats = {
             "spiele": spiele, "siege": siege, "kills": kills, "deaths": deaths, "assists": assists,
@@ -204,13 +234,15 @@ def baue_rangliste(cur, mitglieder, zeitraum="woche"):
         }
         avg_kda = (kills + assists) / deaths if deaths > 0 else (kills + assists)
         mitglied = mitglied_by_puuid.get(puuid, {})
+        stimmen = stimmen_je_puuid.get(puuid, 0)
         rangliste.append({
             "puuid": puuid, "name": mitglied.get("name", "?"), "tag": mitglied.get("tag", ""),
             "farbe": mitglied.get("farbe", "var(--void)"),
             "spiele": spiele, "siege": siege, "winrate": round(siege / spiele * 100),
             "avg_kda": round(avg_kda, 2),
             "pentas": pentas, "quadras": quadras, "triples": triples, "doubles": doubles,
-            "score": berechne_score(stats, multikills_pro_spiel),
+            "stimmen": stimmen,
+            "score": berechne_score(stats, multikills_pro_spiel, stimmen),
         })
     rangliste.sort(key=lambda r: r["score"], reverse=True)
     return rangliste
@@ -420,12 +452,13 @@ def gruppe_ansehen(gruppe_id):
     for f in feed:
         if f["puuid"] not in zuletzt_aktiv:
             zuletzt_aktiv[f["puuid"]] = f["zeit_text"]
-    # Discord-Verknüpfungen der Mitglieder ("Das bist du" + Discord-Avatar am Mitglied)
+    # Discord-Verknüpfungen der Mitglieder ("Das bist du" + Discord-Avatar am Mitglied, plus
+    # die discord_id fürs "Auf Discord hinzufügen"-Profil-Link)
     cur.execute(
-        "SELECT riot_puuid, discord_name, discord_avatar FROM nutzer WHERE riot_puuid = ANY(%s);",
+        "SELECT riot_puuid, discord_id, discord_name, discord_avatar FROM nutzer WHERE riot_puuid = ANY(%s);",
         ([m["puuid"] for m in mitglieder],),
     )
-    discord_je_puuid = {p: {"name": n, "avatar": a} for p, n, a in cur.fetchall()}
+    discord_je_puuid = {p: {"id": i, "name": n, "avatar": a} for p, i, n, a in cur.fetchall()}
     for m in mitglieder:
         m["zuletzt_aktiv"] = zuletzt_aktiv.get(m["puuid"])
         m["discord"] = discord_je_puuid.get(m["puuid"])
@@ -437,6 +470,29 @@ def gruppe_ansehen(gruppe_id):
     # nicht in der Gruppe sind.
     mitglied_puuids = {m["puuid"] for m in mitglieder}
     vorschlaege = [e for e in mit_farbe(lese_zuletzt_gesehen()) if e["puuid"] not in mitglied_puuids]
+
+    # Upvote-Stand je Achievement - nur eingeloggte Mitglieder der Gruppe dürfen abstimmen,
+    # nicht für ihr eigenes Achievement (siehe /gruppe/<id>/stimme).
+    bin_angemeldetes_mitglied = bool(meine_puuid) and meine_puuid in mitglied_puuids
+    stimmen = _stimmen_fuer_feed(cur, achievement_feed, ich["id"] if ich else None)
+    for f in achievement_feed:
+        eintrag = stimmen.get((f["match_id"], f["puuid"]), {"anzahl": 0, "hat_gestimmt": False})
+        f["achievement"]["stimmen"] = eintrag["anzahl"]
+        f["achievement"]["hat_gestimmt"] = eintrag["hat_gestimmt"]
+        if not ich:
+            f["achievement"]["kann_stimmen"] = False
+            f["achievement"]["stimme_hinweis"] = "Melde dich mit Discord an, um abzustimmen"
+        elif f["puuid"] == meine_puuid:
+            f["achievement"]["kann_stimmen"] = False
+            f["achievement"]["stimme_hinweis"] = "Du kannst nicht für dein eigenes Achievement stimmen"
+        elif not bin_angemeldetes_mitglied:
+            f["achievement"]["kann_stimmen"] = False
+            f["achievement"]["stimme_hinweis"] = "Nur Gruppenmitglieder können abstimmen"
+        else:
+            f["achievement"]["kann_stimmen"] = True
+            f["achievement"]["stimme_hinweis"] = (
+                "Stimme entfernen" if eintrag["hat_gestimmt"] else "Für dieses Achievement stimmen"
+            )
 
     cur.close()
     conn.close()
@@ -525,6 +581,65 @@ def gruppe_mitglied_entfernen(gruppe_id, puuid):
     cur.close()
     conn.close()
     return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/stimme", methods=["POST"])
+def gruppe_stimme(gruppe_id):
+    """Upvote/Un-Vote (toggle) für ein Achievement eines Gruppenmitglieds - ein Vote pro
+    Discord-Konto und Achievement. Fließt als Bonus in den Monats-Score ein, siehe
+    wochenrueckblick.berechne_score(). Nur eingeloggte Mitglieder DIESER Gruppe dürfen
+    abstimmen, nicht für ihr eigenes Achievement."""
+    ich = angemeldeter_nutzer()
+    match_id = request.form.get("match_id", "").strip()
+    ziel_puuid = request.form.get("puuid", "").strip()
+
+    def antwort(status, **daten):
+        if request.headers.get("X-Requested-With") == "fetch":
+            return jsonify(daten), status
+        return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id) + "#feed")
+
+    if not match_id or not ziel_puuid:
+        return antwort(400, fehler="ungueltig")
+    if not ich or not ich.get("puuid"):
+        return antwort(403, fehler="nicht_angemeldet")
+    if ziel_puuid == ich["puuid"]:
+        return antwort(403, fehler="eigenes_achievement")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM gruppen_mitglieder WHERE gruppe_id = %s AND puuid = %s;", (gruppe_id, ich["puuid"])
+    )
+    bin_mitglied = cur.fetchone() is not None
+    cur.execute(
+        "SELECT 1 FROM gruppen_mitglieder WHERE gruppe_id = %s AND puuid = %s;", (gruppe_id, ziel_puuid)
+    )
+    ziel_ist_mitglied = cur.fetchone() is not None
+    if not bin_mitglied or not ziel_ist_mitglied:
+        cur.close()
+        conn.close()
+        return antwort(403, fehler="nicht_mitglied")
+
+    cur.execute(
+        "DELETE FROM achievement_stimmen WHERE match_id = %s AND puuid = %s AND discord_id = %s RETURNING 1;",
+        (match_id, ziel_puuid, ich["id"]),
+    )
+    if cur.fetchone() is None:
+        cur.execute(
+            "INSERT INTO achievement_stimmen (match_id, puuid, discord_id) VALUES (%s, %s, %s);",
+            (match_id, ziel_puuid, ich["id"]),
+        )
+        gestimmt = True
+    else:
+        gestimmt = False
+    conn.commit()
+    cur.execute(
+        "SELECT COUNT(*) FROM achievement_stimmen WHERE match_id = %s AND puuid = %s;", (match_id, ziel_puuid)
+    )
+    anzahl = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return antwort(200, gestimmt=gestimmt, stimmen=anzahl)
 
 
 @app.route("/gruppe/<gruppe_id>/umbenennen", methods=["POST"])

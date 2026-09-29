@@ -219,6 +219,23 @@ cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS inhibitoren_verlo
 # "Objective-Monopol") - nur für ab jetzt geladene Spiele, siehe backfill_objective_monopol.py
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS objective_monopol BOOLEAN;")
 
+# Upvotes auf Achievements im Gruppen-Feed - ein Discord-Konto kann pro Achievement genau
+# einmal stimmen (Primärschlüssel verhindert Mehrfach-Votes). Fließt als Bonus in den
+# Monats-Score der Gruppen-Rangliste ein, siehe wochenrueckblick.berechne_score().
+cur.execute("""
+CREATE TABLE IF NOT EXISTS achievement_stimmen (
+    match_id TEXT NOT NULL,
+    puuid TEXT NOT NULL,
+    discord_id TEXT NOT NULL REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    erstellt_am TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (match_id, puuid, discord_id)
+);
+""")
+cur.execute(
+    "CREATE INDEX IF NOT EXISTS idx_achievement_stimmen_achievement "
+    "ON achievement_stimmen (match_id, puuid);"
+)
+
 # Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
 # Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
 cur.execute("""

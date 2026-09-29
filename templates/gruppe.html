@@ -179,6 +179,13 @@
   .ach-tier-filter .tier-chip-episch.active { background: linear-gradient(90deg, #6d28d9, #2e1065); color: #fff; }
   .ach-tier-filter .tier-chip-achievement.active { background: linear-gradient(90deg, #7dd3fc, #c4b5fd); color: #0a0818; }
   .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 26px; }
+  /* Eigener Wrapper um .ach-card (das <a>), damit der Upvote-Knopf NICHT im Link verschachtelt
+     ist (sonst würde ein Klick auf den Knopf auch zur Matchseite navigieren) - gleiches Prinzip
+     wie .feed-card-wrap bei den Spiel-Karten. */
+  .ach-card-wrap { position: relative; }
+  @media (min-width: 620px) {
+    .ach-card-wrap.ach-span-2 { grid-column: span 2; }
+  }
   .ach-card {
     position: relative;
     display: flex; flex-direction: column; align-items: center;
@@ -234,11 +241,6 @@
   .ach-card.tier-legendaer .ach-ribbon {
     font-size: 0.68rem; padding: 4px 16px;
     background: linear-gradient(90deg, var(--tier-a), #7a1f2e 45%, var(--tier-b));
-  }
-  /* 2 Grid-Spalten nur ab genug Platz - sonst würde "span 2" in einer schmalen
-     Auto-Fill-Spalte (Mobile) den Grid-Track sprengen */
-  @media (min-width: 620px) {
-    .ach-card.tier-legendaer { grid-column: span 2; }
   }
   /* Episch: verschiedene dunkle Lila-Töne als Verlauf, sanftes Pulsieren, kein Drift */
   .ach-card.tier-episch {
@@ -364,6 +366,32 @@
   .feed-card-select { position: absolute; top: 6px; left: 6px; z-index: 2; }
   .feed-card-select input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--gold); }
 
+  /* Upvote-Knopf auf Achievements - eigenes Element außerhalb des <a> (feed-card/ach-card),
+     sonst würde ein Klick darauf auch zur Matchseite navigieren. Ein Vote pro Discord-Konto,
+     fließt als Bonus in den Monats-Score ein (siehe wochenrueckblick.PUNKTE_PRO_STIMME). */
+  .stimme-knopf {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .stimme-knopf:hover:not(:disabled) { border-color: var(--accent2); color: var(--text); transform: translateY(-1px); }
+  .stimme-knopf:disabled { cursor: default; opacity: 0.55; }
+  .stimme-knopf .stimme-icon { font-size: 0.65rem; line-height: 1; }
+  .stimme-knopf.aktiv { background: rgba(212, 175, 106, 0.18); border-color: var(--gold); color: var(--gold); }
+  /* Normaler Fluss unter der Karte statt absolut positioniert - dort sitzt schon das
+     Tier-Icon (oben) und der Zeit-Text (unten), bei schmalen Karten würde beides sonst
+     mit dem Knopf kollidieren. */
+  .feed-card-stimme { display: flex; justify-content: center; margin-top: 6px; }
+  .ach-stimme { position: absolute; top: 10px; left: 10px; z-index: 2; }
+
   .vergleich-bar {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: var(--panel);
@@ -450,15 +478,26 @@
   }
   .hinweis-weg:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 
-  /* Mitglied mit Discord-Verknüpfung: kleiner Discord-Avatar unten rechts am Icon */
+  /* Mitglied mit Discord-Verknüpfung: kleiner Discord-Avatar unten rechts am Icon, klickbar -
+     öffnet das öffentliche Discord-Profil (discord.com/users/<id>), von dem aus man die Person
+     manuell als Freund hinzufügen kann. Discord bietet keine öffentliche "Freund hinzufügen"-
+     API für Drittanbieter-Apps, daher der Umweg über den Profil-Link statt einer automatischen
+     Anfrage. */
   .member-avatar { position: relative; display: inline-block; }
-  .member-discord {
+  .member-discord-link {
     position: absolute; right: -4px; bottom: -4px;
+    line-height: 0;
+    border: none; background: none; padding: 0;
+    cursor: pointer;
+  }
+  .member-discord {
     width: 22px; height: 22px;
     border-radius: 50%;
     border: 2px solid #5865f2;
     background: var(--panel);
+    transition: transform 0.15s;
   }
+  .member-discord-link:hover .member-discord { transform: scale(1.15); }
   .member-cell.ich .circle { box-shadow: 0 0 0 3px var(--teal), 0 8px 20px rgba(10, 6, 30, 0.4); }
   .member-cell .du-pill { padding: 1px 8px; font-size: 0.62rem; }
 
@@ -637,7 +676,12 @@
             {% else %}
             <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
             {% endif %}
-            {% if m.discord %}<img class="member-discord" src="{{ m.discord.avatar }}" alt="" title="Discord: {{ m.discord.name }}">{% endif %}
+            {% if m.discord %}
+            <button type="button" class="member-discord-link" data-discord-id="{{ m.discord.id }}"
+                    title="{{ m.discord.name }} auf Discord ansehen/hinzufügen">
+              <img class="member-discord" src="{{ m.discord.avatar }}" alt="Discord: {{ m.discord.name }}">
+            </button>
+            {% endif %}
           </span>
           <div class="name">{{ m.name }}</div>
           {% if m.puuid == meine_puuid %}<span class="du-pill">Du</span>{% endif %}
@@ -692,8 +736,9 @@
             {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
             {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
             {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
+            {%- if z == "monat" and sieger.stimmen %} &middot; ▲ {{ sieger.stimmen }} Stimme{{ "n" if sieger.stimmen != 1 else "" }}{% endif -%}
           </div>
-          <div class="woche-winner-score">Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl{{ " - Multikills pro Spiel gerechnet" if z != "woche" else "" }})</div>
+          <div class="woche-winner-score">Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl{{ " - Multikills pro Spiel gerechnet" if z != "woche" else "" }}{{ ", Achievement-Upvotes zählen als Bonus" if z == "monat" else "" }})</div>
         </div>
       </div>
 
@@ -704,7 +749,7 @@
           <span class="rang">#{{ loop.index + 1 }}</span>
           <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
           <span class="name">{{ w.name }}</span>
-          <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA &middot; Score {{ w.score }}</span>
+          <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA{% if z == "monat" and w.stimmen %} &middot; ▲{{ w.stimmen }}{% endif %} &middot; Score {{ w.score }}</span>
         </div>
         {% endfor %}
       </div>
@@ -732,6 +777,15 @@
   </div>
   {% endif %}
 
+  {% macro stimme_knopf(f, extra_class="") %}
+  <button type="button" class="stimme-knopf {{ extra_class }} {{ 'aktiv' if f.achievement.hat_gestimmt else '' }}"
+          data-match="{{ f.match_id }}" data-puuid="{{ f.puuid }}"
+          {{ 'disabled' if not f.achievement.kann_stimmen else '' }}
+          title="{{ f.achievement.stimme_hinweis }}">
+    <span class="stimme-icon">▲</span><span class="stimme-anzahl">{{ f.achievement.stimmen }}</span>
+  </button>
+  {% endmacro %}
+
   {% macro spiel_karte(f) %}
   <div class="feed-card-wrap" data-puuid="{{ f.puuid }}" data-role="{{ f.role or '' }}" data-kda="{{ f.kda }}">
     <label class="feed-card-select" title="Für Vergleich auswählen">
@@ -751,23 +805,27 @@
       {% if f.achievement %}<div class="feed-card-achievement-text">{{ f.achievement.text }}</div>{% endif %}
       <div class="feed-card-time">{{ f.zeit_text }} &middot; {{ f.dauer_min }} Min.</div>
     </a>
+    {% if f.achievement %}{{ stimme_knopf(f, "feed-card-stimme") }}{% endif %}
   </div>
   {% endmacro %}
 
   {% macro achievement_karte(f) %}
-  <a class="ach-card tier-{{ f.achievement.tier }}" data-tier="{{ f.achievement.tier }}"
-     href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
-     style="--splash: url('{{ f.champion_splash }}');">
-    <span class="ach-ribbon">{{ f.achievement.tier_label }}</span>
-    <div class="ach-emblem"><span class="ach-icon">{{ f.achievement.icon }}</span></div>
-    <div class="ach-headline">{{ f.achievement.text }}</div>
-    <div class="ach-foot">
-      <img class="ach-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
-      <span class="ach-player">{{ f.riot_name }}</span>
-      <span class="ach-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</span>
-    </div>
-    <div class="ach-time">{{ f.zeit_text }}</div>
-  </a>
+  <div class="ach-card-wrap {{ 'ach-span-2' if f.achievement.tier == 'legendaer' else '' }}" data-tier="{{ f.achievement.tier }}">
+    <a class="ach-card tier-{{ f.achievement.tier }}"
+       href="{{ url_for('match_detail', match_id=f.match_id, puuid=f.puuid) }}"
+       style="--splash: url('{{ f.champion_splash }}');">
+      <span class="ach-ribbon">{{ f.achievement.tier_label }}</span>
+      <div class="ach-emblem"><span class="ach-icon">{{ f.achievement.icon }}</span></div>
+      <div class="ach-headline">{{ f.achievement.text }}</div>
+      <div class="ach-foot">
+        <img class="ach-champ" src="{{ f.champion_icon }}" alt="{{ f.champion }}" loading="lazy">
+        <span class="ach-player">{{ f.riot_name }}</span>
+        <span class="ach-kda">{{ f.kills }}/<span class="deaths">{{ f.deaths }}</span>/{{ f.assists }}</span>
+      </div>
+      <div class="ach-time">{{ f.zeit_text }}</div>
+    </a>
+    {{ stimme_knopf(f, "ach-stimme") }}
+  </div>
   {% endmacro %}
 
   {% if achievement_feed %}
@@ -1036,7 +1094,7 @@
     var achTierFilter = document.getElementById("achTierFilter");
     if (achTierFilter) {
       var achGrid = document.getElementById("achGrid");
-      var achKarten = Array.prototype.slice.call(achGrid.querySelectorAll(".ach-card"));
+      var achKarten = Array.prototype.slice.call(achGrid.querySelectorAll(".ach-card-wrap"));
       var achEmpty = document.getElementById("achTierEmpty");
       achTierFilter.addEventListener("click", function (e) {
         var chip = e.target.closest(".filter-chip");
@@ -1052,6 +1110,50 @@
         achEmpty.style.display = sichtbar === 0 ? "block" : "none";
       });
     }
+
+    // Discord-Badge am Mitglied öffnet das öffentliche Profil in einem neuen Tab (Button statt
+    // <a>, weil es innerhalb des Profil-Links der ganzen Karte liegt - ein verschachteltes <a>
+    // würde vom Browser-Parser aufgebrochen und den äußeren Link zerstören).
+    document.querySelectorAll(".member-discord-link").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open("https://discord.com/users/" + btn.dataset.discordId, "_blank", "noopener");
+      });
+    });
+
+    // Upvotes auf Achievements - toggelt serverseitig (ein Vote pro Discord-Konto) und
+    // aktualisiert ALLE Knöpfe mit demselben Match+Spieler (dasselbe Achievement taucht ggf.
+    // sowohl im Schaukasten als auch in "Letzte Spiele" auf).
+    document.querySelectorAll(".stimme-knopf").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (btn.disabled) return;
+        var matchId = btn.dataset.match, puuid = btn.dataset.puuid;
+        var passende = Array.prototype.slice.call(
+          document.querySelectorAll('.stimme-knopf[data-match="' + matchId + '"][data-puuid="' + puuid + '"]')
+        );
+        passende.forEach(function (b) { b.disabled = true; });
+        fetch("{{ url_for('gruppe_stimme', gruppe_id=gruppe_id) }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "fetch" },
+          body: new URLSearchParams({ match_id: matchId, puuid: puuid }).toString(),
+        })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+          .then(function (daten) {
+            passende.forEach(function (b) {
+              b.classList.toggle("aktiv", daten.gestimmt);
+              b.querySelector(".stimme-anzahl").textContent = daten.stimmen;
+              b.title = daten.gestimmt ? "Stimme entfernen" : "Für dieses Achievement stimmen";
+              b.disabled = false;
+            });
+          })
+          .catch(function () {
+            passende.forEach(function (b) { b.disabled = false; });
+          });
+      });
+    });
 
     // Zwei Spiele für den direkten Vergleich auswählen
     var ausgewaehlt = [];
