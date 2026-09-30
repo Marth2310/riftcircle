@@ -343,6 +343,58 @@
   .tipp-liste { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 9px; }
   .tipp-liste li { font-size: 0.88rem; line-height: 1.55; }
   .tipp-liste li::marker { color: var(--accent); }
+
+  /* Kommentare - unter den Tabs, gilt für das ganze Spiel/Achievement (match_id + puuid),
+     nicht an einen einzelnen Tab gebunden */
+  .kommentar-liste { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+  .kommentar-zeile { display: flex; gap: 12px; align-items: flex-start; }
+  .kommentar-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+  .kommentar-inhalt { flex: 1; min-width: 0; }
+  .kommentar-kopf { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .kommentar-name { font-weight: 700; font-size: 0.85rem; }
+  .kommentar-zeit { color: var(--muted); font-size: 0.72rem; }
+  .kommentar-text { font-size: 0.88rem; margin-top: 2px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .kommentar-loeschen-form { flex-shrink: 0; }
+  .kommentar-loeschen {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: none; background: none;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .kommentar-loeschen:hover { color: var(--loss); background: rgba(247, 108, 138, 0.12); }
+  .kommentar-form { display: flex; gap: 10px; align-items: flex-start; }
+  .kommentar-form textarea {
+    flex: 1;
+    min-height: 44px;
+    max-height: 160px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.88rem;
+    resize: vertical;
+  }
+  .kommentar-form textarea::placeholder { color: var(--muted); }
+  .kommentar-form button {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: inherit;
+  }
+  .kommentar-login-hinweis { color: var(--muted); font-size: 0.85rem; }
+  .kommentar-login-hinweis a { color: var(--accent2); }
 </style>
 </head>
 <body>
@@ -742,6 +794,46 @@
       {% endfor %}
     </div>
     </details>
+  </div>
+
+  <div class="panel" id="kommentare">
+    <h2 class="section-title accent-teal">Kommentare</h2>
+    {% if kommentare %}
+    <div class="kommentar-liste">
+      {% for k in kommentare %}
+      <div class="kommentar-zeile">
+        <img class="kommentar-avatar" src="{{ k.avatar }}" alt="">
+        <div class="kommentar-inhalt">
+          <div class="kommentar-kopf">
+            <span class="kommentar-name">{{ k.name }}</span>
+            <span class="kommentar-zeit">{{ k.zeit_text }}</span>
+          </div>
+          <div class="kommentar-text">{{ k.text }}</div>
+        </div>
+        {% if ich and k.discord_id == ich.id %}
+        <form class="kommentar-loeschen-form" method="post"
+              action="{{ url_for('kommentar_loeschen', kommentar_id=k.id) }}"
+              onsubmit="return confirm('Kommentar löschen?');">
+          <button type="submit" class="kommentar-loeschen" title="Löschen">&times;</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Kommentare - sei der Erste.</p>
+    {% endif %}
+
+    {% if ich %}
+    <form class="kommentar-form" method="post" action="{{ url_for('kommentar_erstellen') }}">
+      <input type="hidden" name="match_id" value="{{ match_id }}">
+      <input type="hidden" name="puuid" value="{{ puuid }}">
+      <textarea name="text" maxlength="{{ kommentar_max_laenge }}" placeholder="Kommentar schreiben..." required></textarea>
+      <button type="submit">Absenden</button>
+    </form>
+    {% else %}
+    <p class="kommentar-login-hinweis">Melde dich mit Discord an, um zu kommentieren - <a href="{{ url_for('konto') }}">jetzt anmelden</a>.</p>
+    {% endif %}
   </div>
 
 </div>

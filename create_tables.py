@@ -246,6 +246,21 @@ cur.execute(
     "ON achievement_stimmen (match_id, puuid);"
 )
 
+# Kommentare zu einem einzelnen Spiel/Achievement (match_id + puuid) - auf der Match-Detailseite,
+# nicht an eine bestimmte Gruppe gebunden (die Seite selbst kennt keine Gruppe, sie wird aus
+# mehreren Gruppen-Feeds heraus verlinkt). Nur eingeloggte Discord-Konten dürfen kommentieren.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS kommentare (
+    id SERIAL PRIMARY KEY,
+    match_id TEXT NOT NULL,
+    puuid TEXT NOT NULL,
+    discord_id TEXT NOT NULL REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    erstellt_am TIMESTAMP DEFAULT now()
+);
+""")
+cur.execute("CREATE INDEX IF NOT EXISTS idx_kommentare_ziel ON kommentare (match_id, puuid);")
+
 # Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
 # Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
 cur.execute("""

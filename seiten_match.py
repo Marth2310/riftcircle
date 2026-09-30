@@ -8,6 +8,7 @@ from app_core import app, headers
 from benchmarks import normalize_tier
 from champion_mobility import hat_escape
 from db import get_connection
+from kommentare import MAX_KOMMENTAR_LAENGE, kommentare_fuer_spiel
 from match_tipps import erstelle_tipps
 from profil_statistik import ROLLEN, rang_speichern
 from riot_assets import champion_icon_url, champion_splash_url, get_champion_spells, get_ddragon_version, item_icon_url
@@ -17,7 +18,7 @@ from riot_timeline import death_position_percent, fetch_timeline_events, format_
 from rollen_tipps import tipps_fuer_rolle
 from seiten_champions import ROLLEN_ICON_URL
 from vergleich import fazit_saetze, vergleiche
-from web_hilfen import relative_zeit
+from web_hilfen import angemeldeter_nutzer, relative_zeit
 
 
 def berechne_rangliste(teams, duration_seconds):
@@ -554,8 +555,10 @@ def match_detail(match_id):
         timeline_extra=timeline_extra, item_timeline=item_timeline, skill_order=skill_order,
         version=ddragon_version,
     )
+    kommentare = kommentare_fuer_spiel(cur, match_id, puuid)
     cur.close()
     conn.close()
+    ich = angemeldeter_nutzer()
     tod_analyse = analysiere_tode(death_positions, timeline_extra, teams, puuid, champion)
     zeitstrahl = baue_zeitstrahl(death_positions, timeline_extra, teams, puuid)
     team_vergleich = baue_team_vergleich(teams)
@@ -568,6 +571,9 @@ def match_detail(match_id):
         "match_detail.html",
         match_id=match_id,
         puuid=puuid,
+        kommentare=kommentare,
+        kommentar_max_laenge=MAX_KOMMENTAR_LAENGE,
+        ich=ich,
         riot_name=riot_name,
         riot_tag=riot_tag,
         champion=champion,
@@ -601,3 +607,63 @@ def match_detail(match_id):
         rollen_tipps=rollen_tipps,
         match_tipps=match_tipps,
     )
+
+
+@app.route("/kommentar", methods=["POST"])
+def kommentar_erstellen():
+    """Kommentar unter einem Spiel/Achievement - offen für jedes eingeloggte Discord-Konto,
+    nicht auf Gruppenmitglieder beschränkt (die Match-Seite kennt selbst keine Gruppe)."""
+    ich = angemeldeter_nutzer()
+    match_id = request.form.get("match_id", "").strip()
+    puuid = request.form.get("puuid", "").strip()
+    text = request.form.get("text", "").strip()[:MAX_KOMMENTAR_LAENGE]
+    ziel = url_for("match_detail", match_id=match_id, puuid=puuid) + "#kommentare"
+
+    if not ich:
+        return redirect(url_for("konto"))
+    if not match_id or not puuid or not text:
+        return redirect(ziel)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    # Nur zu Spielen kommentieren, die es wirklich gibt (kein Spam mit erfundenen
+    # match_id/puuid-Werten)
+    cur.execute("SELECT 1 FROM participants WHERE match_id = %s AND puuid = %s;", (match_id, puuid))
+    if cur.fetchone() is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    cur.execute(
+        "INSERT INTO kommentare (match_id, puuid, discord_id, text) VALUES (%s, %s, %s, %s);",
+        (match_id, puuid, ich["id"], text),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(ziel)
+
+
+@app.route("/kommentar/<int:kommentar_id>/loeschen", methods=["POST"])
+def kommentar_loeschen(kommentar_id):
+    """Nur der eigene Kommentar lässt sich löschen - keine Moderation durch Dritte."""
+    ich = angemeldeter_nutzer()
+    if not ich:
+        return redirect(url_for("konto"))
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT match_id, puuid FROM kommentare WHERE id = %s AND discord_id = %s;",
+        (kommentar_id, ich["id"]),
+    )
+    row = cur.fetchone()
+    if row is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    match_id, puuid = row
+    cur.execute("DELETE FROM kommentare WHERE id = %s AND discord_id = %s;", (kommentar_id, ich["id"]))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for("match_detail", match_id=match_id, puuid=puuid) + "#kommentare")
