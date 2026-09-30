@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS matches (
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS team_lineup JSONB;")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS timeline_extra JSONB;")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS gold_timeline JSONB;")
+# Praktisch jede Seite sortiert nach played_at (Feed, Rang-Verlauf, Match-History, Verlauf-
+# Chart, Siegesserien-Berechnung) - ohne Index erzwingt das einen Sequential Scan über die
+# komplette Tabelle, der mit jedem neuen Match langsamer wird.
+cur.execute("CREATE INDEX IF NOT EXISTS idx_matches_played_at ON matches (played_at DESC);")
 cur.execute("ALTER TABLE matches ADD COLUMN IF NOT EXISTS queue_id INTEGER;")
 
 cur.execute("""
@@ -72,6 +76,12 @@ CREATE TABLE IF NOT EXISTS participants (
     UNIQUE (match_id, puuid)
 );
 """)
+
+# Fast jede Abfrage im ganzen Projekt filtert nach "puuid = ..." (Profil, Gruppen-Feed,
+# Trophäen, Rang-/Rollen-Statistik, ...) - der UNIQUE-Index oben beginnt mit match_id und
+# hilft dabei kaum. Ohne eigenen puuid-Index läuft das faktisch auf einen Full-Scan der
+# Tabelle hinaus, der mit jedem neuen Match spürbar langsamer wird.
+cur.execute("CREATE INDEX IF NOT EXISTS idx_participants_puuid ON participants (puuid);")
 
 # Für bereits bestehende Installationen: neue Spalten nachträglich ergänzen
 cur.execute("ALTER TABLE participants ADD COLUMN IF NOT EXISTS damage_dealt INTEGER;")
