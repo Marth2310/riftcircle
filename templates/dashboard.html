@@ -44,7 +44,8 @@
   }
   .profil-bg.sichtbar { opacity: 0.38; }
   /* Karten leicht durchsichtig, damit der Skin auch hinter den Inhalten durchscheint */
-  body .card, body .chart-card, body .main-card, body .rollen-zeile, body .duo-zeile {
+  body .card, body .chart-card, body .main-card, body .rollen-zeile, body .duo-zeile,
+  body .trophy-badge, body .trophy-detail {
     background: rgba(27, 20, 64, 0.8);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
@@ -397,6 +398,77 @@
   .main-wr.schlecht { color: var(--loss); }
   .main-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.74rem; }
 
+  /* Karriere-Trophäen: Xbox/PlayStation-artige Leiter Bronze->Diamant (siehe trophaeen.py) -
+     kompaktes Abzeichen-Grid oben, Klick zeigt Fortschrittsdetails darunter statt eines
+     nativen Dropdowns, damit Farbe/Fortschrittsbalken/Icon sichtbar bleiben. */
+  .trophy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .trophy-badge {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 12px 6px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .trophy-badge:hover { transform: translateY(-2px); border-color: var(--trophy-color); }
+  .trophy-badge.active { border-color: var(--trophy-color); background: var(--panel-2); }
+  .trophy-badge .trophy-icon {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    background: var(--panel-2);
+    border: 3px solid var(--trophy-color);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--trophy-color) 45%, transparent);
+  }
+  .trophy-badge.leer .trophy-icon { filter: grayscale(0.7); opacity: 0.55; box-shadow: none; }
+  .trophy-badge .trophy-name { font-size: 0.66rem; font-weight: 700; text-align: center; line-height: 1.2; }
+  .trophy-badge .trophy-stufe { font-size: 0.62rem; font-weight: 800; color: var(--trophy-color); }
+  .trophy-badge.leer .trophy-stufe { color: var(--muted); }
+
+  .trophy-details { margin-bottom: 28px; }
+  .trophy-detail {
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .trophy-detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .trophy-detail-head .trophy-icon.big {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+    background: var(--panel);
+    border: 3px solid var(--trophy-color);
+    flex-shrink: 0;
+  }
+  .trophy-detail-name { font-weight: 800; font-size: 1rem; }
+  .trophy-detail-stufe { color: var(--trophy-color); font-weight: 800; font-size: 0.82rem; margin-left: 6px; }
+  .trophy-detail-desc { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  .trophy-progress { height: 10px; border-radius: 999px; background: var(--panel); overflow: hidden; margin-bottom: 6px; }
+  .trophy-progress-bar { height: 100%; border-radius: 999px; background: var(--trophy-color); transition: width 0.3s ease; }
+  .trophy-progress-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
+  .trophy-ladder { display: flex; flex-wrap: wrap; gap: 8px; }
+  .trophy-ladder-stufe {
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .trophy-ladder-stufe.erreicht {
+    border-color: var(--trophy-color); color: var(--trophy-color);
+    background: color-mix(in srgb, var(--trophy-color) 15%, transparent);
+  }
+
 </style>
 </head>
 <body>
@@ -553,6 +625,49 @@
       <div class="label">Spiele analysiert</div>
     </div>
   </div>
+
+  {% if trophaeen %}
+  <h2 class="section-title accent-gold">Trophäen</h2>
+  <p class="treffer-hint">Karriere-Fortschritt über alle {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spiele - klick ein Abzeichen für den Fortschritt zur nächsten Stufe.</p>
+  <div class="trophy-grid" id="trophyGrid">
+    {% for t in trophaeen %}
+    <button type="button" class="trophy-badge {{ 'leer' if not t.stufe else '' }} {{ 'active' if loop.first else '' }}"
+            style="--trophy-color: {{ t.farbe }};" data-trophy="{{ t.id }}">
+      <span class="trophy-icon">{{ t.icon }}</span>
+      <span class="trophy-name">{{ t.name }}</span>
+      <span class="trophy-stufe">{{ t.stufe_label if t.stufe else "-" }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  <div class="trophy-details" id="trophyDetails">
+    {% for t in trophaeen %}
+    <div class="trophy-detail" data-trophy="{{ t.id }}" {{ '' if loop.first else 'hidden' }} style="--trophy-color: {{ t.farbe }};">
+      <div class="trophy-detail-head">
+        <span class="trophy-icon big">{{ t.icon }}</span>
+        <div>
+          <div class="trophy-detail-name">{{ t.name }} <span class="trophy-detail-stufe">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }}</span></div>
+          <div class="trophy-detail-desc">{{ t.beschreibung }}</div>
+        </div>
+      </div>
+      <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%;"></div></div>
+      <div class="trophy-progress-label">
+        {% if t.ist_maximal %}
+        {{ t.wert }} erreicht - Diamant, die höchste Stufe!
+        {% else %}
+        {{ t.wert }} / {{ t.naechste_schwelle }} für {{ t.naechste_stufe_label }}
+        {% endif %}
+      </div>
+      <div class="trophy-ladder">
+        {% for stufe in t.leiter %}
+        <span class="trophy-ladder-stufe {{ 'erreicht' if stufe.erreicht else '' }}" {% if stufe.erreicht %}style="--trophy-color: {{ stufe.farbe }};"{% endif %}>
+          {{ stufe.label }} &middot; {{ stufe.schwelle }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   {% if meistgespielte %}
   <h2 class="section-title">Meistgespielte Champions</h2>
@@ -945,6 +1060,21 @@
         iconInput.value = btn.getAttribute("data-icon");
       });
     });
+
+    // Trophäen-Grid: Klick auf ein Abzeichen zeigt dessen Fortschritts-Details darunter
+    var trophyGrid = document.getElementById("trophyGrid");
+    if (trophyGrid) {
+      var trophyDetails = document.getElementById("trophyDetails");
+      trophyGrid.addEventListener("click", function (e) {
+        var btn = e.target.closest(".trophy-badge");
+        if (!btn) return;
+        var id = btn.getAttribute("data-trophy");
+        trophyGrid.querySelectorAll(".trophy-badge").forEach(function (b) { b.classList.toggle("active", b === btn); });
+        trophyDetails.querySelectorAll(".trophy-detail").forEach(function (d) {
+          d.hidden = d.getAttribute("data-trophy") !== id;
+        });
+      });
+    }
   })();
 </script>
 

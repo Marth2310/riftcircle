@@ -37,6 +37,7 @@ from riot_fetch import (
 )
 from profil_statistik import duo_partner, rang_speichern, rang_verlauf, rollen_statistik, tier_achse
 from riot_runes import keystone_and_secondary_icons
+from trophaeen import trophaeen_fuer_spieler
 from seiten_champions import ROLLEN_ICON_URL
 from seiten_gruppen import benachrichtige_gruppe_sicher
 from spielmodus import KATEGORIEN as MODUS_KATEGORIEN
@@ -193,6 +194,7 @@ def profil():
     verlauf_rang = rang_verlauf(cur, puuid)
     rollen_stats = rollen_statistik(cur, puuid)
     partner = duo_partner(cur, puuid)
+    trophaeen = trophaeen_fuer_spieler(cur, puuid)
 
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
@@ -318,6 +320,7 @@ def profil():
         rollen_stats=rollen_stats,
         rollen_icon_url=ROLLEN_ICON_URL,
         duo_partner=partner,
+        trophaeen=trophaeen,
         gespeicherte_spiele=gespeicherte_spiele,
         profil_discord=profil_discord,
         ist_mein_profil=ist_mein_profil,
