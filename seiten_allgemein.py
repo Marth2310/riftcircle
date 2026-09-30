@@ -6,8 +6,12 @@ from flask import abort, jsonify, render_template, request
 from app_core import ANALYTICS_SECRET, app
 from db import get_connection
 from riot_assets import get_ddragon_version, summoner_icon_url
+from seiten_gruppen import ticker_fuer_gruppen
+from trophaeen import trophaeen_fuer_spieler
 from web_hilfen import (
     GRUPPEN_ICONS,
+    aktive_puuids,
+    angemeldeter_nutzer,
     lese_meine_gruppen,
     lese_zuletzt_gesehen,
     mit_farbe,
@@ -31,9 +35,32 @@ def riot_verification():
 def landing():
     zuletzt_gesehen = mit_summoner_icons(mit_farbe(lese_zuletzt_gesehen()))
     meine_gruppen = lese_meine_gruppen()
+    ich = angemeldeter_nutzer()
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Kleiner grüner Punkt an kürzlich aktiven Profilen (siehe AKTIV_FENSTER_STUNDEN)
+    aktive = aktive_puuids(cur, [sp["puuid"] for sp in zuletzt_gesehen])
+    for sp in zuletzt_gesehen:
+        sp["aktiv"] = sp["puuid"] in aktive
+
+    # Live-Ticker: neueste Achievements über alle eigenen Gruppen hinweg
+    ticker = ticker_fuer_gruppen(cur, [g["id"] for g in meine_gruppen])
+
+    # Nächstgelegene Karriere-Trophäe (siehe trophaeen.py) als persönlicher Anreiz
+    naechste_trophaee = None
+    if ich and ich.get("puuid"):
+        offene = [t for t in trophaeen_fuer_spieler(cur, ich["puuid"]) if not t["ist_maximal"]]
+        if offene:
+            naechste_trophaee = max(offene, key=lambda t: t["fortschritt_prozent"])
+
+    cur.close()
+    conn.close()
+
     return render_template(
         "landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen,
-        gruppen_icons=GRUPPEN_ICONS,
+        gruppen_icons=GRUPPEN_ICONS, ich=ich, ticker=ticker, naechste_trophaee=naechste_trophaee,
     )
 
 

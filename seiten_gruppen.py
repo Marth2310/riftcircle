@@ -112,6 +112,60 @@ def _stimmen_fuer_feed(cur, achievement_zeilen, mein_discord_id):
     return {(m, p): {"anzahl": n, "hat_gestimmt": gestimmt} for m, p, n, gestimmt in cur.fetchall()}
 
 
+def ticker_fuer_gruppen(cur, gruppen_ids, limit=8):
+    """Neueste Achievements über ALLE übergebenen Gruppen hinweg, gruppenübergreifend
+    chronologisch gemischt - für den Live-Ticker auf der Startseite. Dieselbe Achievement-
+    Erkennung wie im Gruppen-Feed (siehe baue_gruppen_feed), nur nicht auf eine Gruppe
+    beschränkt. Scannt die letzten 200 Spiele der Gruppen-Mitglieder als Kandidaten (nicht
+    jedes Spiel hat ein Achievement) statt aufwendig weiter zurückzublättern, bis genug
+    zusammenkommen - bei sehr ruhigen Gruppen bleibt der Ticker dann einfach kurz."""
+    if not gruppen_ids:
+        return []
+    cur.execute("""
+        SELECT g.name, g.icon, p.match_id, p.puuid, pl.riot_name, p.champion, p.role, p.win,
+               p.kills, p.deaths, p.assists, p.cs, p.damage_dealt, p.damage_rank,
+               p.objectives_stolen, p.solo_kills, p.penta_kills, p.quadra_kills, p.triple_kills,
+               p.double_kills, p.inhibitoren_verloren, p.vision_score, p.damage_share,
+               p.gold_diff, p.turret_takedowns, p.objective_monopol, m.played_at, m.duration_seconds
+        FROM gruppen_mitglieder gm
+        JOIN gruppen g ON g.id = gm.gruppe_id
+        JOIN participants p ON p.puuid = gm.puuid
+        JOIN matches m ON m.match_id = p.match_id
+        JOIN players pl ON pl.puuid = p.puuid
+        WHERE gm.gruppe_id = ANY(%s)
+        ORDER BY m.played_at DESC
+        LIMIT 200;
+    """, (gruppen_ids,))
+
+    ticker = []
+    for row in cur.fetchall():
+        (gruppe_name, gruppe_icon, match_id, puuid, riot_name, champion, role, win, kills, deaths,
+         assists, cs, damage_dealt, damage_rank, objectives_stolen, solo_kills, penta, quadra,
+         triple, double, inhibitoren_verloren, vision_score, damage_share, gold_diff,
+         turret_takedowns, objective_monopol, played_at, duration_seconds) = row
+        achievement = bestes_achievement({
+            "champion": champion, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+            "damage_dealt": damage_dealt or 0, "damage_rank": damage_rank,
+            "objectives_stolen": objectives_stolen or 0, "solo_kills": solo_kills or 0,
+            "penta_kills": penta or 0, "quadra_kills": quadra or 0, "triple_kills": triple or 0,
+            "double_kills": double or 0, "inhibitoren_verloren": inhibitoren_verloren,
+            "vision_score": vision_score, "damage_share": damage_share, "gold_diff": gold_diff,
+            "turret_takedowns": turret_takedowns, "objective_monopol": objective_monopol,
+            "cs": cs, "duration_seconds": duration_seconds,
+        })
+        if not achievement:
+            continue
+        ticker.append({
+            "icon": achievement["icon"], "tier": achievement["tier"],
+            "text": f"{riot_name} ({gruppe_name}): {achievement['text']}",
+            "url": url_for("match_detail", match_id=match_id, puuid=puuid),
+            "zeit_text": relative_zeit(played_at),
+        })
+        if len(ticker) >= limit:
+            break
+    return ticker
+
+
 def baue_gruppen_feed(cur, mitglied_puuids):
     """Letzte Spiele ALLER Gruppenmitglieder, chronologisch gemischt (nicht pro Mitglied
     getrennt) - genau das "ich seh die Spiele der anderen direkt hier"-Gefühl, das eine

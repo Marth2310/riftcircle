@@ -93,6 +93,23 @@ def mit_farbe(eintraege):
     ]
 
 
+AKTIV_FENSTER_STUNDEN = 24
+
+
+def aktive_puuids(cur, puuids):
+    """Teilmenge von puuids, die innerhalb der letzten AKTIV_FENSTER_STUNDEN Stunden gespielt
+    haben - für den kleinen grünen "kürzlich aktiv"-Punkt an Avataren auf der Startseite."""
+    if not puuids:
+        return set()
+    cur.execute("""
+        SELECT p.puuid FROM participants p JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid = ANY(%s)
+        GROUP BY p.puuid
+        HAVING MAX(m.played_at) >= now() - %s * interval '1 hour';
+    """, (puuids, AKTIV_FENSTER_STUNDEN))
+    return {row[0] for row in cur.fetchall()}
+
+
 def mit_summoner_icons(eintraege):
     """Hängt je Eintrag die URL des vom Spieler gewählten Profil-Icons an ("icon_url", sonst
     None -> Template fällt auf den Anfangsbuchstaben zurück). Die Icon-ID liegt in players;

@@ -189,6 +189,76 @@
   }
 
   .empty { color: var(--muted); text-align: center; padding: 24px; }
+
+  /* Live-Ticker: neueste Achievements über alle eigenen Gruppen, ein Eintrag nach dem anderen
+     eingeblendet (kein Scroll-Marquee - fühlt sich nach dem Scroll-Performance-Feintuning
+     bewusst "leichter" an als eine durchgehende Transform-Animation). */
+  .ticker {
+    display: flex; align-items: center; gap: 14px;
+    max-width: 1080px; margin: 0 auto 28px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+  }
+  .ticker-label {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.68rem; font-weight: 800;
+    color: var(--loss);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .ticker-label::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--loss);
+    box-shadow: 0 0 6px var(--loss);
+  }
+  .ticker-track { position: relative; flex: 1; height: 20px; min-width: 0; }
+  .ticker-item {
+    position: absolute; inset: 0;
+    display: flex; align-items: baseline; gap: 7px;
+    font-size: 0.84rem;
+    color: var(--text);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  .ticker-item.active { opacity: 1; pointer-events: auto; }
+  .ticker-item:hover { color: var(--accent2); }
+  .ticker-icon { filter: drop-shadow(0 0 3px var(--tier-color, transparent)); flex-shrink: 0; }
+  .ticker-text { overflow: hidden; text-overflow: ellipsis; }
+  .ticker-zeit { flex-shrink: 0; color: var(--muted); font-size: 0.74rem; }
+  @media (max-width: 600px) { .ticker-zeit { display: none; } }
+
+  /* Trophäen-Nudge: eine Zeile, persönlicher Anreiz statt eigener großer Kachel */
+  .trophy-nudge {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .trophy-nudge:hover { border-color: var(--trophy-color); transform: translateY(-2px); }
+  .trophy-nudge-icon {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    background: var(--panel-2);
+    border: 2px solid var(--trophy-color);
+    flex-shrink: 0;
+  }
+  .trophy-nudge-info { flex: 1; min-width: 0; }
+  .trophy-nudge-titel { font-size: 0.86rem; margin-bottom: 6px; }
+  .trophy-nudge-titel b { color: var(--trophy-color); }
+  .trophy-nudge-bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+  .trophy-nudge-bar div { height: 100%; border-radius: 999px; background: var(--trophy-color); }
 </style>
 </head>
 <body>
@@ -214,6 +284,24 @@
     </form>
   </div>
 </div>
+
+{% if ticker %}
+<div class="wrap">
+  <div class="ticker" id="ticker">
+    <span class="ticker-label">Live</span>
+    <div class="ticker-track">
+      {% for t in ticker %}
+      <a class="ticker-item {{ 'active' if loop.first else '' }}" href="{{ t.url }}"
+         style="--tier-color: {{ {'legendaer': '#4767d6', 'episch': '#7c3aed', 'achievement': '#a5b4fc'}[t.tier] }};">
+        <span class="ticker-icon">{{ t.icon }}</span>
+        <span class="ticker-text">{{ t.text }}</span>
+        <span class="ticker-zeit">{{ t.zeit_text }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="wrap landing-layout">
 
@@ -261,6 +349,21 @@
   </nav>
 
   <main class="landing-main">
+    {% if naechste_trophaee %}
+    <section>
+      <a class="trophy-nudge" href="{{ url_for('profil', riot_id=ich.riot) }}" style="--trophy-color: {{ naechste_trophaee.farbe }};">
+        <span class="trophy-nudge-icon">{{ naechste_trophaee.icon }}</span>
+        <div class="trophy-nudge-info">
+          <div class="trophy-nudge-titel">
+            Noch {{ naechste_trophaee.naechste_schwelle - naechste_trophaee.wert }} bis
+            <b>{{ naechste_trophaee.naechste_stufe_label }}</b> bei {{ naechste_trophaee.name }}
+          </div>
+          <div class="trophy-nudge-bar"><div style="width: {{ naechste_trophaee.fortschritt_prozent }}%;"></div></div>
+        </div>
+      </a>
+    </section>
+    {% endif %}
+
     <section>
       <div class="section-label">Zuletzt gesehen</div>
       {% if zuletzt_gesehen %}
@@ -268,9 +371,15 @@
         {% for sp in zuletzt_gesehen %}
         <a class="avatar-chip" href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">
           {% if sp.icon_url %}
-          <div class="circle has-icon" style="background: {{ sp.farbe }};"><img src="{{ sp.icon_url }}" alt=""></div>
+          <div class="circle has-icon" style="background: {{ sp.farbe }};">
+            <img src="{{ sp.icon_url }}" alt="">
+            {% if sp.aktiv %}<span class="aktiv-punkt" title="Kürzlich aktiv"></span>{% endif %}
+          </div>
           {% else %}
-          <div class="circle" style="background: {{ sp.farbe }};">{{ sp.name[0] | upper }}</div>
+          <div class="circle" style="background: {{ sp.farbe }};">
+            {{ sp.name[0] | upper }}
+            {% if sp.aktiv %}<span class="aktiv-punkt" title="Kürzlich aktiv"></span>{% endif %}
+          </div>
           {% endif %}
           <div class="name">{{ sp.name }}</div>
         </a>
@@ -337,6 +446,22 @@
 
     // 3D-Tilt der Nav-Kacheln: nur mit echter Maus (kein Touch/Trackpad-Tap) und nur ohne
     // "reduced motion". Die Karte kippt zum Cursor hin, ein Glanzlicht wandert mit.
+    // Live-Ticker: ein Eintrag nach dem anderen, ohne "reduced motion" bleibt einfach der
+    // erste stehen
+    var tickerTrack = document.querySelector(".ticker-track");
+    if (tickerTrack) {
+      var tickerItems = Array.prototype.slice.call(tickerTrack.querySelectorAll(".ticker-item"));
+      var tickerRuhig = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (tickerItems.length > 1 && !tickerRuhig) {
+        var tickerIdx = 0;
+        setInterval(function () {
+          tickerItems[tickerIdx].classList.remove("active");
+          tickerIdx = (tickerIdx + 1) % tickerItems.length;
+          tickerItems[tickerIdx].classList.add("active");
+        }, 4500);
+      }
+    }
+
     var hatMaus = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     var ruhig = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (hatMaus && !ruhig) {

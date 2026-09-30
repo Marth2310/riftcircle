@@ -245,6 +245,7 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
   text-align: center;
 }
 .avatar-chip .circle {
+  position: relative;
   width: 56px; height: 56px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -257,6 +258,15 @@ h2.section-title.accent-achievements::before { background: conic-gradient(#64748
 .avatar-chip:hover .circle { transform: translateY(-3px) scale(1.05); }
 .avatar-chip .circle.has-icon { padding: 3px; }
 .avatar-chip .circle.has-icon img { width: 100%; height: 100%; border-radius: 50%; display: block; object-fit: cover; }
+/* Kleiner Punkt: Profil hat innerhalb der letzten 24h gespielt (siehe web_hilfen.aktive_puuids) */
+.aktiv-punkt {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--win);
+  border: 2px solid var(--bg-2);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+}
 .avatar-chip .name {
   font-size: 0.76rem;
   color: var(--muted);
