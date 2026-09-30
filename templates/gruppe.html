@@ -361,6 +361,19 @@
   .woche-zeile .name { font-weight: 600; flex: 1; min-width: 80px; }
   .woche-zeile .stats { color: var(--muted); font-size: 0.74rem; }
 
+  /* Stack-Stats: Duo/Trio/Quad/5er-Stack-Winrate (siehe seiten_gruppen.stack_stats) */
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stack-karte { padding: 14px 16px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--border); text-align: center; }
+  .stack-groesse { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stack-wr { font-size: 1.4rem; font-weight: 800; }
+  .stack-wr.gut { color: var(--win); }
+  .stack-wr.schlecht { color: var(--loss); }
+  .stack-balken { height: 5px; border-radius: 999px; background: var(--panel); overflow: hidden; margin: 8px 0; }
+  .stack-balken div { height: 100%; border-radius: 999px; }
+  .stack-balken .gut { background: var(--win); }
+  .stack-balken .schlecht { background: var(--loss); }
+  .stack-anzahl { color: var(--muted); font-size: 0.72rem; }
+
   /* Vergleichs-Auswahl auf den Spiel-Karten */
   .feed-card-wrap { position: relative; }
   .feed-card-select { position: absolute; top: 6px; left: 6px; z-index: 2; }
@@ -764,6 +777,23 @@
     </div>
     {% endfor %}
   </div>
+
+  {% if stacks %}
+  <div class="panel">
+    <h2 class="section-title accent-teal">Stack-Stats</h2>
+    <p class="rollen-hint" style="margin: 0 0 16px;">Wie schneidet ihr ab, wenn mehrere Mitglieder im selben Team landen - über die komplette gespeicherte Historie.</p>
+    <div class="stack-grid">
+      {% for s in stacks %}
+      <div class="stack-karte">
+        <div class="stack-groesse">{{ s.label }}</div>
+        <div class="stack-wr {{ 'gut' if s.winrate >= 50 else 'schlecht' }}">{{ s.winrate }}%</div>
+        <div class="stack-balken"><div class="{{ 'gut' if s.winrate >= 50 else 'schlecht' }}" style="width: {{ s.winrate }}%;"></div></div>
+        <div class="stack-anzahl">{{ s.siege }}S &middot; {{ s.spiele - s.siege }}N &middot; {{ s.spiele }} Spiel{{ "e" if s.spiele != 1 else "" }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 
   {% if verlauf %}
   <div class="panel">

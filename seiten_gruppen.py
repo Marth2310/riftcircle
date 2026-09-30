@@ -20,11 +20,13 @@ from discord_webhook import (
 )
 from riot_assets import champion_icon_url, champion_splash_url, get_ddragon_version
 from riot_fetch import SummonerNotFound, sync_player
+from vergleich import GRUPPEN_VERGLEICH_STATS, fazit_saetze, vergleiche
 from web_hilfen import (
     GRUPPEN_ICONS,
     MEINE_GRUPPEN_COOKIE,
     angemeldeter_nutzer,
     cookie_meine_gruppen,
+    lese_meine_gruppen,
     lese_zuletzt_gesehen,
     meine_gruppen_cookie_setzen,
     mit_farbe,
@@ -56,6 +58,29 @@ def gruppe_erstellen():
 
     resp = make_response(redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id)))
     return meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon)
+
+
+@app.route("/gruppen")
+def gruppen_uebersicht():
+    """Übersicht aller eigenen Gruppen plus Gruppen-vs-Gruppen-Vergleich - eigene Seite statt
+    nur des "Meine Gruppen"-Ausschnitts auf der Startseite, damit die Gruppen-Kachel dort auf
+    ein echtes Ziel verlinkt wie die anderen Kacheln auch."""
+    meine_gruppen = lese_meine_gruppen()
+    a_id = request.args.get("a", "")
+    b_id = request.args.get("b", "")
+
+    vergleich = None
+    if a_id and b_id and a_id != b_id:
+        conn = get_connection()
+        cur = conn.cursor()
+        vergleich = baue_gruppenvergleich(cur, a_id, b_id, meine_gruppen)
+        cur.close()
+        conn.close()
+
+    return render_template(
+        "gruppen_uebersicht.html", meine_gruppen=meine_gruppen, gruppen_icons=GRUPPEN_ICONS,
+        vergleich=vergleich, a_id=a_id, b_id=b_id,
+    )
 
 
 GRUPPEN_FEED_LIMIT = 40
@@ -226,6 +251,83 @@ def baue_gruppen_feed(cur, mitglied_puuids):
             "achievement": bestes_achievement(achievement_zeile),
         })
     return feed
+
+
+STACK_LABEL = {2: "Duo", 3: "Trio", 4: "Quad", 5: "5er-Stack"}
+
+
+def stack_stats(cur, mitglied_puuids):
+    """Wie schneidet die Gruppe ab, wenn mehrere Mitglieder im selben Team landen (Duo bis
+    kompletter 5er-Stack)? "Selbes Team" wird über (match_id, win) erkannt statt über Riots
+    teamId - die 5 Spieler EINES Teams haben in einem regulär beendeten Spiel immer denselben
+    win-Wert, das spart einen Blick in team_lineup (nicht für jedes Match gecacht, würde bei
+    fehlenden Fällen einen teuren Extra-API-Call pro Match auslösen)."""
+    if len(mitglied_puuids) < 2:
+        return []
+    cur.execute("""
+        SELECT win, COUNT(*) AS groesse
+        FROM participants
+        WHERE puuid = ANY(%s)
+        GROUP BY match_id, win
+        HAVING COUNT(*) >= 2;
+    """, (mitglied_puuids,))
+    eimer = {2: [0, 0], 3: [0, 0], 4: [0, 0], 5: [0, 0]}
+    for win, groesse in cur.fetchall():
+        g = min(groesse, 5)
+        eimer[g][0] += 1
+        if win:
+            eimer[g][1] += 1
+    ergebnis = []
+    for groesse in (2, 3, 4, 5):
+        spiele, siege = eimer[groesse]
+        if spiele == 0:
+            continue
+        ergebnis.append({
+            "groesse": groesse, "label": STACK_LABEL[groesse],
+            "spiele": spiele, "siege": siege, "winrate": round(siege / spiele * 100),
+        })
+    return ergebnis
+
+
+def gruppen_mitglieder_puuids(cur, gruppe_id):
+    cur.execute("SELECT puuid FROM gruppen_mitglieder WHERE gruppe_id = %s;", (gruppe_id,))
+    return [row[0] for row in cur.fetchall()]
+
+
+def gruppen_gesamtstats(cur, mitglieder_puuids):
+    """Aggregierte Kennzahlen ALLER Mitglieder zusammen (nicht pro Kopf) - für den Gruppen-
+    vs-Gruppen-Vergleich auf /gruppen."""
+    if not mitglieder_puuids:
+        return {"spiele": 0, "siege": 0, "winrate": 0, "avg_kda": 0.0, "pentas": 0, "quadras": 0, "triples": 0}
+    cur.execute("""
+        SELECT COUNT(*), COALESCE(SUM(CASE WHEN p.win THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(p.kills), 0), COALESCE(SUM(p.deaths), 0), COALESCE(SUM(p.assists), 0),
+               COALESCE(SUM(p.penta_kills), 0), COALESCE(SUM(p.quadra_kills), 0), COALESCE(SUM(p.triple_kills), 0)
+        FROM participants p
+        WHERE p.puuid = ANY(%s);
+    """, (mitglieder_puuids,))
+    spiele, siege, kills, deaths, assists, pentas, quadras, triples = cur.fetchone()
+    avg_kda = (kills + assists) / deaths if deaths > 0 else float(kills + assists)
+    return {
+        "spiele": spiele, "siege": siege,
+        "winrate": round(siege / spiele * 100) if spiele else 0,
+        "avg_kda": round(avg_kda, 2),
+        "pentas": pentas, "quadras": quadras, "triples": triples,
+    }
+
+
+def baue_gruppenvergleich(cur, a_id, b_id, meine_gruppen):
+    """Zwei eigene Gruppen nebeneinander - Gesamtstats aller Mitglieder je Gruppe, wie beim
+    bestehenden 1-gegen-1-Spielervergleich (vergleich.py), nur auf Gruppenebene."""
+    by_id = {g["id"]: g for g in meine_gruppen}
+    if a_id not in by_id or b_id not in by_id:
+        return None
+    a_puuids = gruppen_mitglieder_puuids(cur, a_id)
+    b_puuids = gruppen_mitglieder_puuids(cur, b_id)
+    a = {**by_id[a_id], **gruppen_gesamtstats(cur, a_puuids), "mitglieder": len(a_puuids)}
+    b = {**by_id[b_id], **gruppen_gesamtstats(cur, b_puuids), "mitglieder": len(b_puuids)}
+    zeilen = vergleiche(a, b, GRUPPEN_VERGLEICH_STATS)
+    return {"a": a, "b": b, "zeilen": zeilen, "saetze": fazit_saetze(a, b, zeilen)}
 
 
 # Zeitraum -> SQL-Bedingung (feste Texte, keine Nutzereingabe) und ob Multikills pro Spiel zählen
@@ -493,6 +595,7 @@ def gruppe_ansehen(gruppe_id):
     achievement_feed = [f for f in feed if f["achievement"]]
     ranglisten = {z: baue_rangliste(cur, mitglieder, z) for z in ("woche", "monat", "gesamt")}
     verlauf = baue_verlauf(cur, mitglieder)
+    stacks = stack_stats(cur, [p for p, _, _ in mitglieder_rows])
 
     benachrichtige_gruppe_sicher(cur, conn, gruppe_id, feed=feed, mitglieder=mitglieder)
     # Erst NACH dem Benachrichtigen lesen - ein in Discord gelöschter Webhook wird dabei getrennt
@@ -554,6 +657,7 @@ def gruppe_ansehen(gruppe_id):
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, ranglisten=ranglisten, verlauf=verlauf,
+        stacks=stacks,
         gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
         discord_verbunden=discord_verbunden,
         discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,

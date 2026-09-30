@@ -24,12 +24,25 @@ VERGLEICH_STATS = [
 ]
 
 
-def vergleiche(a, b):
-    """a, b: dicts mit 'name' + den obigen Stat-Keys. Gibt eine Liste von Zeilen zurück,
+# Für den Gruppen-vs-Gruppen-Vergleich auf /gruppen (aggregierte Kennzahlen aller Mitglieder
+# statt Stats aus einem einzelnen Match) - dieselbe Balken-Darstellung, andere Kategorien.
+GRUPPEN_VERGLEICH_STATS = [
+    ("spiele", "Spiele", False, _fmt_int),
+    ("siege", "Siege", False, _fmt_int),
+    ("winrate", "Winrate", False, lambda v: f"{v}%"),
+    ("avg_kda", "Ø-KDA", False, _fmt_kda),
+    ("pentas", "Pentakills", False, _fmt_int),
+    ("quadras", "Quadrakills", False, _fmt_int),
+    ("triples", "Triplekills", False, _fmt_int),
+]
+
+
+def vergleiche(a, b, stats=VERGLEICH_STATS):
+    """a, b: dicts mit 'name' + den Stat-Keys aus `stats`. Gibt eine Liste von Zeilen zurück,
     jede mit Balken-Anteil (a_pct) und wer in dieser Kategorie besser war (a_besser: True/
     False/None bei Gleichstand)."""
     zeilen = []
-    for key, label, niedriger_besser, fmt in VERGLEICH_STATS:
+    for key, label, niedriger_besser, fmt in stats:
         wert_a, wert_b = a[key], b[key]
         gesamt = wert_a + wert_b
         a_pct = round(wert_a / gesamt * 100) if gesamt else 50
