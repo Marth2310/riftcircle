@@ -1,7 +1,7 @@
 """Profilseite eines Spielers inkl. Suche ohne Tag."""
 import random
 
-from flask import make_response, render_template, request
+from flask import abort, make_response, redirect, render_template, request, url_for
 
 from analysis import (
     ANZAHL_MATCHES,
@@ -20,6 +20,7 @@ from app_core import app, headers
 from benchmarks import normalize_tier
 from champion_stats import get_champion_by_key, get_champion_by_numeric_id
 from db import get_connection
+from follower import follower_info, ist_gefolgt
 from riot_assets import (
     champion_icon_url,
     champion_skin_splashes,
@@ -195,6 +196,8 @@ def profil():
     rollen_stats = rollen_statistik(cur, puuid)
     partner = duo_partner(cur, puuid)
     trophaeen = trophaeen_fuer_spieler(cur, puuid)
+    follower = follower_info(cur, puuid)
+    folge_ich = ist_gefolgt(cur, ich["id"] if ich else None, puuid)
 
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
@@ -321,6 +324,9 @@ def profil():
         rollen_icon_url=ROLLEN_ICON_URL,
         duo_partner=partner,
         trophaeen=trophaeen,
+        follower=follower,
+        folge_ich=folge_ich,
+        ich=ich,
         gespeicherte_spiele=gespeicherte_spiele,
         profil_discord=profil_discord,
         ist_mein_profil=ist_mein_profil,
@@ -333,3 +339,59 @@ def profil():
         kda_chart=kda_chart,
     ))
     return cookie_setzen(resp, neue_liste)
+
+
+def _zurueck_zum_profil(riot_name, riot_tag):
+    if riot_name and riot_tag:
+        return redirect(url_for("profil", riot_id=f"{riot_name}#{riot_tag}"))
+    return redirect(url_for("landing"))
+
+
+@app.route("/folgen", methods=["POST"])
+def profil_folgen():
+    """Folgen ist unabhängig von Gruppen - jedes eingeloggte Discord-Konto kann jedem
+    getrackten Profil folgen, öffentlich sichtbar (siehe follower.py)."""
+    ich = angemeldeter_nutzer()
+    ziel_puuid = request.form.get("ziel_puuid", "").strip()
+    riot_name = request.form.get("riot_name", "").strip()
+    riot_tag = request.form.get("riot_tag", "").strip()
+
+    if not ich:
+        return redirect(url_for("konto"))
+    if not ziel_puuid or ziel_puuid == ich.get("puuid"):
+        return _zurueck_zum_profil(riot_name, riot_tag)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM players WHERE puuid = %s;", (ziel_puuid,))
+    if cur.fetchone() is None:
+        cur.close()
+        conn.close()
+        abort(404)
+    cur.execute(
+        "INSERT INTO follower (discord_id, ziel_puuid) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+        (ich["id"], ziel_puuid),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return _zurueck_zum_profil(riot_name, riot_tag)
+
+
+@app.route("/entfolgen", methods=["POST"])
+def profil_entfolgen():
+    ich = angemeldeter_nutzer()
+    ziel_puuid = request.form.get("ziel_puuid", "").strip()
+    riot_name = request.form.get("riot_name", "").strip()
+    riot_tag = request.form.get("riot_tag", "").strip()
+
+    if not ich:
+        return redirect(url_for("konto"))
+
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM follower WHERE discord_id = %s AND ziel_puuid = %s;", (ich["id"], ziel_puuid))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return _zurueck_zum_profil(riot_name, riot_tag)

@@ -261,6 +261,19 @@ CREATE TABLE IF NOT EXISTS kommentare (
 """)
 cur.execute("CREATE INDEX IF NOT EXISTS idx_kommentare_ziel ON kommentare (match_id, puuid);")
 
+# Folgen: einseitiges Beobachten eines Profils, unabhängig von Gruppen - jedes Discord-Konto
+# kann jedem getrackten Profil folgen (siehe follower.py). discord_id ist, WER folgt, ziel_puuid
+# WEM gefolgt wird - kein REFERENCES auf players nötig, ziel_puuid wird vor dem Insert geprüft.
+cur.execute("""
+CREATE TABLE IF NOT EXISTS follower (
+    discord_id TEXT NOT NULL REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    ziel_puuid TEXT NOT NULL,
+    erstellt_am TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (discord_id, ziel_puuid)
+);
+""")
+cur.execute("CREATE INDEX IF NOT EXISTS idx_follower_ziel ON follower (ziel_puuid);")
+
 # Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
 # Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
 cur.execute("""

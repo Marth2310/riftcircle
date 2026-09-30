@@ -406,6 +406,30 @@
   .main-wr.schlecht { color: var(--loss); }
   .main-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.74rem; }
 
+  /* Follow-Zeile im Profilkopf + Zahl neben "Follower"/"Folgt" */
+  .section-count { color: var(--muted); font-weight: 700; font-size: 0.85rem; }
+  .follow-zeile { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .follow-zahl { color: var(--text); font-size: 0.85rem; font-weight: 700; text-decoration: none; }
+  .follow-zahl:hover { color: var(--accent2); }
+  .follow-trenner { color: var(--muted); }
+  .follow-form { display: inline-flex; }
+  .follow-knopf {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .follow-knopf.aktiv { background: none; border: 1px solid var(--border); color: var(--text); }
+  .follow-knopf.aktiv:hover { border-color: var(--loss); color: var(--loss); }
+  .follow-knopf.aktiv:hover::after { content: " entfernen"; }
+  .follow-login-hinweis { color: var(--muted); font-size: 0.82rem; text-decoration: none; }
+  .follow-login-hinweis:hover { color: var(--text); }
+
   /* Karriere-Trophäen: Xbox/PlayStation-artige Leiter Bronze->Diamant (siehe trophaeen.py) -
      kompaktes Abzeichen-Grid oben, Klick zeigt Fortschrittsdetails darunter statt eines
      nativen Dropdowns, damit Farbe/Fortschrittsbalken/Icon sichtbar bleiben. */
@@ -616,6 +640,30 @@
         {% if ist_mein_profil %}<span class="du-pill">Das bist du</span>{% endif %}
       </div>
       {% endif %}
+      <div class="follow-zeile">
+        <a class="follow-zahl" href="#follower">{{ follower.follower_anzahl }} Follower</a>
+        <span class="follow-trenner">&middot;</span>
+        <a class="follow-zahl" href="#folgt">folgt {{ follower.folgt_anzahl }}</a>
+        {% if ich and not ist_mein_profil %}
+        {% if folge_ich %}
+        <form class="follow-form" method="post" action="{{ url_for('profil_entfolgen') }}">
+          <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
+          <input type="hidden" name="riot_name" value="{{ riot_name }}">
+          <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
+          <button type="submit" class="follow-knopf aktiv">Gefolgt</button>
+        </form>
+        {% else %}
+        <form class="follow-form" method="post" action="{{ url_for('profil_folgen') }}">
+          <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
+          <input type="hidden" name="riot_name" value="{{ riot_name }}">
+          <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
+          <button type="submit" class="follow-knopf">+ Folgen</button>
+        </form>
+        {% endif %}
+        {% elif not ich %}
+        <a class="follow-login-hinweis" href="{{ url_for('konto') }}">Anmelden zum Folgen</a>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -703,6 +751,36 @@
     </a>
     {% endfor %}
   </div>
+  {% endif %}
+
+  {% if follower.follower %}
+  <h2 class="section-title" id="follower">Follower <span class="section-count">{{ follower.follower_anzahl }}</span></h2>
+  <div class="avatar-grid">
+    {% for f in follower.follower %}
+    <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
+      <div class="circle" style="background: var(--void);">{{ f.name[0] | upper }}</div>
+      <div class="name">{{ f.name }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% if follower.follower_anzahl > follower.follower | length %}
+  <p class="treffer-hint">+{{ follower.follower_anzahl - follower.follower | length }} weitere</p>
+  {% endif %}
+  {% endif %}
+
+  {% if follower.folgt %}
+  <h2 class="section-title" id="folgt">Folgt <span class="section-count">{{ follower.folgt_anzahl }}</span></h2>
+  <div class="avatar-grid">
+    {% for f in follower.folgt %}
+    <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
+      <div class="circle" style="background: var(--accent2);">{{ f.name[0] | upper }}</div>
+      <div class="name">{{ f.name }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% if follower.folgt_anzahl > follower.folgt | length %}
+  <p class="treffer-hint">+{{ follower.folgt_anzahl - follower.folgt | length }} weitere</p>
+  {% endif %}
   {% endif %}
 
   {% if rang_verlauf %}
