@@ -439,7 +439,7 @@
   .trophy-badge.leer .trophy-icon { filter: grayscale(0.7); opacity: 0.55; box-shadow: none; }
   .trophy-badge .trophy-name { font-size: 0.66rem; font-weight: 700; text-align: center; line-height: 1.2; }
   .trophy-badge .trophy-stufe { font-size: 0.62rem; font-weight: 800; color: var(--trophy-color); }
-  .trophy-badge.leer .trophy-stufe { color: var(--muted); }
+  .trophy-badge.leer .trophy-stufe { color: var(--text); opacity: 0.7; }
 
   .trophy-details { margin-bottom: 28px; }
   .trophy-detail {
@@ -460,19 +460,23 @@
   }
   .trophy-detail-name { font-weight: 800; font-size: 1rem; }
   .trophy-detail-stufe { color: var(--trophy-color); font-weight: 800; font-size: 0.82rem; margin-left: 6px; }
-  .trophy-detail-desc { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+  /* var(--muted) allein war auf dem transparenten Karten-Hintergrund (mit dem Skin-Bild
+     dahinter) zu schwer lesbar - deutlich heller, aber noch klar sekundär zum Titel. */
+  .trophy-detail-desc { color: var(--text); opacity: 0.75; font-size: 0.8rem; margin-top: 2px; }
   .trophy-progress { height: 10px; border-radius: 999px; background: var(--panel); overflow: hidden; margin-bottom: 6px; }
   .trophy-progress-bar { height: 100%; border-radius: 999px; background: var(--trophy-color); transition: width 0.3s ease; }
-  .trophy-progress-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 14px; }
+  .trophy-progress-label { font-size: 0.78rem; color: var(--text); margin-bottom: 14px; }
   .trophy-ladder { display: flex; flex-wrap: wrap; gap: 8px; }
   .trophy-ladder-stufe {
     padding: 4px 11px;
     border-radius: 999px;
     font-size: 0.7rem; font-weight: 700;
     border: 1px solid var(--border);
-    color: var(--muted);
+    color: var(--text);
+    opacity: 0.75;
   }
   .trophy-ladder-stufe.erreicht {
+    opacity: 1;
     border-color: var(--trophy-color); color: var(--trophy-color);
     background: color-mix(in srgb, var(--trophy-color) 15%, transparent);
   }
