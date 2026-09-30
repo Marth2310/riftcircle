@@ -45,6 +45,10 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  /* Eigene Compositor-Ebene erzwingen - sonst kann ein fixed-positioniertes Element mit so
+     einem aufwendigen (18-fachen) Gradient-Hintergrund bei jedem Scroll-Frame neu gezeichnet
+     statt nur verschoben werden, was auf schwächeren Geräten spürbar ruckelt. */
+  will-change: transform;
   background-repeat: repeat;
   background-size: 460px 460px;
   background-image:
@@ -66,23 +70,23 @@ body::before {
     radial-gradient(1px 1px at 440px 150px, rgba(255, 255, 255, 0.65), transparent),
     radial-gradient(1.5px 1.5px at 170px 420px, rgba(255, 255, 255, 0.75), transparent),
     radial-gradient(1px 1px at 350px 60px, rgba(200, 190, 255, 0.6), transparent);
-  animation: sterne-twinkle 7s ease-in-out infinite;
-}
-@keyframes sterne-twinkle {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.75; }
-}
-@media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; opacity: 0.55; }
+  /* Kein Twinkle mehr (war eine Opacity-Animation auf dieser komplexen, viewport-großen
+     Gradient-Fläche) - hat auf schwächeren Geräten beim Scrollen spürbar geruckelt, während
+     der visuelle Unterschied zum statischen Sternenfeld minimal war. */
+  opacity: 0.6;
 }
 
 /* Void-Glow: ambiente, unscharfe Farbflecken im Hintergrund - referenziert die violett/
    magenta/blaue Void-Palette (Vel'Koz, Kai'Sa, Kha'Zix, ...), damit die Seite nicht mehr
-   so steril wirkt. Fixed + niedrige Opacity, damit es nie vom Inhalt ablenkt. */
+   so steril wirkt. Fixed + niedrige Opacity, damit es nie vom Inhalt ablenkt. Blur-Radius
+   bewusst kleiner als ursprünglich (90px) - ein so großer Weichzeichner auf einem fixed-
+   positionierten Element ist teuer und trug zusammen mit dem Sternenfeld zum Scroll-Ruckeln
+   bei; will-change erzwingt eine eigene Compositor-Ebene statt Neuzeichnens bei jedem Frame. */
 .void-glow {
   position: fixed;
   border-radius: 50%;
-  filter: blur(90px);
+  filter: blur(50px);
+  will-change: transform;
   pointer-events: none;
   z-index: 0;
 }

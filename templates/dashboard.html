@@ -29,7 +29,9 @@
   }
   .profile > * { position: relative; }
 
-  /* Seitenhintergrund: Skins eines Mains, zwei Ebenen werden abwechselnd überblendet */
+  /* Seitenhintergrund: Skins eines Mains, zwei Ebenen werden abwechselnd überblendet.
+     will-change gibt dem fixed+maskierten Element eine eigene Compositor-Ebene, damit es
+     beim Scrollen nur verschoben statt neu gezeichnet wird. */
   .profil-bg {
     position: fixed;
     inset: 0;
@@ -37,6 +39,7 @@
     background-position: center 20%;
     opacity: 0;
     transition: opacity 1.6s ease;
+    will-change: opacity;
     pointer-events: none;
     z-index: 0;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 92%);
