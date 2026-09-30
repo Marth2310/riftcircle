@@ -448,6 +448,7 @@
     box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
   }
   .hinweis-karte.discord-kanal { border-color: rgba(61, 214, 198, 0.45); background: linear-gradient(150deg, rgba(61, 214, 198, 0.16), var(--panel) 75%); }
+  .hinweis-karte.dauerhaft .hinweis-titel { margin-right: 0; }
   .hinweis-titel { font-weight: 800; font-size: 1rem; margin: 0 24px 6px 0; }
   .hinweis-karte p { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin: 0 0 14px; }
   .hinweis-karte p b { color: var(--text); }
@@ -510,6 +511,7 @@
   .discord-punkt { width: 9px; height: 9px; border-radius: 50%; background: var(--win); box-shadow: 0 0 8px var(--win); flex-shrink: 0; }
   .discord-anleitung { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; padding-left: 20px; line-height: 1.7; }
   .discord-anleitung b { color: var(--text); font-weight: 600; }
+  .discord-note { color: var(--muted); font-size: 0.78rem; line-height: 1.5; margin: 12px 0 0; }
   .discord-form { display: flex; gap: 8px; flex-wrap: wrap; }
   .discord-form input {
     flex: 1; min-width: 220px;
@@ -650,11 +652,13 @@
     {% endif %}
 
     {% if not discord_verbunden %}
-    <div class="hinweis-karte discord-kanal" data-hinweis="kanal">
-      <button type="button" class="hinweis-weg" title="Ausblenden" aria-label="Ausblenden">&times;</button>
-      <div class="hinweis-titel">Noch kein Discord-Kanal verbunden</div>
-      <p>Verbinde euren Server, dann postet RiftCircle Pentakills, perfekte Spiele und den Wochensieger automatisch in euren Kanal. Dauert eine Minute.</p>
-      <a class="hinweis-knopf discord" href="#discord">Discord-Kanal verbinden</a>
+    {# Bewusst nicht wegklickbar (kein .hinweis-weg-Knopf, siehe JS) - anders als die
+       Konto-Hinweise oben soll diese Erinnerung so lange stehen bleiben, bis die Gruppe
+       wirklich verbunden ist, statt für immer im Browser verschwinden zu können. #}
+    <div class="hinweis-karte discord-kanal dauerhaft" data-hinweis="kanal">
+      <div class="hinweis-titel">So verbindet ihr die Gruppe mit Discord</div>
+      <p>Verbinde euren Server per Webhook, dann postet RiftCircle Pentakills, perfekte Spiele und den Wochensieger automatisch in euren Kanal. Dauert eine Minute - die Schritt-für-Schritt-Anleitung steht weiter unten.</p>
+      <a class="hinweis-knopf discord" href="#discord">Zur Anleitung</a>
     </div>
     {% endif %}
   </div>
@@ -912,13 +916,18 @@
     {% else %}
     <p class="discord-hinweis">Postet Achievements (Pentakill, perfektes Spiel, ...) aus neuen Spielen und den Wochensieger direkt in einen Discord-Kanal eurer Wahl.</p>
     <ol class="discord-anleitung">
-      <li>In Discord: Zahnrad am Kanal &rarr; <b>Integrationen</b> &rarr; <b>Webhooks</b> &rarr; <b>Neuer Webhook</b></li>
-      <li><b>Webhook-URL kopieren</b> und hier einfügen</li>
+      <li>Öffne euren Discord-Server und geh zu dem Kanal, in dem die Nachrichten erscheinen sollen.</li>
+      <li>Klick auf das <b>Zahnrad-Symbol</b> neben dem Kanalnamen (oder Rechtsklick auf den Kanal &rarr; <b>Kanal bearbeiten</b>).</li>
+      <li>Wähle links <b>Integrationen</b> &rarr; <b>Webhooks</b> &rarr; <b>Neuer Webhook</b>.</li>
+      <li>Gib dem Webhook optional einen Namen (z.B. „RiftCircle") und wähle den Ziel-Kanal.</li>
+      <li>Klick auf <b>Webhook-URL kopieren</b>.</li>
+      <li>Füge die URL unten ein und klick auf <b>Verbinden</b>.</li>
     </ol>
     <form class="discord-form" method="post" action="{{ url_for('gruppe_discord_verbinden', gruppe_id=gruppe_id) }}">
       <input type="url" name="webhook" placeholder="https://discord.com/api/webhooks/..." required autocomplete="off">
       <button type="submit">Verbinden</button>
     </form>
+    <p class="discord-note">Dafür braucht ihr die Berechtigung „Kanäle verwalten" auf eurem Server (meist Admins/Moderatoren). Der Webhook kann ausschließlich in diesen einen Kanal posten - er kann weder eure Nachrichten lesen noch sonst etwas in Discord verändern.</p>
     {% endif %}
   </div>
 
@@ -988,7 +997,7 @@
     function hinweisSchluessel(karte) {
       return "rc-hinweis-{{ gruppe_id }}-" + karte.getAttribute("data-hinweis");
     }
-    document.querySelectorAll(".hinweis-karte").forEach(function (karte) {
+    document.querySelectorAll(".hinweis-karte:not(.dauerhaft)").forEach(function (karte) {
       try {
         if (localStorage.getItem(hinweisSchluessel(karte))) karte.hidden = true;
       } catch (e) {}
