@@ -45,11 +45,16 @@
   .profil-bg.sichtbar { opacity: 0.38; }
   /* Karten leicht durchsichtig, damit der Skin auch hinter den Inhalten durchscheint */
   body .card, body .chart-card, body .main-card, body .rollen-zeile, body .duo-zeile,
-  body .trophy-badge, body .trophy-detail {
+  body .trophy-detail {
     background: rgba(27, 20, 64, 0.8);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
   }
+  /* .trophy-badge bewusst OHNE backdrop-filter: bis zu 10 Stück sind gleichzeitig sichtbar,
+     und backdrop-filter ist pro Element teuer (der Browser samplet bei jedem Scroll-Frame neu,
+     was dahinter liegt) - bei so vielen kleinen Badges gleichzeitig führt das spürbar zu
+     Scroll-Rucklern. Nur die Transparenz bleibt, die kostet praktisch nichts. */
+  body .trophy-badge { background: rgba(27, 20, 64, 0.8); }
   /* Zebra-Streifen in Rollen-/Duo-Liste - dunklere, aber genauso durchsichtige Variante */
   body .rollen-liste > .rollen-zeile:nth-child(even), body .duo-liste > .duo-zeile:nth-child(even) {
     background: rgba(9, 5, 24, 0.88);
