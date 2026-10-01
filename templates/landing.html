@@ -26,16 +26,46 @@
     -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
     mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
   }
+  /* Ein "echter" Ring um Bild + Schriftzug zusammen statt nur eines weichen Glows hinter dem
+     Orb - im selben Darkmatter-Look wie die legendären Achievement-Karten (Grau vermischt mit
+     Dunkelblau/Dunkelrot + ein paar "Sterne"/Funken am Rand), per radialem Masken-Loch zum
+     Ring statt gefüllter Scheibe. Der Außenrand ist bewusst kein perfekter Kreis (asymmetrische
+     border-radius-Werte + leichte Animation) - wirkt organischer, wie eine driftende
+     Void-Energie statt eines geometrischen Rahmens. */
   .hero-ring {
     position: absolute;
-    top: 8px; left: 50%;
-    width: 360px; height: 360px;
+    top: -8px; left: 50%;
+    width: clamp(320px, 46vw, 560px);
+    height: clamp(320px, 46vw, 560px);
     transform: translateX(-50%);
-    border-radius: 50%;
-    background: conic-gradient(from 0deg, var(--void), var(--accent2), var(--win), var(--void-2), var(--void));
-    opacity: 0.22;
-    filter: blur(38px);
-    animation: mark-spin 14s linear infinite;
+    border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%;
+    background:
+      radial-gradient(circle at 14% 20%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.55) 1.6px 3.4px, transparent 4.5px),
+      radial-gradient(circle at 88% 16%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 18% 86%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 82% 90%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.5) 1.4px 3px, transparent 4.5px),
+      radial-gradient(circle at 50% 46%, #e4eaff 0 1.2px, rgba(210, 220, 255, 0.4) 1.2px 2.6px, transparent 4px),
+      conic-gradient(from 0deg, #8b96b3 0%, #7a1f2e 22%, #1c3fae 48%, #4767d6 72%, #8b96b3 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 150% 150%;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%;
+    mask-image: radial-gradient(circle at 50% 50%, transparent 60%, #000 63%, #000 100%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 60%, #000 63%, #000 100%);
+    opacity: 0.6;
+    filter: blur(2.5px);
+    animation: hero-ring-drift 12s ease-in-out infinite, hero-ring-pulse 5s ease-in-out infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+  @keyframes hero-ring-drift {
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; }
+    50% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 100% 50%; border-radius: 54% 46% 44% 56% / 46% 54% 48% 52%; }
+  }
+  @keyframes hero-ring-pulse {
+    0%, 100% { opacity: 0.48; }
+    50% { opacity: 0.7; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-ring { animation: none; }
   }
   .hero-inner { position: relative; z-index: 1; }
 
