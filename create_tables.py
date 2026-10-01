@@ -118,6 +118,10 @@ CREATE TABLE IF NOT EXISTS gruppen (
 );
 """)
 cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '🛡️';")
+# Opt-in: standardmäßig nur per Link sichtbar, taucht erst nach bewusstem Umschalten (siehe
+# gruppe_sichtbarkeit_umschalten) mit Trophäen-Punktestand in der öffentlichen Gruppen-
+# Rangliste auf /gruppen auf.
+cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS oeffentlich BOOLEAN DEFAULT FALSE;")
 # Discord-Webhook der Gruppe + Zeitpunkt des Verbindens (nur Spiele danach werden gepostet,
 # sonst käme beim Einrichten eine Flut alter Achievements)
 cur.execute("ALTER TABLE gruppen ADD COLUMN IF NOT EXISTS discord_webhook TEXT;")

@@ -49,6 +49,26 @@
     border: 1px solid var(--border);
     font-size: 0.88rem;
   }
+
+  /* Öffentliche Rangliste: Gruppen, die sich per Schalter auf ihrer Seite sichtbar gemacht
+     haben (siehe gruppe_sichtbarkeit_umschalten), sortiert nach Trophäen-Punktestand. */
+  .oeff-liste { display: flex; flex-direction: column; gap: 6px; }
+  .oeff-zeile {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    text-decoration: none; color: inherit;
+    font-size: 0.85rem;
+  }
+  .oeff-liste > a:nth-child(even) { background: var(--panel-alt); }
+  .oeff-zeile:hover { outline: 1px solid var(--accent2); }
+  .oeff-rang { color: var(--muted); font-weight: 700; width: 20px; flex-shrink: 0; text-align: right; }
+  .oeff-icon { width: 34px; height: 34px; border-radius: 50%; object-fit: contain; flex-shrink: 0; background: var(--panel); }
+  .oeff-icon-emoji { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: var(--panel); flex-shrink: 0; }
+  .oeff-name { font-weight: 700; flex: 1; min-width: 100px; }
+  .oeff-stats { color: var(--muted); font-size: 0.78rem; }
+  .oeff-punkte { font-weight: 800; color: var(--gold); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -173,6 +193,27 @@
   </div>
   {% endif %}
   {% endif %}
+
+  <div class="panel">
+    <h2 class="section-title accent-gold">Öffentliche Rangliste</h2>
+    <p class="treffer-hint">Gruppen, die sich öffentlich sichtbar gemacht haben - sortiert nach Trophäen-Punktestand (siehe Gruppen-Trophäen auf der jeweiligen Gruppenseite).</p>
+    {% if oeffentliche %}
+    <div class="oeff-liste">
+      {% for g in oeffentliche %}
+      <a class="oeff-zeile" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+        <span class="oeff-rang">#{{ loop.index }}</span>
+        {% set bild = gruppen_icon_bild(g.icon) %}
+        {% if bild %}<img class="oeff-icon" src="{{ bild }}" alt="">{% else %}<div class="oeff-icon-emoji">{{ g.icon }}</div>{% endif %}
+        <span class="oeff-name">{{ g.name }}</span>
+        <span class="oeff-stats">{{ g.mitglieder }} Mitglieder &middot; {{ g.spiele }} Spiele &middot; {{ g.winrate }}% Winrate</span>
+        <span class="oeff-punkte">{{ g.punkte }} Pkt.</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">Noch keine Gruppe ist öffentlich - auf einer Gruppenseite lässt sich das umschalten.</p>
+    {% endif %}
+  </div>
 
 </div>
 

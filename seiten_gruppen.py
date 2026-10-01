@@ -8,6 +8,7 @@ from flask import abort, jsonify, make_response, redirect, render_template, requ
 from achievements import bestes_achievement
 from app_core import PUBLIC_BASE_URL, app, headers
 from db import get_connection
+from gruppen_trophaeen import trophaeen_fuer_gruppe, trophaeen_punkte
 from discord_webhook import (
     MAX_EMBEDS_PRO_NACHRICHT,
     achievement_embed,
@@ -69,17 +70,18 @@ def gruppen_uebersicht():
     a_id = request.args.get("a", "")
     b_id = request.args.get("b", "")
 
+    conn = get_connection()
+    cur = conn.cursor()
     vergleich = None
     if a_id and b_id and a_id != b_id:
-        conn = get_connection()
-        cur = conn.cursor()
         vergleich = baue_gruppenvergleich(cur, a_id, b_id, meine_gruppen)
-        cur.close()
-        conn.close()
+    oeffentliche = oeffentliche_rangliste(cur)
+    cur.close()
+    conn.close()
 
     return render_template(
         "gruppen_uebersicht.html", meine_gruppen=meine_gruppen, gruppen_icons=GRUPPEN_ICONS,
-        vergleich=vergleich, a_id=a_id, b_id=b_id,
+        vergleich=vergleich, a_id=a_id, b_id=b_id, oeffentliche=oeffentliche,
     )
 
 
@@ -314,6 +316,31 @@ def gruppen_gesamtstats(cur, mitglieder_puuids):
         "avg_kda": round(avg_kda, 2),
         "pentas": pentas, "quadras": quadras, "triples": triples,
     }
+
+
+OEFFENTLICHE_RANGLISTE_LIMIT = 20
+
+
+def oeffentliche_rangliste(cur, limit=OEFFENTLICHE_RANGLISTE_LIMIT):
+    """Alle Gruppen, die sich per Schalter öffentlich gemacht haben (siehe
+    gruppe_sichtbarkeit_umschalten) - der Trophäen-Punktestand entscheidet die Reihenfolge
+    (Fortschritt in der Breite statt reiner Spielanzahl), Siege sind der Tiebreak."""
+    cur.execute("SELECT id, name, icon FROM gruppen WHERE oeffentlich;")
+    gruppen = cur.fetchall()
+    rangliste = []
+    for gruppe_id, name, icon in gruppen:
+        puuids = gruppen_mitglieder_puuids(cur, gruppe_id)
+        if not puuids:
+            continue
+        stats = gruppen_gesamtstats(cur, puuids)
+        trophaeen = trophaeen_fuer_gruppe(cur, puuids)
+        rangliste.append({
+            "id": gruppe_id, "name": name, "icon": icon or "🛡️",
+            "mitglieder": len(puuids), "punkte": trophaeen_punkte(trophaeen),
+            **stats,
+        })
+    rangliste.sort(key=lambda g: (g["punkte"], g["siege"]), reverse=True)
+    return rangliste[:limit]
 
 
 def baue_gruppenvergleich(cur, a_id, b_id, meine_gruppen):
@@ -573,13 +600,13 @@ def benachrichtige_gruppe_sicher(cur, conn, gruppe_id, **kwargs):
 def gruppe_ansehen(gruppe_id):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT name, icon FROM gruppen WHERE id = %s;", (gruppe_id,))
+    cur.execute("SELECT name, icon, oeffentlich FROM gruppen WHERE id = %s;", (gruppe_id,))
     row = cur.fetchone()
     if row is None:
         cur.close()
         conn.close()
         abort(404)
-    name, icon = row
+    name, icon, oeffentlich = row
     icon = icon or "🛡️"
 
     cur.execute("""
@@ -596,6 +623,7 @@ def gruppe_ansehen(gruppe_id):
     ranglisten = {z: baue_rangliste(cur, mitglieder, z) for z in ("woche", "monat", "gesamt")}
     verlauf = baue_verlauf(cur, mitglieder)
     stacks = stack_stats(cur, [p for p, _, _ in mitglieder_rows])
+    gruppen_trophaeen = trophaeen_fuer_gruppe(cur, [p for p, _, _ in mitglieder_rows])
 
     benachrichtige_gruppe_sicher(cur, conn, gruppe_id, feed=feed, mitglieder=mitglieder)
     # Erst NACH dem Benachrichtigen lesen - ein in Discord gelöschter Webhook wird dabei getrennt
@@ -657,7 +685,7 @@ def gruppe_ansehen(gruppe_id):
     resp = make_response(render_template(
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, ranglisten=ranglisten, verlauf=verlauf,
-        stacks=stacks,
+        stacks=stacks, gruppen_trophaeen=gruppen_trophaeen, oeffentlich=oeffentlich,
         gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
         discord_verbunden=discord_verbunden,
         discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,
@@ -818,6 +846,21 @@ def gruppe_umbenennen(gruppe_id):
     conn.close()
     # Das neue Cookie mit dem aktuellen Namen/Icon wird gleich beim Redirect auf
     # gruppe_ansehen() automatisch mitgeschrieben (die liest immer frisch aus der DB).
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+
+
+@app.route("/gruppe/<gruppe_id>/sichtbarkeit", methods=["POST"])
+def gruppe_sichtbarkeit_umschalten(gruppe_id):
+    """Opt-in für die öffentliche Gruppen-Rangliste auf /gruppen - standardmäßig aus, wie bei
+    allem anderen in Gruppen reicht der Link zur Gruppe, um das umzuschalten (kein separates
+    Admin-Konzept in diesem Modell)."""
+    oeffentlich = request.form.get("oeffentlich") == "1"
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE gruppen SET oeffentlich = %s WHERE id = %s;", (oeffentlich, gruppe_id))
+    conn.commit()
+    cur.close()
+    conn.close()
     return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
 
 
