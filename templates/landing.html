@@ -26,43 +26,44 @@
     -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
     mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
   }
-  /* Ein "echter" Ring um Bild + Schriftzug zusammen statt nur eines weichen Glows hinter dem
-     Orb - im selben Darkmatter-Look wie die legendären Achievement-Karten (Grau vermischt mit
-     Dunkelblau/Dunkelrot + ein paar "Sterne"/Funken am Rand), per radialem Masken-Loch zum
-     Ring statt gefüllter Scheibe. Der Außenrand ist bewusst kein perfekter Kreis (asymmetrische
-     border-radius-Werte + leichte Animation) - wirkt organischer, wie eine driftende
-     Void-Energie statt eines geometrischen Rahmens. */
+  /* Ein "echter" Ring um Bild + Schriftzug zusammen - eine dünne, klar erkennbare Kreislinie
+     statt eines weichen Glow-Blobs, im selben Darkmatter-Look wie die legendären Achievement-
+     Karten (Grau/Dunkelblau/Dunkelrot + ein paar "Sterne"/Funken). Die Maske schneidet sowohl
+     innen als auch außen ein Loch - übrig bleibt nur ein schmaler Ring statt einer vollen
+     Scheibe. Relativ zu .hero-inner positioniert (nicht .hero), damit sie wirklich nur Orb +
+     "RiftCircle" umschließt statt auch Tagline/Suchfeld zu überlappen. Der Umriss ist bewusst
+     kein perfekter Kreis (asymmetrische border-radius-Werte + leichte Animation) - wirkt
+     organischer, wie driftende Void-Energie statt eines geometrischen Rahmens. */
   .hero-ring {
     position: absolute;
-    top: -8px; left: 50%;
-    width: clamp(320px, 46vw, 560px);
-    height: clamp(320px, 46vw, 560px);
+    top: -22px; left: 50%;
+    width: clamp(240px, 30vw, 320px);
+    height: clamp(240px, 30vw, 320px);
     transform: translateX(-50%);
-    border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%;
+    border-radius: 47% 53% 56% 44% / 53% 47% 55% 45%;
     background:
-      radial-gradient(circle at 14% 20%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.55) 1.6px 3.4px, transparent 4.5px),
-      radial-gradient(circle at 88% 16%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
-      radial-gradient(circle at 18% 86%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.5) 1.5px 3.2px, transparent 4.5px),
-      radial-gradient(circle at 82% 90%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.5) 1.4px 3px, transparent 4.5px),
-      radial-gradient(circle at 50% 46%, #e4eaff 0 1.2px, rgba(210, 220, 255, 0.4) 1.2px 2.6px, transparent 4px),
-      conic-gradient(from 0deg, #8b96b3 0%, #7a1f2e 22%, #1c3fae 48%, #4767d6 72%, #8b96b3 100%);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 150% 150%;
-    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%;
-    mask-image: radial-gradient(circle at 50% 50%, transparent 60%, #000 63%, #000 100%);
-    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 60%, #000 63%, #000 100%);
-    opacity: 0.6;
-    filter: blur(2.5px);
+      radial-gradient(circle at 15% 19%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.6) 1.6px 3.4px, transparent 4.5px),
+      radial-gradient(circle at 87% 17%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 17% 85%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 83% 87%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.55) 1.4px 3px, transparent 4.5px),
+      conic-gradient(from 0deg, #8b96b3 0%, #8a2436 20%, #1c3fae 42%, #4767d6 58%, #8a2436 78%, #8b96b3 100%);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 160% 160%;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0% 50%;
+    mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 43%, #000 47%, #000 53%, transparent 57%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 43%, #000 47%, #000 53%, transparent 57%, transparent 100%);
+    opacity: 0.85;
+    filter: blur(1px) drop-shadow(0 0 10px rgba(71, 103, 214, 0.45)) drop-shadow(0 0 8px rgba(138, 36, 54, 0.35));
     animation: hero-ring-drift 12s ease-in-out infinite, hero-ring-pulse 5s ease-in-out infinite;
     z-index: 0;
     pointer-events: none;
   }
   @keyframes hero-ring-drift {
-    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0% 50%; border-radius: 46% 54% 58% 42% / 52% 46% 54% 48%; }
-    50% { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 100% 50%; border-radius: 54% 46% 44% 56% / 46% 54% 48% 52%; }
+    0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0, 0% 50%; border-radius: 47% 53% 56% 44% / 53% 47% 55% 45%; }
+    50% { background-position: 0 0, 0 0, 0 0, 0 0, 100% 50%; border-radius: 53% 47% 45% 55% / 47% 53% 45% 55%; }
   }
   @keyframes hero-ring-pulse {
-    0%, 100% { opacity: 0.48; }
-    50% { opacity: 0.7; }
+    0%, 100% { opacity: 0.72; }
+    50% { opacity: 0.95; }
   }
   @media (prefers-reduced-motion: reduce) {
     .hero-ring { animation: none; }
@@ -303,8 +304,8 @@
 
 <div class="hero">
   <div class="hero-splash"></div>
-  <div class="hero-ring"></div>
   <div class="hero-inner">
+    <div class="hero-ring"></div>
     <div class="void-orb hero-orb">
       <img src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="Malzahar hält eine Void-Kugel">
     </div>
