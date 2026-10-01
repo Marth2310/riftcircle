@@ -26,31 +26,33 @@
     -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
     mask-image: radial-gradient(ellipse 60% 70% at 50% 30%, #000 0%, transparent 75%);
   }
-  /* Ein "echter" Ring um Bild + Schriftzug zusammen - eine dünne, klar erkennbare Kreislinie
-     statt eines weichen Glow-Blobs, im selben Darkmatter-Look wie die legendären Achievement-
-     Karten (Grau/Dunkelblau/Dunkelrot + ein paar "Sterne"/Funken). Die Maske schneidet sowohl
-     innen als auch außen ein Loch - übrig bleibt nur ein schmaler Ring statt einer vollen
-     Scheibe. Relativ zu .hero-inner positioniert (nicht .hero), damit sie wirklich nur Orb +
-     "RiftCircle" umschließt statt auch Tagline/Suchfeld zu überlappen. Der Umriss ist bewusst
-     kein perfekter Kreis (asymmetrische border-radius-Werte + leichte Animation) - wirkt
-     organischer, wie driftende Void-Energie statt eines geometrischen Rahmens. */
+  /* Ein "echter" Ring um Bild + Schriftzug zusammen, OHNE die Buchstaben zu überdecken - die
+     Maske setzt die sichtbare Linie bewusst nahe am ÄUSSEREN Rand der Box (89-95%), nicht in
+     deren Mitte. Dadurch bleibt die komplett transparente Mitte groß genug, dass Orb UND der
+     volle Textbreite-Bereich von "RiftCircle" sicher innerhalb der Lücke liegen und die Linie
+     erst außerhalb davon sichtbar wird (durchgerechnet für die Text-/Orb-Maße im Hero, siehe
+     Positions-/Größenwerte unten). Gleicher Darkmatter-Look wie die legendären Achievement-
+     Karten (Grau/Dunkelblau/Dunkelrot + ein paar "Sterne"/Funken), relativ zu .hero-inner
+     positioniert statt .hero. Der Umriss ist bewusst kein perfekter Kreis (asymmetrische
+     border-radius-Werte + leichte Animation) - wirkt organischer, wie driftende Void-Energie
+     statt eines geometrischen Rahmens. */
   .hero-ring {
     position: absolute;
-    top: -36px; left: 50%;
-    width: clamp(260px, 34vw, 360px);
-    height: clamp(260px, 34vw, 360px);
+    top: -78px; left: 50%;
+    width: clamp(340px, 54vw, 560px);
+    height: clamp(340px, 54vw, 560px);
     transform: translateX(-50%);
     border-radius: 47% 53% 56% 44% / 53% 47% 55% 45%;
     background:
-      radial-gradient(circle at 15% 19%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.6) 1.6px 3.4px, transparent 4.5px),
-      radial-gradient(circle at 87% 17%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
-      radial-gradient(circle at 17% 85%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
-      radial-gradient(circle at 83% 87%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.55) 1.4px 3px, transparent 4.5px),
+      radial-gradient(circle at 18% 18%, #ffe4e0 0 1.6px, rgba(255, 130, 110, 0.6) 1.6px 3.4px, transparent 4.5px),
+      radial-gradient(circle at 83% 17%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 17% 83%, #f2f5ff 0 1.5px, rgba(210, 220, 255, 0.55) 1.5px 3.2px, transparent 4.5px),
+      radial-gradient(circle at 82% 82%, #ffe4e0 0 1.4px, rgba(255, 130, 110, 0.55) 1.4px 3px, transparent 4.5px),
       conic-gradient(from 0deg, #8b96b3 0%, #8a2436 20%, #1c3fae 42%, #4767d6 58%, #8a2436 78%, #8b96b3 100%);
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 160% 160%;
     background-position: 0 0, 0 0, 0 0, 0 0, 0% 50%;
-    mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 43%, #000 47%, #000 53%, transparent 57%, transparent 100%);
-    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 43%, #000 47%, #000 53%, transparent 57%, transparent 100%);
+    mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 85%, #000 89%, #000 95%, transparent 99%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 0%, transparent 85%, #000 89%, #000 95%, transparent 99%, transparent 100%);
     opacity: 0.85;
     filter: blur(1px) drop-shadow(0 0 10px rgba(71, 103, 214, 0.45)) drop-shadow(0 0 8px rgba(138, 36, 54, 0.35));
     animation: hero-ring-drift 12s ease-in-out infinite, hero-ring-pulse 5s ease-in-out infinite;
