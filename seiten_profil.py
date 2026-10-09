@@ -55,7 +55,51 @@ from web_hilfen import (
 )
 
 
-MAX_MEISTGESPIELTE = 6
+MAX_MEISTGESPIELTE = 12
+
+RANG_TIERS = {
+    "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND",
+    "MASTER", "GRANDMASTER", "CHALLENGER",
+}
+# Ab Master gibt es keine Divisionen mehr (Riot liefert trotzdem "I")
+OHNE_DIVISION = {"MASTER", "GRANDMASTER", "CHALLENGER"}
+
+
+def rang_info(eintrag):
+    """Anzeige-Daten eines Rangs für den Profilkopf (Emblem, Text, LP, Saison-Bilanz) - None
+    heißt Unranked. Embleme liegen zugeschnitten unter static/rang-embleme/ (Quelle: Community
+    Dragon, dort 2560px groß mit viel Leerraum)."""
+    if not eintrag or eintrag.get("tier") not in RANG_TIERS:
+        return None
+    tier = eintrag["tier"]
+    spiele = eintrag["wins"] + eintrag["losses"]
+    return {
+        "tier": tier.lower(),
+        "text": tier.capitalize() if tier in OHNE_DIVISION else f"{tier.capitalize()} {eintrag['rank']}",
+        "lp": eintrag["lp"],
+        "siege": eintrag["wins"],
+        "niederlagen": eintrag["losses"],
+        "winrate": round(eintrag["wins"] / spiele * 100) if spiele else 0,
+        "emblem": url_for("static", filename=f"rang-embleme/{tier.lower()}.png"),
+    }
+
+
+def schnittwerte(spiele):
+    """Durchschnitt über die analysierten Spiele für die Kennzahlen im Profilkopf."""
+    if not spiele:
+        return None
+    n = len(spiele)
+    kills = sum(s["kills"] for s in spiele)
+    deaths = sum(s["deaths"] for s in spiele)
+    assists = sum(s["assists"] for s in spiele)
+    kp = [s["kill_participation"] for s in spiele if s["kill_participation"] is not None]
+    return {
+        "kda": round((kills + assists) / deaths, 2) if deaths else float(kills + assists),
+        "kills": round(kills / n, 1), "deaths": round(deaths / n, 1), "assists": round(assists / n, 1),
+        "cs_min": round(sum(s["cs_per_min"] for s in spiele) / n, 1),
+        "vision_min": round(sum(s["vision_per_min"] for s in spiele) / n, 2),
+        "kp": round(sum(kp) / len(kp) * 100) if kp else None,
+    }
 
 
 @app.route("/profil")
@@ -187,6 +231,15 @@ def profil():
     trophaeen = trophaeen_fuer_spieler(cur, puuid)
     follower = follower_info(cur, puuid)
     folge_ich = ist_gefolgt(cur, ich["id"] if ich else None, puuid)
+    # Nur Gruppen, die sich selbst öffentlich gemacht haben - private Gruppen sind nur per
+    # Link erreichbar und dürfen über ein fremdes Profil nicht auffindbar werden.
+    cur.execute("""
+        SELECT g.id, g.name, COALESCE(g.icon, '🛡️') FROM gruppen g
+        JOIN gruppen_mitglieder gm ON gm.gruppe_id = g.id
+        WHERE gm.puuid = %s AND g.oeffentlich
+        ORDER BY g.name;
+    """, (puuid,))
+    oeffentliche_gruppen = [{"id": i, "name": n, "icon": ic} for i, n, ic in cur.fetchall()]
 
     profile_icon_id = get_summoner_icon_id(puuid, headers)
     if profile_icon_id is not None:
@@ -301,6 +354,9 @@ def profil():
         riot_tag=riot_tag,
         rang_solo=anzeige_rang_solo,
         rang_flex=anzeige_rang_flex,
+        raenge=[("Solo/Duo", rang_info(solo_rang)), ("Flex", rang_info(flex_rang))],
+        schnitt=schnittwerte(spiele),
+        oeffentliche_gruppen=oeffentliche_gruppen,
         summoner_icon=summoner_icon_url(profile_icon_id, ddragon_version) if profile_icon_id else None,
         hintergrund_skins=hintergrund_skins,
         meistgespielte=meistgespielte,

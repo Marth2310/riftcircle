@@ -12,22 +12,152 @@
 <style>
   .wrap { max-width: 1080px; }
 
-  .profile {
+  /* ---------- Kopfbereich: Banner (meistgespielter Champion), Avatar mit Void-Ring,
+     Rang-Embleme, Formleiste der letzten Spiele und Schnittwerte ---------- */
+  .profil-hero {
     position: relative;
+    isolation: isolate;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    margin-bottom: 24px;
-    padding: 28px 32px;
-    border-radius: 18px;
-    border: 1px solid var(--border);
-    background: rgba(27, 20, 64, 0.55);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+    border-radius: 22px;
+    padding: 28px 30px 22px;
+    margin-bottom: 16px;
+    background: rgba(17, 10, 42, 0.95);
+    border: 1px solid rgba(150, 130, 240, 0.22);
+    box-shadow: 0 18px 50px rgba(5, 3, 18, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
-  .profile > * { position: relative; }
+  .profil-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--banner);
+    background-size: cover;
+    background-position: center 22%;
+    opacity: 0.62;
+    -webkit-mask-image: linear-gradient(90deg, transparent 18%, rgba(0, 0, 0, 0.55) 48%, #000 85%);
+    mask-image: linear-gradient(90deg, transparent 18%, rgba(0, 0, 0, 0.55) 48%, #000 85%);
+  }
+  .hero-oben { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .hero-avatar {
+    width: 108px; height: 108px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    padding: 4px;
+    background: conic-gradient(from 210deg, var(--void), var(--accent2), var(--teal), var(--void));
+    box-shadow: 0 0 28px rgba(192, 77, 255, 0.35);
+  }
+  .hero-avatar img, .hero-avatar span {
+    width: 100%; height: 100%;
+    display: block;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #120b2c;
+  }
+  .hero-avatar span { display: flex; align-items: center; justify-content: center; background: var(--panel); font: 800 2.4rem var(--font-display); }
+  .hero-text { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .hero-text h1 { margin: 0; font-size: clamp(1.6rem, 4.4vw, 2.5rem); line-height: 1.1; overflow-wrap: anywhere; }
+  .hero-text h1 .tag { color: var(--muted); font-weight: 600; }
+  .hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gruppen-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 11px 3px 4px;
+    border-radius: 999px;
+    background: rgba(61, 214, 198, 0.14);
+    border: 1px solid rgba(61, 214, 198, 0.45);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .gruppen-pill img { width: 20px; height: 20px; object-fit: contain; }
+  .gruppen-pill:hover { border-color: var(--teal); }
+
+  .hero-raenge { display: flex; gap: 12px; flex-wrap: wrap; }
+  .rang-block {
+    display: flex; align-items: center; gap: 12px;
+    min-width: 214px;
+    padding: 10px 16px 10px 8px;
+    border-radius: 16px;
+    background: rgba(12, 7, 30, 0.74);
+    border: 1px solid color-mix(in srgb, var(--tier-farbe, #9682f0) 40%, transparent);
+  }
+  .rang-emblem { width: 66px; height: 66px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5)); }
+  .rang-emblem.leer { display: block; width: 46px; height: 46px; margin: 10px; border-radius: 50%; border: 2px dashed rgba(150, 130, 240, 0.35); }
+  .rang-daten { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .rang-queue { color: var(--muted); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .rang-text { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; color: var(--tier-farbe, var(--text)); }
+  .rang-detail { color: var(--muted); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+  .unranked .rang-text { color: var(--muted); }
+  .tier-iron { --tier-farbe: #b3a69e; }
+  .tier-bronze { --tier-farbe: #d0946a; }
+  .tier-silver { --tier-farbe: #bcc8d4; }
+  .tier-gold { --tier-farbe: #e8c276; }
+  .tier-platinum { --tier-farbe: #4fd8c9; }
+  .tier-emerald { --tier-farbe: #44d98e; }
+  .tier-diamond { --tier-farbe: #7cb0ff; }
+  .tier-master { --tier-farbe: #cf85ff; }
+  .tier-grandmaster { --tier-farbe: #ff7272; }
+  .tier-challenger { --tier-farbe: #f6d55c; }
+
+  .hero-unten {
+    display: flex; flex-direction: column; gap: 16px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(150, 130, 240, 0.14);
+  }
+  .form-block { min-width: 0; }
+  .mini-label {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .form-richtung { text-transform: none; letter-spacing: 0; font-weight: 500; opacity: 0.75; }
+  /* Formleiste über die volle Breite: die Icons teilen sich den Platz (max. 44px), auf dem
+     Handy brechen sie stattdessen in zwei Reihen um */
+  .form-leiste { display: flex; gap: 6px; padding-top: 4px; }
+  .form-spiel {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 44px;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--win);
+    transition: transform 0.15s;
+  }
+  .form-spiel.niederlage { border-color: var(--loss); }
+  .form-spiel img { width: 100%; height: 100%; display: block; }
+  .form-spiel.niederlage img { filter: grayscale(0.55) brightness(0.75); }
+  .form-spiel:hover { transform: translateY(-3px); }
+  .kennzahlen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .kennzahl {
+    display: flex; flex-direction: column; gap: 2px;
+    min-width: 0;
+    padding: 9px 14px;
+    border-radius: 12px;
+    background: rgba(12, 7, 30, 0.62);
+    border: 1px solid rgba(150, 130, 240, 0.14);
+  }
+  .kz-wert { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .kz-trenner { color: var(--muted); margin: 0 2px; }
+  .kz-label { color: var(--muted); font-size: 0.7rem; white-space: nowrap; }
+  .win-value { color: var(--win); }
+  .loss-value { color: var(--loss); }
+  @media (max-width: 760px) {
+    .kennzahlen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .form-leiste { flex-wrap: wrap; gap: 4px; }
+    .form-spiel { flex: 0 0 27px; }
+    .profil-hero { padding: 20px 16px 18px; }
+    .hero-avatar { width: 80px; height: 80px; }
+    .rang-block { flex: 1 1 100%; min-width: 0; }
+    .kz-label { white-space: normal; }
+  }
 
   /* Seitenhintergrund: Skins eines Mains, zwei Ebenen werden abwechselnd überblendet.
      will-change gibt dem fixed+maskierten Element eine eigene Compositor-Ebene, damit es
@@ -46,104 +176,137 @@
     mask-image: linear-gradient(to bottom, #000 0%, #000 35%, transparent 92%);
   }
   .profil-bg.sichtbar { opacity: 0.38; }
-  /* Karten leicht durchsichtig, damit der Skin auch hinter den Inhalten durchscheint */
-  body .card, body .chart-card, body .main-card, body .rollen-zeile, body .duo-zeile,
-  body .trophy-detail {
-    background: rgba(27, 20, 64, 0.8);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
-  /* .trophy-badge bewusst OHNE backdrop-filter: bis zu 10 Stück sind gleichzeitig sichtbar,
-     und backdrop-filter ist pro Element teuer (der Browser samplet bei jedem Scroll-Frame neu,
-     was dahinter liegt) - bei so vielen kleinen Badges gleichzeitig führt das spürbar zu
-     Scroll-Rucklern. Nur die Transparenz bleibt, die kostet praktisch nichts. */
-  body .trophy-badge { background: rgba(27, 20, 64, 0.8); }
-  /* Zebra-Streifen in Rollen-/Duo-Liste - dunklere, aber genauso durchsichtige Variante */
-  body .rollen-liste > .rollen-zeile:nth-child(even), body .duo-liste > .duo-zeile:nth-child(even) {
-    background: rgba(9, 5, 24, 0.88);
-  }
-  .profile img.icon {
-    width: 96px; height: 96px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    border: 3px solid var(--accent);
-    box-shadow: 0 0 0 5px rgba(139, 108, 245, 0.15);
-  }
-  .profile h1 { font-size: clamp(1.45rem, 6vw, 2rem); margin: 0; overflow-wrap: anywhere; }
-  .profile > div { min-width: 0; }
-  @media (max-width: 560px) {
-    .profile { gap: 16px; padding: 20px 18px; }
-    .profile img.icon { width: 72px; height: 72px; }
-  }
-  .profile .tag { color: var(--muted); font-weight: 400; }
-  .rank-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .rank-badge {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    padding: 5px 16px;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    color: #0a0818;
-  }
-  .rank-badge .rank-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; opacity: 0.7; }
-  .rank-badge.flex { background: linear-gradient(90deg, var(--void), var(--void-2)); }
+  /* Kästen leicht durchsichtig, damit der Skin dahinter durchscheint - bewusst ohne
+     backdrop-filter (der kostet bei jedem Scroll-Frame, siehe style.css) */
+  body .panel { background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 120px), rgba(27, 20, 64, 0.86); }
+  body .trophy-badge { background: rgba(23, 17, 54, 0.85); }
+  body .trophy-detail { background: rgba(14, 9, 34, 0.7); }
 
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 24px;
+  /* ---------- Tabs: kleben unter der Navigation ---------- */
+  .profil-tabs {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 60;
+    display: flex; gap: 4px;
+    overflow-x: auto;
+    margin-bottom: 18px;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgba(15, 9, 36, 0.95);
+    border: 1px solid rgba(150, 130, 240, 0.16);
+    box-shadow: 0 10px 24px rgba(5, 3, 18, 0.4);
   }
-  .card, .chart-card, .problem, .strength {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
+  .profil-tab {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--muted);
+    font: 600 0.9rem var(--font-display);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
   }
-  .card { padding: 14px 16px; }
-  .card .value { font-size: 1.5rem; font-weight: 600; }
-  .card .label { color: var(--muted); font-size: 0.8rem; }
-  .win-value { color: var(--win); }
-  .loss-value { color: var(--loss); }
+  .profil-tab:hover { color: var(--text); background: rgba(150, 130, 240, 0.08); }
+  .profil-tab.aktiv { color: #0d0820; background: linear-gradient(90deg, var(--accent), var(--void)); }
+  .tab-zahl { padding: 1px 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: rgba(150, 130, 240, 0.16); color: var(--text); }
+  .profil-tab.aktiv .tab-zahl { background: rgba(13, 8, 32, 0.22); color: #0d0820; }
+
+  /* ---------- Übersicht als Kachel-Raster ---------- */
+  .bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+  .bento > .panel { margin-bottom: 0; }
+  .k-breit { grid-column: span 4; }
+  .k-schmal { grid-column: span 2; }
+  .k-halb { grid-column: span 3; }
+  .k-voll { grid-column: 1 / -1; }
+  @media (max-width: 900px) {
+    .k-breit, .k-schmal, .k-halb { grid-column: 1 / -1; }
+  }
+  .kachel { padding: 20px; }
+  .kachel-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .kachel-kopf h2.section-title { margin: 0; font-size: 1.05rem; }
+  .kachel-kopf-abstand { margin-top: 24px; }
+  .kachel-link { padding: 4px 0; border: 0; background: none; color: var(--accent2); font: 600 0.8rem var(--font-text); cursor: pointer; }
+  .kachel-link:hover { color: var(--text); }
+  .kachel-hint { color: var(--muted); font-size: 0.8rem; line-height: 1.5; margin: -6px 0 14px; }
+  .kachel-kopf .kachel-hint { margin: 0; }
+  .panel > .kachel-hint:last-child, .kachel > .kachel-hint:last-child { margin-bottom: 0; }
+  .avatar-grid.links { justify-content: flex-start; }
+  .panel .main-grid { margin-bottom: 0; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .trophy-details { margin-bottom: 0; }
+  .kda-chart { position: relative; height: 200px; }
+  .rang-chart { position: relative; height: 240px; }
+  .rang-hinweis { margin: 0 0 12px; }
+
+  .naechste-trophaee { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .naechste-trophaee .trophy-icon {
+    width: 48px; height: 48px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    background: var(--panel-2);
+    border: 3px solid var(--trophy-color);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--trophy-color) 45%, transparent);
+  }
+  .nt-name { font-family: var(--font-display); font-weight: 700; }
+  .nt-schritt { color: var(--muted); font-size: 0.8rem; }
+  .nt-schritt b { color: var(--trophy-color); }
+  .nt-fortschritt { color: var(--muted); font-size: 0.76rem; margin-top: 6px; line-height: 1.45; }
+
+  .mains-liste { display: flex; flex-direction: column; gap: 6px; }
+  .main-zeile {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgba(12, 7, 30, 0.5);
+    color: inherit;
+    text-decoration: none;
+  }
+  .main-zeile:hover { background: rgba(139, 108, 245, 0.16); }
+  .main-zeile img { width: 34px; height: 34px; border-radius: 50%; }
+  .main-zeile-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .main-zeile-werte { color: var(--muted); font-size: 0.76rem; white-space: nowrap; }
+
+  /* Stärken & Baustellen: Messleiste 0-200 % vom Richtwert, Markierung bei 100 % */
+  .meter-liste { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 32px; }
+  .meter-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 7px; }
+  .meter-label { font-weight: 700; font-size: 0.88rem; }
+  .meter-zeile.gut .meter-label { color: var(--win); }
+  .meter-wert { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .meter-wert small { font-family: var(--font-text); color: var(--muted); font-weight: 500; font-size: 0.74rem; }
+  .meter { position: relative; height: 8px; border-radius: 999px; background: rgba(150, 130, 240, 0.12); }
+  .meter-fuellung { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+  .meter-zeile.gut .meter-fuellung { background: linear-gradient(90deg, rgba(52, 211, 153, 0.35), var(--win)); }
+  .meter-zeile.schwach .meter-fuellung { background: linear-gradient(90deg, rgba(247, 108, 138, 0.35), var(--loss)); }
+  .meter-marke { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--text); opacity: 0.7; }
+  .meter-satz { color: var(--muted); font-size: 0.76rem; line-height: 1.45; margin-top: 7px; }
 
   h2 { font-size: 1.05rem; margin: 28px 0 12px; color: var(--text); }
 
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-  }
-  .chart-card { padding: 16px; }
-  .chart-card .chart-title { color: var(--muted); font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .chart-card canvas { max-height: 220px; }
-
-  .match-list { display: flex; flex-direction: column; gap: 14px; }
-
+  /* ---------- Kompakte Match-Zeilen. Container-Queries statt Media-Queries: dieselbe Zeile
+     steht in der schmaleren Übersichts-Kachel und im breiten Matches-Tab. ---------- */
+  .match-list { container-type: inline-size; display: flex; flex-direction: column; gap: 8px; }
   .match-row {
+    --ergebnis: var(--win);
     position: relative;
     overflow: hidden;
-    display: flex;
+    display: grid;
+    grid-template-columns: 108px minmax(132px, 0.75fr) 92px 40px minmax(0, 2.2fr) auto;
+    grid-template-areas: "erg champ kda note werte items";
     align-items: center;
-    gap: 22px;
-    flex-wrap: wrap;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-left: 4px solid var(--border);
-    border-radius: 14px;
-    padding: 16px 22px;
-    box-shadow: 0 8px 24px rgba(10, 6, 30, 0.35);
-    text-decoration: none;
+    gap: 14px;
+    padding: 10px 14px 10px 18px;
+    border-radius: 12px;
+    background: rgba(12, 7, 30, 0.62);
+    border: 1px solid rgba(150, 130, 240, 0.12);
     color: inherit;
-    cursor: pointer;
+    text-decoration: none;
     transition: border-color 0.15s, transform 0.15s;
   }
-  .match-row:hover { transform: translateY(-2px); }
-  .match-row.win { border-left-color: var(--win); }
-  .match-row.loss { border-left-color: var(--loss); }
+  .match-row.loss { --ergebnis: var(--loss); }
   .match-row::before {
     content: "";
     position: absolute;
@@ -151,144 +314,111 @@
     background-image: var(--splash);
     background-size: cover;
     background-position: center 18%;
-    opacity: 0.20;
-    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 30%, transparent 78%);
-    mask-image: linear-gradient(to right, #000 0%, #000 30%, transparent 78%);
+    opacity: 0.16;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, transparent 45%);
+    mask-image: linear-gradient(to right, #000 0%, transparent 45%);
     pointer-events: none;
   }
+  .match-row::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--ergebnis); }
   .match-row > * { position: relative; }
-
-  .match-meta { width: 108px; flex-shrink: 0; }
-  .match-meta .result { font-weight: 700; font-size: 0.95rem; }
-  .match-row.win .match-meta .result { color: var(--win); }
-  .match-row.loss .match-meta .result { color: var(--loss); }
-  .match-meta .modus-badge { margin-top: 5px; }
+  .match-row:hover { border-color: rgba(192, 77, 255, 0.45); transform: translateX(2px); }
+  .mz-ergebnis { grid-area: erg; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+  .mz-ergebnis .result { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; color: var(--ergebnis); }
+  .mz-zeit { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
   .modus-filter { margin-bottom: 14px; }
-  .match-meta .zeit, .match-meta .dauer { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
 
-  /* Champion + Halbkreis-Bogen aus Ring-Diagrammen (von oben nach unten kaskadierend) */
-  .champ-arc-wrap { width: 175px; flex-shrink: 0; }
-  .champ-top { display: flex; align-items: center; gap: 10px; height: 54px; }
+  .mz-champ { grid-area: champ; display: flex; align-items: center; gap: 10px; min-width: 0; }
   .champ-portrait-wrap { position: relative; flex-shrink: 0; }
-  .champ-portrait { width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--accent); display: block; }
+  .champ-portrait { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--ergebnis); display: block; }
   .champ-level {
-    position: absolute; bottom: -3px; right: -3px;
+    position: absolute; bottom: -3px; right: -4px;
+    width: 19px; height: 19px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
     background: var(--panel-2);
     border: 1px solid var(--border);
     color: var(--text);
-    font-size: 0.65rem; font-weight: 700;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
   }
-  .champ-name { font-size: 0.85rem; font-weight: 600; }
+  .rune-mini-spalte { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+  .rune-mini {
+    width: 22px; height: 22px;
+    padding: 2px;
+    border-radius: 50%;
+    border: 1px solid var(--gold);
+    background: var(--panel-2);
+  }
+  .rune-mini-sub { width: 17px; height: 17px; border-color: var(--border); }
+  .mz-champ-text { display: flex; flex-direction: column; min-width: 0; }
+  .champ-name { font-weight: 700; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .champ-role { color: var(--muted); font-size: 0.72rem; }
 
+  .kda-block { grid-area: kda; }
+  .kda-numbers { font-family: var(--font-display); font-weight: 700; font-size: 1rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .kda-numbers .deaths { color: var(--loss); }
+  .kda-ratio { color: var(--muted); font-size: 0.72rem; margin-top: 1px; }
+
   .note-badge {
-    margin-left: auto;
-    padding: 3px 11px;
+    grid-area: note;
+    justify-self: center;
+    padding: 3px 0;
+    width: 40px;
+    text-align: center;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-family: var(--font-display);
+    font-size: 0.86rem;
     font-weight: 800;
-    letter-spacing: 0.02em;
     white-space: nowrap;
   }
-  .note-s { background: linear-gradient(135deg, #ffe08a, var(--gold, #d4af6a)); color: #3a2a06; box-shadow: 0 0 10px rgba(212, 175, 106, 0.5); }
+  .note-s { background: linear-gradient(135deg, #ffe08a, var(--gold)); color: #3a2a06; box-shadow: 0 0 10px rgba(212, 175, 106, 0.5); }
   .note-a { background: rgba(52, 211, 153, 0.18); color: var(--win); border: 1px solid var(--win); }
   .note-b { background: rgba(79, 140, 255, 0.18); color: var(--accent2); border: 1px solid var(--accent2); }
   .note-c { background: rgba(167, 159, 207, 0.18); color: var(--muted); border: 1px solid var(--border); }
   .note-d { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
 
-  .ring-arc { position: relative; height: 235px; margin-top: 6px; }
-  .ring-arc-item {
-    position: absolute;
-    transform: translateY(-50%);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .ring-sm {
-    --pct: 0;
-    --ring-color: var(--accent);
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), rgba(255, 255, 255, 0.08) 0);
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-    flex-shrink: 0;
-  }
-  .ring-sm::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--panel); }
-  .ring-sm span { position: relative; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
-  .ring-label-sm { color: var(--muted); font-size: 0.66rem; line-height: 1.2; max-width: 68px; }
-
-  /* KDA */
-  .kda-block { flex-shrink: 0; min-width: 100px; }
-  .kda-numbers { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
-  .kda-numbers .deaths { color: var(--loss); }
-  .kda-ratio { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
-
-  /* Damage-Rang + Gold-Diff zum Lane-Gegner + Runen */
-  .impact-block { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; min-width: 140px; }
-  .rune-mini-row { display: flex; align-items: center; }
-  .rune-mini {
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    border: 1px solid var(--gold, #d4af6a);
-    background: var(--panel-2);
-    padding: 2px;
-  }
-  .rune-mini-sub {
-    width: 18px; height: 18px;
-    border: 1px solid var(--border);
-    margin-left: -6px;
-    box-shadow: 0 0 0 2px var(--panel);
-  }
-  .dmg-rank-badge {
+  .mz-werte { grid-area: werte; display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+  .wert-chip {
     display: inline-flex; align-items: baseline; gap: 4px;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 999px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    font-size: 0.72rem;
+    background: rgba(150, 130, 240, 0.08);
+    border: 1px solid rgba(150, 130, 240, 0.14);
     color: var(--muted);
-    width: fit-content;
+    font-size: 0.7rem;
     white-space: nowrap;
   }
-  .dmg-rank-badge strong { color: var(--text); font-size: 0.8rem; }
-  .dmg-rank-badge.top3 { border-color: var(--gold, #d4af6a); }
-  .dmg-rank-badge.top3 strong { color: var(--gold, #d4af6a); }
-  .gold-line { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; white-space: nowrap; }
-  .gold-value { font-weight: 600; }
-  .gold-diff { font-size: 0.74rem; font-weight: 700; }
-  .gold-diff.positive { color: var(--win); }
-  .gold-diff.negative { color: var(--loss); }
+  .wert-chip b { color: var(--text); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+  .wert-chip.gut { border-color: rgba(52, 211, 153, 0.35); }
+  .wert-chip.gut b { color: var(--win); }
+  .wert-chip.schwach { border-color: rgba(247, 108, 138, 0.32); }
+  .wert-chip.schwach b { color: var(--loss); }
+  .wert-chip.top { border-color: rgba(212, 175, 106, 0.55); }
+  .wert-chip.top b { color: var(--gold); }
 
-  /* Items */
-  .item-row-sm { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-left: auto; }
-  .item-slot-sm {
-    width: 34px; height: 34px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--panel-2);
-    overflow: hidden;
-  }
-  .item-slot-sm img { width: 100%; height: 100%; }
-  .item-gap-sm { width: 6px; }
+  .item-row-sm { grid-area: items; display: flex; align-items: center; gap: 3px; }
+  .item-slot-sm { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--panel-2); overflow: hidden; }
+  .item-slot-sm.trinket { margin-left: 4px; border-radius: 50%; }
+  .item-slot-sm img { width: 100%; height: 100%; display: block; }
 
-  @media (max-width: 720px) {
-    .match-row { flex-direction: column; align-items: flex-start; }
-    .item-row-sm { margin-left: 0; }
+  /* Mittlere Breite (z.B. Übersichts-Kachel): Kennzahl-Chips in eine zweite Zeile, Items aus */
+  @container (max-width: 879px) {
+    .match-row {
+      grid-template-columns: 100px minmax(0, 1fr) 86px 40px;
+      grid-template-areas: "erg champ kda note" "werte werte werte werte";
+      row-gap: 8px;
+    }
+    .item-row-sm { display: none; }
   }
-
-  .problem, .strength {
-    border-left: 3px solid var(--accent);
-    padding: 14px 18px;
-    margin-bottom: 12px;
+  /* Handy: Champion oben, Ergebnis als Zeile darunter */
+  @container (max-width: 520px) {
+    .match-row {
+      grid-template-columns: minmax(0, 1fr) auto 40px;
+      grid-template-areas: "champ kda note" "erg erg erg" "werte werte werte";
+      gap: 8px 12px;
+    }
+    .mz-ergebnis { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
   }
-  .strength { border-left-color: var(--win); }
-  .problem .headline, .strength .headline { font-weight: 600; margin-bottom: 4px; }
-  .strength .headline { color: var(--win); }
-  .problem .stat, .strength .stat { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
-  .problem .tipp { font-size: 0.9rem; }
-  .problem .tipp::before { content: "→ "; color: var(--accent2); }
 
   .empty { color: var(--muted); padding: 24px; text-align: center; }
 
@@ -328,17 +458,11 @@
   .treffer-chip { width: 100px; }
   .treffer-tag { color: var(--muted); font-size: 0.7rem; }
 
-  /* Rang-Verlauf */
-  .rang-card { margin-bottom: 28px; }
-  .rang-hinweis { margin: 0 0 12px; }
-  .rang-chart { position: relative; height: 240px; }
-
   /* Nach Rolle + Duo-Partner */
-  .profil-zweispaltig { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 28px; }
   .rollen-liste, .duo-liste { display: flex; flex-direction: column; gap: 8px; }
   .rollen-zeile {
     display: grid; grid-template-columns: 26px 64px 1fr auto; align-items: center; gap: 10px;
-    padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+    padding: 9px 12px; border-radius: 10px; background: rgba(12, 7, 30, 0.5); border: 1px solid rgba(150, 130, 240, 0.1);
   }
   .rollen-zeile.leer { opacity: 0.45; }
   .rollen-zeile img { width: 24px; height: 24px; }
@@ -349,15 +473,14 @@
   .rollen-werte b { margin-right: 4px; }
   .duo-zeile {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
-    padding: 11px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+    padding: 10px 12px; border-radius: 10px; background: rgba(12, 7, 30, 0.5); border: 1px solid rgba(150, 130, 240, 0.1);
     text-decoration: none; color: inherit; transition: border-color 0.15s, transform 0.15s;
   }
   .duo-zeile:hover { border-color: var(--accent); transform: translateX(3px); }
   .duo-name { font-weight: 700; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .duo-name .tag { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
   .duo-werte { font-size: 0.8rem; white-space: nowrap; display: flex; gap: 6px; align-items: baseline; }
-  .duo-leer { text-align: left; padding: 8px 0; font-size: 0.85rem; }
-  .duo-liste + .treffer-hint { margin-top: 10px; }
+  .duo-hinweis { margin: 12px 0 0; }
 
   /* Meistgespielte Champions - Splash-Hintergrund + Winrate-Ring, gleiche Optik wie die
      Spiel-Karten im Gruppen-Feed (.feed-card in gruppe.html), damit sich das Profil nicht
@@ -438,11 +561,15 @@
   /* Karriere-Trophäen: Xbox/PlayStation-artige Leiter Bronze->Diamant (siehe trophaeen.py) -
      kompaktes Abzeichen-Grid oben, Klick zeigt Fortschrittsdetails darunter statt eines
      nativen Dropdowns, damit Farbe/Fortschrittsbalken/Icon sichtbar bleiben. */
+  /* 10 Trophäen -> 2 volle Reihen à 5 statt 9 + 1 einzelne */
   .trophy-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 16px;
+  }
+  @media (max-width: 560px) {
+    .trophy-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
   }
   .trophy-badge {
     display: flex; flex-direction: column; align-items: center; gap: 5px;
@@ -450,6 +577,7 @@
     border-radius: 14px;
     border: 1px solid var(--border);
     background: var(--panel);
+    color: var(--text);
     cursor: pointer;
     font-family: inherit;
     transition: transform 0.15s, border-color 0.15s;
@@ -594,357 +722,454 @@
   {% endif %}
 {% else %}
 
-  <div class="profile">
-    {% if summoner_icon %}<img class="icon" src="{{ summoner_icon }}" alt="Summoner Icon">{% endif %}
-    <div>
-      <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>
-      <div class="rank-badges">
-        <span class="rank-badge"><span class="rank-label">Solo/Duo</span> {{ rang_solo }}</span>
-        <span class="rank-badge flex"><span class="rank-label">Flex</span> {{ rang_flex }}</span>
-      </div>
-      {% if profil_discord or ist_mein_profil %}
-      <div class="profil-discord">
-        {% if profil_discord %}
-        <span class="discord-pill" title="Mit Discord verknüpft und per Profil-Icon bestätigt">
-          <img src="{{ profil_discord.avatar }}" alt="">{{ profil_discord.name }}
-        </span>
-        {% endif %}
-        {% if ist_mein_profil %}<span class="du-pill">Das bist du</span>{% endif %}
-      </div>
+  {% set rollen_label = {"TOP": "Top", "JUNGLE": "Jungle", "MIDDLE": "Mid", "BOTTOM": "ADC", "UTILITY": "Support"} %}
+  {% set winrate = ((siege / anzahl_spiele * 100) | round | int) if anzahl_spiele else 0 %}
+  {% set erreichte_trophaeen = trophaeen | selectattr("stufe") | list | length %}
+  {% set banner = meistgespielte[0].splash if meistgespielte else (hintergrund_skins[0] if hintergrund_skins else "") %}
+
+  {# Kompakte Match-Zeile: Ergebnis, Champion, KDA, Note und die Richtwert-Kennzahlen als
+     farbige Chips (grün = über Richtwert) in einer Zeile statt des hohen Ring-Bogens #}
+  {% macro match_zeile(s) %}
+  <a class="match-row {{ 'win' if s.win else 'loss' }}" data-modus="{{ s.modus_kategorie or '' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">
+    <div class="mz-ergebnis">
+      <span class="result">{{ "Sieg" if s.win else "Niederlage" }}</span>
+      {% if s.modus %}<span class="modus-badge modus-{{ s.modus_kategorie }}">{{ s.modus }}</span>{% endif %}
+      <span class="mz-zeit">{{ s.zeit_text }} · {{ s.duration_seconds // 60 }} Min.</span>
+    </div>
+    <div class="mz-champ">
+      <span class="champ-portrait-wrap">
+        <img class="champ-portrait" src="{{ s.champion_icon }}" alt="{{ s.champion }}" loading="lazy">
+        {% if s.champ_level %}<span class="champ-level">{{ s.champ_level }}</span>{% endif %}
+      </span>
+      {% if s.keystone_icon or s.secondary_icon %}
+      <span class="rune-mini-spalte">
+        {% if s.keystone_icon %}<img class="rune-mini" src="{{ s.keystone_icon }}" alt="">{% endif %}
+        {% if s.secondary_icon %}<img class="rune-mini rune-mini-sub" src="{{ s.secondary_icon }}" alt="">{% endif %}
+      </span>
       {% endif %}
-      <div class="follow-zeile">
-        <a class="follow-zahl" href="#follower">{{ follower.follower_anzahl }} Follower</a>
-        <span class="follow-trenner">&middot;</span>
-        <a class="follow-zahl" href="#folgt">folgt {{ follower.folgt_anzahl }}</a>
-        {% if ich and not ist_mein_profil %}
-        {% if folge_ich %}
-        <form class="follow-form" method="post" action="{{ url_for('profil_entfolgen') }}">
-          <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
-          <input type="hidden" name="riot_name" value="{{ riot_name }}">
-          <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
-          <button type="submit" class="follow-knopf aktiv">Gefolgt</button>
-        </form>
-        {% else %}
-        <form class="follow-form" method="post" action="{{ url_for('profil_folgen') }}">
-          <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
-          <input type="hidden" name="riot_name" value="{{ riot_name }}">
-          <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
-          <button type="submit" class="follow-knopf">+ Folgen</button>
-        </form>
-        {% endif %}
-        {% elif not ich %}
-        <a class="follow-login-hinweis" href="{{ url_for('konto') }}">Anmelden zum Folgen</a>
-        {% endif %}
+      <span class="mz-champ-text">
+        <span class="champ-name">{{ s.champion }}</span>
+        <span class="champ-role">{{ rollen_label.get(s.role, s.modus or "–") }}</span>
+      </span>
+    </div>
+    <div class="kda-block">
+      <div class="kda-numbers">{{ s.kills }} / <span class="deaths">{{ s.deaths }}</span> / {{ s.assists }}</div>
+      <div class="kda-ratio">{{ "%.2f"|format(s.kda) }}:1 KDA</div>
+    </div>
+    <div class="note-badge {{ s.note_klasse }}" title="Gesamt-Note aus KDA, CS/Min, Vision/Min und Kill-Participation">{{ s.note }}</div>
+    <div class="mz-werte">
+      {% for r in s.ringe if r.label != "KDA" %}
+      <span class="wert-chip {{ 'gut' if r.gut else 'schwach' }}" title="{{ r.label }}: {{ r.pct }}% vom Richtwert deines Rangs"><b>{{ r.text }}</b> {{ {"Kill-Participation": "KP"}.get(r.label, r.label) }}</span>
+      {% endfor %}
+      {% if s.damage_rank %}
+      <span class="wert-chip {{ 'top' if s.damage_rank <= 3 else '' }}" title="{{ '%.1f'|format((s.damage_dealt or 0) / 1000) }}k Schaden an Champions"><b>#{{ s.damage_rank }}</b> Schaden</span>
+      {% endif %}
+      {% if s.gold_diff is not none %}
+      <span class="wert-chip {{ 'gut' if s.gold_diff >= 0 else 'schwach' }}" title="Gold-Differenz zum direkten Lane-Gegner"><b>{{ "+" if s.gold_diff >= 0 else "−" }}{{ "%.1f"|format((s.gold_diff | abs) / 1000) }}k</b> Gold</span>
+      {% endif %}
+    </div>
+    <div class="item-row-sm">
+      {% for icon in s.item_icons[:6] %}
+      <div class="item-slot-sm">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+      {% endfor %}
+      <div class="item-slot-sm trinket">{% if s.item_icons[6] %}<img src="{{ s.item_icons[6] }}" alt="" loading="lazy">{% endif %}</div>
+    </div>
+  </a>
+  {% endmacro %}
+
+  {# ---------- Kopfbereich ---------- #}
+  <section class="profil-hero" {% if banner %}style="--banner: url('{{ banner }}');"{% endif %}>
+    <div class="hero-oben">
+      <div class="hero-avatar">
+        {% if summoner_icon %}<img src="{{ summoner_icon }}" alt="Summoner-Icon von {{ riot_name }}">{% else %}<span>{{ riot_name[0] | upper }}</span>{% endif %}
       </div>
-    </div>
-  </div>
-
-  <div class="cards">
-    <div class="card">
-      <div class="value win-value">{{ siege }}</div>
-      <div class="label">Siege</div>
-    </div>
-    <div class="card">
-      <div class="value loss-value">{{ niederlagen }}</div>
-      <div class="label">Niederlagen</div>
-    </div>
-    <div class="card">
-      <div class="value">{{ "%.0f"|format(siege / anzahl_spiele * 100) if anzahl_spiele else 0 }}%</div>
-      <div class="label">Winrate</div>
-    </div>
-    <div class="card">
-      <div class="value">{{ anzahl_spiele }}</div>
-      <div class="label">Spiele analysiert</div>
-    </div>
-  </div>
-
-  {% if trophaeen %}
-  <h2 class="section-title accent-gold">Trophäen</h2>
-  <p class="treffer-hint">Karriere-Fortschritt über alle {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spiele - klick ein Abzeichen für den Fortschritt zur nächsten Stufe.</p>
-  <div class="trophy-grid" id="trophyGrid">
-    {% for t in trophaeen %}
-    <button type="button" class="trophy-badge {{ 'leer' if not t.stufe else '' }} {{ 'active' if loop.first else '' }}"
-            style="--trophy-color: {{ t.farbe }};" data-trophy="{{ t.id }}">
-      <span class="trophy-icon">{{ t.icon }}</span>
-      <span class="trophy-name">{{ t.name }}</span>
-      <span class="trophy-stufe">{{ t.stufe_label if t.stufe else "-" }}</span>
-    </button>
-    {% endfor %}
-  </div>
-  <div class="trophy-details" id="trophyDetails">
-    {% for t in trophaeen %}
-    <div class="trophy-detail" data-trophy="{{ t.id }}" {{ '' if loop.first else 'hidden' }} style="--trophy-color: {{ t.farbe }};">
-      <div class="trophy-detail-head">
-        <span class="trophy-icon big">{{ t.icon }}</span>
-        <div>
-          <div class="trophy-detail-name">{{ t.name }} <span class="trophy-detail-stufe">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }}</span></div>
-          <div class="trophy-detail-desc">{{ t.beschreibung }}</div>
+      <div class="hero-text">
+        <h1>{{ riot_name }} <span class="tag">#{{ riot_tag }}</span></h1>
+        {% if ist_mein_profil or profil_discord or oeffentliche_gruppen %}
+        <div class="hero-pills">
+          {% if ist_mein_profil %}<span class="du-pill">Das bist du</span>{% endif %}
+          {% if profil_discord %}
+          <span class="discord-pill" title="Mit Discord verknüpft und per Profil-Icon bestätigt"><img src="{{ profil_discord.avatar }}" alt="">{{ profil_discord.name }}</span>
+          {% endif %}
+          {% for gr in oeffentliche_gruppen[:3] %}
+          {% set bild = gruppen_icon_bild(gr.icon) %}
+          <a class="gruppen-pill" href="{{ url_for('gruppe_ansehen', gruppe_id=gr.id) }}" title="Öffentliche Gruppe">{% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ gr.icon }}{% endif %}{{ gr.name }}</a>
+          {% endfor %}
         </div>
-      </div>
-      <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%;"></div></div>
-      <div class="trophy-progress-label">
-        {% if t.ist_maximal %}
-        {{ t.wert }} erreicht - Diamant, die höchste Stufe!
-        {% else %}
-        {{ t.wert }} / {{ t.naechste_schwelle }} für {{ t.naechste_stufe_label }}
         {% endif %}
-      </div>
-      <div class="trophy-ladder">
-        {% for stufe in t.leiter %}
-        <span class="trophy-ladder-stufe {{ 'erreicht' if stufe.erreicht else '' }}" {% if stufe.erreicht %}style="--trophy-color: {{ stufe.farbe }};"{% endif %}>
-          {{ stufe.label }} &middot; {{ stufe.schwelle }}
-        </span>
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if meistgespielte %}
-  <h2 class="section-title">Meistgespielte Champions</h2>
-  <p class="treffer-hint">Aus allen {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spielen dieses Profils.</p>
-  <div class="main-grid">
-    {% for c in meistgespielte %}
-    <a class="main-card" href="{{ url_for('champion_detail', key=c.champion) }}" style="--splash: url('{{ c.splash }}');">
-      <div class="main-ring" style="--pct: {{ c.winrate }}; --ring-color: {{ 'var(--win)' if c.winrate >= 50 else 'var(--loss)' }};" title="{{ c.siege }} Siege / {{ c.niederlagen }} Niederlagen">
-        <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
-      </div>
-      <div class="main-info">
-        <div class="main-head">
-          <span class="main-name">{{ c.name }}</span>
-          <span class="main-wr {{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</span>
-        </div>
-        <div class="main-meta">
-          <span><b class="win-value">{{ c.siege }}S</b> <b class="loss-value">{{ c.niederlagen }}N</b> &middot; {{ c.spiele }} Spiel{{ "e" if c.spiele != 1 else "" }}</span>
-          <span>{{ c.kda }} KDA</span>
-        </div>
-      </div>
-    </a>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if follower.follower %}
-  <h2 class="section-title" id="follower">Follower <span class="section-count">{{ follower.follower_anzahl }}</span></h2>
-  <div class="avatar-grid">
-    {% for f in follower.follower %}
-    <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
-      <div class="circle" style="background: var(--void);">{{ f.name[0] | upper }}</div>
-      <div class="name">{{ f.name }}</div>
-    </a>
-    {% endfor %}
-  </div>
-  {% if follower.follower_anzahl > follower.follower | length %}
-  <p class="treffer-hint">+{{ follower.follower_anzahl - follower.follower | length }} weitere</p>
-  {% endif %}
-  {% endif %}
-
-  {% if follower.folgt %}
-  <h2 class="section-title" id="folgt">Folgt <span class="section-count">{{ follower.folgt_anzahl }}</span></h2>
-  <div class="avatar-grid">
-    {% for f in follower.folgt %}
-    <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
-      <div class="circle" style="background: var(--accent2);">{{ f.name[0] | upper }}</div>
-      <div class="name">{{ f.name }}</div>
-    </a>
-    {% endfor %}
-  </div>
-  {% if follower.folgt_anzahl > follower.folgt | length %}
-  <p class="treffer-hint">+{{ follower.folgt_anzahl - follower.folgt | length }} weitere</p>
-  {% endif %}
-  {% endif %}
-
-  {% if rang_verlauf %}
-  <h2 class="section-title">Rang-Verlauf</h2>
-  <div class="chart-card rang-card">
-    {% if rang_verlauf.tage < 2 %}
-    <p class="treffer-hint rang-hinweis">Riot liefert nur den aktuellen Rang, keine Historie - RiftCircle speichert deshalb ab jetzt bei jedem Profilaufruf den Tagesstand. Ab dem zweiten Tag entsteht hier eine Linie.</p>
-    {% endif %}
-    <div class="rang-chart"><canvas id="rangChart"></canvas></div>
-    <script type="application/json" id="rangDaten">{{ {"verlauf": rang_verlauf, "achse": tier_achse} | tojson }}</script>
-  </div>
-  {% endif %}
-
-  {% if rollen_stats or duo_partner %}
-  <div class="profil-zweispaltig">
-    {% if rollen_stats %}
-    <div>
-      <h2 class="section-title">Nach Rolle</h2>
-      <div class="rollen-liste">
-        {% for r in rollen_stats %}
-        <div class="rollen-zeile {{ 'leer' if not r.spiele else '' }}">
-          <img src="{{ rollen_icon_url.format(r.icon) }}" alt="">
-          <span class="rollen-name">{{ r.name }}</span>
-          {% if r.spiele %}
-          <span class="rollen-balken" title="{{ r.anteil }}% deiner Spiele"><span style="width: {{ r.anteil }}%;"></span></span>
-          <span class="rollen-werte">
-            <b class="{{ 'win-value' if r.winrate >= 50 else 'loss-value' }}">{{ r.winrate }}%</b>
-            {{ r.spiele }} Sp. &middot; {{ r.kda }} KDA
-          </span>
+        <div class="follow-zeile">
+          <a class="follow-zahl" href="#social"><b>{{ follower.follower_anzahl }}</b> Follower</a>
+          <span class="follow-trenner">&middot;</span>
+          <a class="follow-zahl" href="#social">folgt <b>{{ follower.folgt_anzahl }}</b></a>
+          {% if ich and not ist_mein_profil %}
+          {% if folge_ich %}
+          <form class="follow-form" method="post" action="{{ url_for('profil_entfolgen') }}">
+            <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
+            <input type="hidden" name="riot_name" value="{{ riot_name }}">
+            <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
+            <button type="submit" class="follow-knopf aktiv">Gefolgt</button>
+          </form>
           {% else %}
-          <span class="rollen-werte">nicht gespielt</span>
+          <form class="follow-form" method="post" action="{{ url_for('profil_folgen') }}">
+            <input type="hidden" name="ziel_puuid" value="{{ puuid }}">
+            <input type="hidden" name="riot_name" value="{{ riot_name }}">
+            <input type="hidden" name="riot_tag" value="{{ riot_tag }}">
+            <button type="submit" class="follow-knopf">+ Folgen</button>
+          </form>
+          {% endif %}
+          {% elif not ich %}
+          <a class="follow-login-hinweis" href="{{ url_for('konto') }}">Anmelden zum Folgen</a>
           {% endif %}
         </div>
-        {% endfor %}
       </div>
-    </div>
-    {% endif %}
-
-    <div>
-      <h2 class="section-title">Duo-Partner</h2>
-      {% if duo_partner %}
-      <div class="duo-liste">
-        {% for d in duo_partner %}
-        <a class="duo-zeile" href="{{ url_for('profil', riot_id=d.name ~ '#' ~ d.tag) }}">
-          <span class="duo-name">{{ d.name }} <span class="tag">#{{ d.tag }}</span></span>
-          <span class="duo-werte">
-            <b class="{{ 'win-value' if d.winrate >= 50 else 'loss-value' }}">{{ d.winrate }}%</b>
-            <span class="win-value">{{ d.siege }}S</span> <span class="loss-value">{{ d.niederlagen }}N</span>
-          </span>
-        </a>
-        {% endfor %}
-      </div>
-      <p class="treffer-hint">Mitspieler im selben Team aus gespeicherten Spielen - sortiert nach gemeinsamen Spielen.</p>
-      {% else %}
-      <p class="empty duo-leer">Noch keine Mitspieler mit mindestens 2 gemeinsamen Spielen gefunden. Duo-Partner erscheinen, sobald eure gemeinsamen Spiele bei RiftCircle gespeichert sind - z.B. wenn ihr beide gesucht werdet oder in einer Gruppe seid.</p>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  <h2 class="section-title">Übersicht</h2>
-  <div class="chart-grid">
-    <div class="chart-card">
-      <div class="chart-title">Sieg / Niederlage</div>
-      <canvas id="winrateChart"></canvas>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">KDA-Verlauf (chronologisch)</div>
-      <canvas id="kdaChart"></canvas>
-    </div>
-    {% if probleme %}
-    <div class="chart-card">
-      <div class="chart-title">Richtwert erreicht (Ø, in %)</div>
-      <canvas id="problemeChart"></canvas>
-    </div>
-    {% endif %}
-  </div>
-
-  <h2 class="section-title">Deine größten Verbesserungsbereiche</h2>
-  {% if probleme %}
-    {% for p in probleme %}
-    <div class="problem">
-      <div class="headline">{{ p.satz }}</div>
-      <div class="stat">{{ p.label }}: in {{ p.unter_anzahl }}/{{ p.total }} Spielen unter Richtwert (Schnitt {{ p.avg_wert }} statt {{ p.avg_richtwert }}, {{ p.erreicht_prozent }}% vom Richtwert)</div>
-      <div class="tipp">{{ p.tipp }}</div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <p class="empty">Keine konsistenten Schwächen erkennbar – starke Serie!</p>
-  {% endif %}
-
-  <h2 class="section-title">Deine Stärken</h2>
-  {% if staerken %}
-    {% for s in staerken %}
-    <div class="strength">
-      <div class="headline">{{ s.satz }}</div>
-      <div class="stat">{{ s.label }}: in {{ s.ueber_anzahl }}/{{ s.total }} Spielen über Richtwert (Schnitt {{ s.avg_wert }} statt {{ s.avg_richtwert }}, {{ s.erreicht_prozent }}% vom Richtwert)</div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <p class="empty">Noch keine konsistente Stärke über mehrere Spiele erkennbar.</p>
-  {% endif %}
-
-  <h2 class="section-title">Letzte Spiele</h2>
-  {% set modus_anzahl = {} %}
-  {% for s in spiele if s.modus_kategorie %}{% set _ = modus_anzahl.update({s.modus_kategorie: modus_anzahl.get(s.modus_kategorie, 0) + 1}) %}{% endfor %}
-  {% if modus_anzahl %}
-  <div class="filter-chips modus-filter" id="modusFilter">
-    <button type="button" class="filter-chip active" data-modus="alle">Alle <span class="anzahl">{{ spiele|length }}</span></button>
-    {% for key, label in modus_kategorien.items() if modus_anzahl.get(key) or key != 'sonstige' %}
-    <button type="button" class="filter-chip" data-modus="{{ key }}">{{ label }} <span class="anzahl">{{ modus_anzahl.get(key, 0) }}</span></button>
-    {% endfor %}
-  </div>
-  {% endif %}
-  <p class="empty" id="modusLeer" hidden>Keine Spiele in diesem Modus unter den letzten {{ spiele|length }}.</p>
-  <div class="match-list">
-    {% for s in spiele %}
-    <a class="match-row {{ 'win' if s.win else 'loss' }}" data-modus="{{ s.modus_kategorie or '' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}" style="--splash: url('{{ s.champion_splash }}');">
-
-      <div class="match-meta">
-        <div class="result">{{ "Sieg" if s.win else "Niederlage" }}</div>
-        {% if s.modus %}<span class="modus-badge modus-{{ s.modus_kategorie }}">{{ s.modus }}</span>{% endif %}
-        <div class="zeit">{{ s.zeit_text }}</div>
-        <div class="dauer">{{ s.duration_seconds // 60 }} Min. {{ s.duration_seconds % 60 }} Sek.</div>
-      </div>
-
-      <div class="champ-arc-wrap">
-        <div class="champ-top">
-          <div class="champ-portrait-wrap">
-            <img class="champ-portrait" src="{{ s.champion_icon }}" alt="{{ s.champion }}" loading="lazy">
-            {% if s.champ_level %}<span class="champ-level">{{ s.champ_level }}</span>{% endif %}
+      <div class="hero-raenge">
+        {% for label, r in raenge %}
+        <div class="rang-block {{ 'tier-' ~ r.tier if r else 'unranked' }}">
+          {% if r %}<img class="rang-emblem" src="{{ r.emblem }}" alt="">{% else %}<span class="rang-emblem leer"></span>{% endif %}
+          <div class="rang-daten">
+            <span class="rang-queue">{{ label }}</span>
+            <span class="rang-text">{{ r.text if r else "Unranked" }}</span>
+            {% if r %}
+            <span class="rang-detail">{{ r.lp }} LP · <span class="win-value">{{ r.siege }}S</span> <span class="loss-value">{{ r.niederlagen }}N</span> · {{ r.winrate }}%</span>
+            {% else %}
+            <span class="rang-detail">Diese Saison nicht platziert</span>
+            {% endif %}
           </div>
-          <div>
-            <div class="champ-name">{{ s.champion }}</div>
-            <div class="champ-role">{{ s.role or s.modus or "–" }}</div>
-          </div>
-          <div class="note-badge {{ s.note_klasse }}" title="Gesamt-Note aus KDA, CS/Min, Vision/Min und Kill-Participation">{{ s.note }}</div>
         </div>
-        <div class="ring-arc">
-          {% for r in s.ringe %}
-          <div class="ring-arc-item" style="left: {{ r.bogen_x + 6 }}px; top: {{ r.bogen_y + 23 }}px;">
-            <div class="ring-sm" style="--pct: {{ r.pct }}; --ring-color: {{ 'var(--win)' if r.gut else 'var(--loss)' }};">
-              <span>{{ r.text }}</span>
-            </div>
-            <div class="ring-label-sm">{{ r.label }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if spiele and schnitt %}
+    <div class="hero-unten">
+      <div class="kennzahlen">
+        <div class="kennzahl">
+          <span class="kz-wert"><span class="win-value">{{ siege }}</span><span class="kz-trenner">:</span><span class="loss-value">{{ niederlagen }}</span></span>
+          <span class="kz-label">Bilanz · {{ winrate }}% Winrate</span>
+        </div>
+        <div class="kennzahl">
+          <span class="kz-wert">{{ schnitt.kda }}</span>
+          <span class="kz-label">Ø KDA · {{ schnitt.kills }} / {{ schnitt.deaths }} / {{ schnitt.assists }}</span>
+        </div>
+        <div class="kennzahl">
+          <span class="kz-wert">{{ schnitt.cs_min }}</span>
+          <span class="kz-label">Ø CS pro Minute</span>
+        </div>
+        {% if schnitt.kp is not none %}
+        <div class="kennzahl">
+          <span class="kz-wert">{{ schnitt.kp }}%</span>
+          <span class="kz-label">Ø Kill-Beteiligung</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="form-block">
+        <div class="mini-label">Form der letzten {{ spiele|length }} Spiele <span class="form-richtung">älteste → neueste</span></div>
+        <div class="form-leiste">
+          {% for s in spiele|reverse %}
+          <a class="form-spiel {{ 'sieg' if s.win else 'niederlage' }}" href="{{ url_for('match_detail', match_id=s.match_id, puuid=puuid) }}"
+             title="{{ 'Sieg' if s.win else 'Niederlage' }} · {{ s.champion }} · {{ s.kills }}/{{ s.deaths }}/{{ s.assists }} · {{ s.zeit_text }}">
+            <img src="{{ s.champion_icon }}" alt="{{ s.champion }}" loading="lazy">
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  {# ---------- Tabs ---------- #}
+  <nav class="profil-tabs" id="profilTabs" role="tablist" aria-label="Profilbereiche">
+    <button type="button" class="profil-tab aktiv" role="tab" id="tab-uebersicht" data-tab="uebersicht" aria-selected="true">Übersicht</button>
+    <button type="button" class="profil-tab" role="tab" id="tab-matches" data-tab="matches" aria-selected="false">Matches <span class="tab-zahl">{{ spiele|length }}</span></button>
+    <button type="button" class="profil-tab" role="tab" id="tab-champions" data-tab="champions" aria-selected="false">Champions <span class="tab-zahl">{{ meistgespielte|length }}</span></button>
+    <button type="button" class="profil-tab" role="tab" id="tab-trophaeen" data-tab="trophaeen" aria-selected="false">Trophäen <span class="tab-zahl">{{ erreichte_trophaeen }}/{{ trophaeen|length }}</span></button>
+    <button type="button" class="profil-tab" role="tab" id="tab-social" data-tab="social" aria-selected="false">Social <span class="tab-zahl">{{ follower.follower_anzahl }}</span></button>
+  </nav>
+
+  {# ---------- Übersicht ---------- #}
+  <section class="tab-inhalt" data-tab="uebersicht" role="tabpanel" aria-labelledby="tab-uebersicht">
+    <div class="bento">
+      <div class="panel kachel k-breit">
+        <div class="kachel-kopf">
+          <h2 class="section-title">Letzte Spiele</h2>
+          {% if spiele|length > 5 %}<button type="button" class="kachel-link" data-gehe-zu="matches">Alle {{ spiele|length }} ansehen →</button>{% endif %}
+        </div>
+        {% if spiele %}
+        <div class="match-list">{% for s in spiele[:5] %}{{ match_zeile(s) }}{% endfor %}</div>
+        {% else %}
+        <p class="empty">Noch keine gespeicherten Spiele.</p>
+        {% endif %}
+      </div>
+
+      <div class="panel kachel k-schmal">
+        {% set offene = trophaeen | rejectattr("ist_maximal") | sort(attribute="fortschritt_prozent", reverse=True) | list %}
+        {% if offene %}
+        {% set t = offene[0] %}
+        <div class="kachel-kopf">
+          <h2 class="section-title accent-gold">Nächste Trophäe</h2>
+          <button type="button" class="kachel-link" data-gehe-zu="trophaeen">Alle →</button>
+        </div>
+        <div class="naechste-trophaee" style="--trophy-color: {{ t.farbe }};">
+          <span class="trophy-icon">{{ t.icon }}</span>
+          <div class="nt-text">
+            <div class="nt-name">{{ t.name }}</div>
+            <div class="nt-schritt">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }} → <b>{{ t.naechste_stufe_label }}</b></div>
+          </div>
+        </div>
+        <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%; --trophy-color: {{ t.farbe }};"></div></div>
+        <div class="nt-fortschritt">{{ t.wert }} / {{ t.naechste_schwelle }} · {{ t.beschreibung }}</div>
+        {% endif %}
+
+        {% if meistgespielte %}
+        <div class="kachel-kopf kachel-kopf-abstand">
+          <h2 class="section-title">Mains</h2>
+          <button type="button" class="kachel-link" data-gehe-zu="champions">Alle →</button>
+        </div>
+        <div class="mains-liste">
+          {% for c in meistgespielte[:3] %}
+          <a class="main-zeile" href="{{ url_for('champion_detail', key=c.champion) }}">
+            <img src="{{ c.icon }}" alt="" loading="lazy">
+            <span class="main-zeile-name">{{ c.name }}</span>
+            <span class="main-zeile-werte"><b class="{{ 'win-value' if c.winrate >= 50 else 'loss-value' }}">{{ c.winrate }}%</b> · {{ c.spiele }} Sp.</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if rollen_stats %}
+        <div class="kachel-kopf kachel-kopf-abstand"><h2 class="section-title">Nach Rolle</h2></div>
+        <div class="rollen-liste">
+          {% for r in rollen_stats %}
+          <div class="rollen-zeile {{ 'leer' if not r.spiele else '' }}">
+            <img src="{{ rollen_icon_url.format(r.icon) }}" alt="">
+            <span class="rollen-name">{{ r.name }}</span>
+            {% if r.spiele %}
+            <span class="rollen-balken" title="{{ r.anteil }}% der Spiele"><span style="width: {{ r.anteil }}%;"></span></span>
+            <span class="rollen-werte"><b class="{{ 'win-value' if r.winrate >= 50 else 'loss-value' }}">{{ r.winrate }}%</b> {{ r.spiele }} Sp.</span>
+            {% else %}
+            <span class="rollen-balken"></span>
+            <span class="rollen-werte">–</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if rang_verlauf %}
+      <div class="panel kachel k-breit">
+        <div class="kachel-kopf"><h2 class="section-title">Rang-Verlauf</h2></div>
+        {% if rang_verlauf.tage < 2 %}
+        <p class="kachel-hint rang-hinweis">Riot liefert nur den aktuellen Rang, keine Historie. RiftCircle speichert deshalb bei jedem Profilaufruf den Tagesstand. Ab dem zweiten Tag entsteht hier eine Linie.</p>
+        {% endif %}
+        <div class="rang-chart"><canvas id="rangChart"></canvas></div>
+        <script type="application/json" id="rangDaten">{{ {"verlauf": rang_verlauf, "achse": tier_achse} | tojson }}</script>
+      </div>
+      {% endif %}
+
+
+      <div class="panel kachel {{ 'k-schmal' if rang_verlauf else 'k-voll' }}">
+        <div class="kachel-kopf"><h2 class="section-title">Duo-Partner</h2></div>
+        {% if duo_partner %}
+        <div class="duo-liste">
+          {% for d in duo_partner %}
+          <a class="duo-zeile" href="{{ url_for('profil', riot_id=d.name ~ '#' ~ d.tag) }}">
+            <span class="duo-name">{{ d.name }} <span class="tag">#{{ d.tag }}</span></span>
+            <span class="duo-werte">
+              <b class="{{ 'win-value' if d.winrate >= 50 else 'loss-value' }}">{{ d.winrate }}%</b>
+              <span class="win-value">{{ d.siege }}S</span> <span class="loss-value">{{ d.niederlagen }}N</span>
+            </span>
+          </a>
+          {% endfor %}
+        </div>
+        <p class="kachel-hint duo-hinweis">Mitspieler im selben Team aus gespeicherten Spielen, sortiert nach gemeinsamen Spielen.</p>
+        {% else %}
+        <p class="kachel-hint">Noch keine Mitspieler mit mindestens 2 gemeinsamen Spielen. Duo-Partner erscheinen, sobald eure gemeinsamen Spiele bei RiftCircle gespeichert sind, z.B. wenn ihr beide gesucht werdet oder in einer Gruppe seid.</p>
+        {% endif %}
+      </div>
+
+      {% if probleme or staerken %}
+      <div class="panel kachel k-voll">
+        <div class="kachel-kopf"><h2 class="section-title">Stärken &amp; Baustellen</h2></div>
+        <p class="kachel-hint">Schnitt der letzten {{ spiele|length }} Spiele im Vergleich zum Richtwert deines Rangs. Die Markierung steht bei 100&nbsp;%.</p>
+        <div class="meter-liste">
+          {% for s in staerken %}
+          <div class="meter-zeile gut">
+            <div class="meter-kopf"><span class="meter-label">{{ s.label }}</span><span class="meter-wert">{{ s.avg_wert }} <small>statt {{ s.avg_richtwert }}</small></span></div>
+            <div class="meter"><span class="meter-fuellung" style="width: {{ [s.erreicht_prozent, 200] | min / 2 }}%;"></span><span class="meter-marke"></span></div>
+            <div class="meter-satz">{{ s.ueber_anzahl }} von {{ s.total }} Spielen über Richtwert</div>
+          </div>
+          {% endfor %}
+          {% for p in probleme %}
+          <div class="meter-zeile schwach">
+            <div class="meter-kopf"><span class="meter-label">{{ p.label }}</span><span class="meter-wert">{{ p.avg_wert }} <small>statt {{ p.avg_richtwert }}</small></span></div>
+            <div class="meter"><span class="meter-fuellung" style="width: {{ [p.erreicht_prozent, 200] | min / 2 }}%;"></span><span class="meter-marke"></span></div>
+            <div class="meter-satz">{{ p.unter_anzahl }} von {{ p.total }} Spielen unter Richtwert. {{ p.tipp }}</div>
           </div>
           {% endfor %}
         </div>
       </div>
+      {% endif %}
 
-      <div class="kda-block">
-        <div class="kda-numbers">{{ s.kills }} / <span class="deaths">{{ s.deaths }}</span> / {{ s.assists }}</div>
-        <div class="kda-ratio">{{ "%.2f"|format(s.kda) }}:1 KDA</div>
+    </div>
+  </section>
+
+  {# ---------- Matches ---------- #}
+  <section class="tab-inhalt" data-tab="matches" role="tabpanel" aria-labelledby="tab-matches" hidden>
+    {% if spiele|length > 1 %}
+    <div class="panel kda-panel">
+      <div class="kachel-kopf">
+        <h2 class="section-title">KDA-Verlauf</h2>
+        <span class="kachel-hint">älteste → neueste · grüner Punkt = Sieg</span>
       </div>
+      <div class="kda-chart"><canvas id="kdaChart"></canvas></div>
+    </div>
+    {% endif %}
 
-      <div class="impact-block">
-        {% if s.keystone_icon or s.secondary_icon %}
-        <div class="rune-mini-row">
-          {% if s.keystone_icon %}<img class="rune-mini" src="{{ s.keystone_icon }}" alt="">{% endif %}
-          {% if s.secondary_icon %}<img class="rune-mini rune-mini-sub" src="{{ s.secondary_icon }}" alt="">{% endif %}
-        </div>
-        {% endif %}
-        {% if s.damage_dealt %}
-        <div class="dmg-rank-badge {{ 'top3' if s.damage_rank and s.damage_rank <= 3 else '' }}">
-          {{ "%.1f"|format(s.damage_dealt / 1000) }}k Damage
-          {% if s.damage_rank %}<strong>(#{{ s.damage_rank }}/10)</strong>{% endif %}
-        </div>
-        {% endif %}
-        {% if s.gold_earned %}
-        <div class="gold-line">
-          <span class="gold-value">{{ "%.1f"|format(s.gold_earned / 1000) }}k Gold</span>
-          {% if s.gold_diff is not none %}
-            {% if s.gold_diff >= 0 %}
-            <span class="gold-diff positive">&uarr; {{ "%.1f"|format(s.gold_diff / 1000) }}k</span>
-            {% else %}
-            <span class="gold-diff negative">&darr; {{ "%.1f"|format(-s.gold_diff / 1000) }}k</span>
-            {% endif %}
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
+    {% set modus_anzahl = {} %}
+    {% for s in spiele if s.modus_kategorie %}{% set _ = modus_anzahl.update({s.modus_kategorie: modus_anzahl.get(s.modus_kategorie, 0) + 1}) %}{% endfor %}
+    {% if modus_anzahl %}
+    <div class="filter-chips modus-filter" id="modusFilter">
+      <button type="button" class="filter-chip active" data-modus="alle">Alle <span class="anzahl">{{ spiele|length }}</span></button>
+      {% for key, label in modus_kategorien.items() if modus_anzahl.get(key) or key != 'sonstige' %}
+      <button type="button" class="filter-chip" data-modus="{{ key }}">{{ label }} <span class="anzahl">{{ modus_anzahl.get(key, 0) }}</span></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p class="empty" id="modusLeer" hidden>Keine Spiele in diesem Modus unter den letzten {{ spiele|length }}.</p>
+    <div class="match-list" id="matchListe">
+      {% for s in spiele %}{{ match_zeile(s) }}{% endfor %}
+    </div>
+  </section>
 
-      <div class="item-row-sm">
-        {% for icon in s.item_icons[:6] %}
-        <div class="item-slot-sm">{% if icon %}<img src="{{ icon }}" alt="" loading="lazy">{% endif %}</div>
+  {# ---------- Champions ---------- #}
+  <section class="tab-inhalt" data-tab="champions" role="tabpanel" aria-labelledby="tab-champions" hidden>
+    <div class="panel">
+      <div class="kachel-kopf"><h2 class="section-title">Champion-Pool</h2></div>
+      <p class="kachel-hint">Aus allen {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spielen dieses Profils. Der Ring zeigt die Winrate.</p>
+      {% if meistgespielte %}
+      <div class="main-grid">
+        {% for c in meistgespielte %}
+        <a class="main-card" href="{{ url_for('champion_detail', key=c.champion) }}" style="--splash: url('{{ c.splash }}');">
+          <div class="main-ring" style="--pct: {{ c.winrate }}; --ring-color: {{ 'var(--win)' if c.winrate >= 50 else 'var(--loss)' }};" title="{{ c.siege }} Siege / {{ c.niederlagen }} Niederlagen">
+            <img src="{{ c.icon }}" alt="{{ c.name }}" loading="lazy">
+          </div>
+          <div class="main-info">
+            <div class="main-head">
+              <span class="main-name">{{ c.name }}</span>
+              <span class="main-wr {{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</span>
+            </div>
+            <div class="main-meta">
+              <span><b class="win-value">{{ c.siege }}S</b> <b class="loss-value">{{ c.niederlagen }}N</b> &middot; {{ c.spiele }} Spiel{{ "e" if c.spiele != 1 else "" }}</span>
+              <span>{{ c.kda }} KDA</span>
+            </div>
+          </div>
+        </a>
         {% endfor %}
-        <div class="item-gap-sm"></div>
-        <div class="item-slot-sm">{% if s.item_icons[6] %}<img src="{{ s.item_icons[6] }}" alt="" loading="lazy">{% endif %}</div>
       </div>
-    </a>
-    {% endfor %}
-  </div>
+      {% else %}
+      <p class="empty">Noch keine gespeicherten Spiele.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {# ---------- Trophäen ---------- #}
+  <section class="tab-inhalt" data-tab="trophaeen" role="tabpanel" aria-labelledby="tab-trophaeen" hidden>
+    <div class="panel">
+      <div class="kachel-kopf"><h2 class="section-title accent-gold">Trophäen</h2><span class="kachel-hint">{{ erreichte_trophaeen }} von {{ trophaeen|length }} freigeschaltet</span></div>
+      <p class="kachel-hint">Karriere-Fortschritt über alle {{ gespeicherte_spiele }} bei RiftCircle gespeicherten Spiele. Klick ein Abzeichen für den Weg zur nächsten Stufe.</p>
+      <div class="trophy-grid" id="trophyGrid">
+        {% for t in trophaeen %}
+        <button type="button" class="trophy-badge {{ 'leer' if not t.stufe else '' }} {{ 'active' if loop.first else '' }}"
+                style="--trophy-color: {{ t.farbe }};" data-trophy="{{ t.id }}">
+          <span class="trophy-icon">{{ t.icon }}</span>
+          <span class="trophy-name">{{ t.name }}</span>
+          <span class="trophy-stufe">{{ t.stufe_label if t.stufe else "-" }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="trophy-details" id="trophyDetails">
+        {% for t in trophaeen %}
+        <div class="trophy-detail" data-trophy="{{ t.id }}" {{ '' if loop.first else 'hidden' }} style="--trophy-color: {{ t.farbe }};">
+          <div class="trophy-detail-head">
+            <span class="trophy-icon big">{{ t.icon }}</span>
+            <div>
+              <div class="trophy-detail-name">{{ t.name }} <span class="trophy-detail-stufe">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }}</span></div>
+              <div class="trophy-detail-desc">{{ t.beschreibung }}</div>
+            </div>
+          </div>
+          <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%;"></div></div>
+          <div class="trophy-progress-label">
+            {% if t.ist_maximal %}
+            {{ t.wert }} erreicht - Diamant, die höchste Stufe!
+            {% else %}
+            {{ t.wert }} / {{ t.naechste_schwelle }} für {{ t.naechste_stufe_label }}
+            {% endif %}
+          </div>
+          <div class="trophy-ladder">
+            {% for stufe in t.leiter %}
+            <span class="trophy-ladder-stufe {{ 'erreicht' if stufe.erreicht else '' }}" {% if stufe.erreicht %}style="--trophy-color: {{ stufe.farbe }};"{% endif %}>
+              {{ stufe.label }} &middot; {{ stufe.schwelle }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {# ---------- Social ---------- #}
+  <section class="tab-inhalt" data-tab="social" role="tabpanel" aria-labelledby="tab-social" hidden>
+    <div class="bento">
+      <div class="panel kachel k-halb" id="follower">
+        <div class="kachel-kopf"><h2 class="section-title">Follower <span class="section-count">{{ follower.follower_anzahl }}</span></h2></div>
+        {% if follower.follower %}
+        <div class="avatar-grid links">
+          {% for f in follower.follower %}
+          <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
+            <div class="circle" style="background: var(--void);">{{ f.name[0] | upper }}</div>
+            <div class="name">{{ f.name }}</div>
+          </a>
+          {% endfor %}
+        </div>
+        {% if follower.follower_anzahl > follower.follower | length %}<p class="kachel-hint">+{{ follower.follower_anzahl - follower.follower | length }} weitere</p>{% endif %}
+        {% else %}
+        <p class="kachel-hint">{{ "Dir folgt noch niemand." if ist_mein_profil else "Noch keine Follower." }}{% if ich and not ist_mein_profil and not folge_ich %} Sei der Erste mit „+ Folgen“ oben im Profil.{% endif %}</p>
+        {% endif %}
+      </div>
+      <div class="panel kachel k-halb" id="folgt">
+        <div class="kachel-kopf"><h2 class="section-title">Folgt <span class="section-count">{{ follower.folgt_anzahl }}</span></h2></div>
+        {% if follower.folgt %}
+        <div class="avatar-grid links">
+          {% for f in follower.folgt %}
+          <a class="avatar-chip" href="{{ url_for('profil', riot_id = f.name ~ '#' ~ f.tag) }}">
+            <div class="circle" style="background: var(--accent2);">{{ f.name[0] | upper }}</div>
+            <div class="name">{{ f.name }}</div>
+          </a>
+          {% endfor %}
+        </div>
+        {% if follower.folgt_anzahl > follower.folgt | length %}<p class="kachel-hint">+{{ follower.folgt_anzahl - follower.folgt | length }} weitere</p>{% endif %}
+        {% else %}
+        <p class="kachel-hint">Folgt noch niemandem. Folgen geht nur mit einem per Discord verknüpften Konto.</p>
+        {% endif %}
+      </div>
+      <div class="panel kachel k-voll">
+        <div class="kachel-kopf"><h2 class="section-title accent-teal">Öffentliche Gruppen</h2></div>
+        {% if oeffentliche_gruppen %}
+        <div class="group-grid">
+          {% for gr in oeffentliche_gruppen %}
+          <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=gr.id) }}">
+            <div class="group-card-icon">{% set bild = gruppen_icon_bild(gr.icon) %}{% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ gr.icon }}{% endif %}</div>
+            <div class="group-card-name">{{ gr.name }}</div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="kachel-hint">In keiner öffentlichen Gruppe. Private Gruppen werden hier bewusst nicht angezeigt.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 
 <script>
   Chart.defaults.color = "#a79fcf";
@@ -998,67 +1223,40 @@
     });
   })();
 
-  new Chart(document.getElementById("winrateChart"), {
-    type: "doughnut",
-    data: {
-      labels: ["Siege", "Niederlagen"],
-      datasets: [{
-        data: [{{ siege }}, {{ niederlagen }}],
-        backgroundColor: ["#34d399", "#f76c8a"],
-        borderColor: "#1b1440",
-        borderWidth: 2,
-      }],
-    },
-    options: {
-      plugins: { legend: { position: "bottom" } },
-    },
-  });
-
-  new Chart(document.getElementById("kdaChart"), {
-    type: "line",
-    data: {
-      labels: {{ kda_chart.labels | tojson }},
-      datasets: [{
-        label: "KDA",
-        data: {{ kda_chart.kda | tojson }},
-        borderColor: "#4f8cff",
-        backgroundColor: "rgba(79, 140, 255, 0.15)",
-        pointBackgroundColor: {{ kda_chart.farben | tojson }},
-        pointRadius: 4,
-        tension: 0.3,
-        fill: true,
-      }],
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { maxRotation: 60, minRotation: 60 } },
-        y: { beginAtZero: true },
+  // KDA-Verlauf liegt im Matches-Tab - Chart.js kann in einem versteckten Container keine
+  // Größe ermitteln, deshalb erst beim ersten Öffnen des Tabs bauen (siehe Tab-Logik unten)
+  window.kdaChartBauen = function () {
+    var canvas = document.getElementById("kdaChart");
+    if (!canvas || canvas.dataset.gebaut) return;
+    canvas.dataset.gebaut = "1";
+    new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: {{ kda_chart.labels | tojson }},
+        datasets: [{
+          label: "KDA",
+          data: {{ kda_chart.kda | tojson }},
+          borderColor: "#4f8cff",
+          backgroundColor: "rgba(79, 140, 255, 0.12)",
+          pointBackgroundColor: {{ kda_chart.farben | tojson }},
+          pointBorderColor: {{ kda_chart.farben | tojson }},
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.3,
+          fill: true,
+        }],
       },
-    },
-  });
-
-  {% if probleme %}
-  new Chart(document.getElementById("problemeChart"), {
-    type: "bar",
-    data: {
-      labels: {{ probleme | map(attribute="label") | list | tojson }},
-      datasets: [{
-        label: "% vom Richtwert",
-        data: {{ probleme | map(attribute="erreicht_prozent") | list | tojson }},
-        backgroundColor: "#8b6cf5",
-        borderRadius: 6,
-      }],
-    },
-    options: {
-      indexAxis: "y",
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, suggestedMax: 100 },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 12 }, grid: { display: false } },
+          y: { beginAtZero: true },
+        },
       },
-    },
-  });
-  {% endif %}
+    });
+  };
 </script>
 
 {% endif %}
@@ -1108,11 +1306,61 @@
       });
     }
 
-    document.querySelectorAll(".match-row").forEach(function (a) {
+    document.querySelectorAll(".match-row, .form-spiel").forEach(function (a) {
       a.addEventListener("click", function () {
         showLoading("Spieldetails werden geladen...");
       });
     });
+    // Zurück-Navigation aus dem Match (bfcache): Overlay nicht stehen lassen
+    window.addEventListener("pageshow", function () { overlay.classList.remove("active"); });
+
+    // Profil-Tabs. Der Zustand steht im Hash (#matches, #social ...), damit Links und der
+    // Zurück-Knopf funktionieren; #follower/#folgt sind alte Anker und landen bei Social.
+    var tabLeiste = document.getElementById("profilTabs");
+    if (tabLeiste) {
+      var tabs = Array.prototype.slice.call(tabLeiste.querySelectorAll(".profil-tab"));
+      var inhalte = Array.prototype.slice.call(document.querySelectorAll(".tab-inhalt"));
+      var ALIASE = { follower: "social", folgt: "social" };
+
+      function zeigeTab(name, scrollen) {
+        name = ALIASE[name] || name;
+        if (!tabs.some(function (t) { return t.dataset.tab === name; })) name = "uebersicht";
+        tabs.forEach(function (t) {
+          var aktiv = t.dataset.tab === name;
+          t.classList.toggle("aktiv", aktiv);
+          t.setAttribute("aria-selected", String(aktiv));
+        });
+        inhalte.forEach(function (el) { el.hidden = el.dataset.tab !== name; });
+        if (name === "matches" && window.kdaChartBauen) window.kdaChartBauen();
+        var ziel = name === "uebersicht" ? location.pathname + location.search : "#" + name;
+        if (location.hash !== (name === "uebersicht" ? "" : "#" + name)) history.replaceState(null, "", ziel);
+        // Nur hochscrollen, wenn die Tab-Leiste schon aus dem Bild gescrollt ist
+        if (scrollen && tabLeiste.getBoundingClientRect().top < 0) {
+          var navHoehe = document.getElementById("topnav").offsetHeight;
+          window.scrollTo({ top: window.scrollY + tabLeiste.getBoundingClientRect().top - navHoehe, behavior: "smooth" });
+        }
+      }
+
+      tabs.forEach(function (t) {
+        t.addEventListener("click", function () { zeigeTab(t.dataset.tab, true); });
+      });
+      document.querySelectorAll("[data-gehe-zu]").forEach(function (b) {
+        b.addEventListener("click", function () { zeigeTab(b.dataset.geheZu, true); });
+      });
+      document.querySelectorAll('a[href="#social"]').forEach(function (a) {
+        a.addEventListener("click", function (e) { e.preventDefault(); zeigeTab("social", true); });
+      });
+      // Pfeiltasten links/rechts wechseln zwischen den Tabs
+      tabLeiste.addEventListener("keydown", function (e) {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        var i = tabs.findIndex(function (t) { return t.classList.contains("aktiv"); });
+        var neu = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        neu.focus();
+        zeigeTab(neu.dataset.tab, false);
+      });
+      window.addEventListener("hashchange", function () { zeigeTab(location.hash.slice(1), false); });
+      zeigeTab(location.hash.slice(1), false);
+    }
 
     // Trophäen-Grid: Klick auf ein Abzeichen zeigt dessen Fortschritts-Details darunter
     var trophyGrid = document.getElementById("trophyGrid");
