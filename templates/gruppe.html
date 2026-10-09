@@ -5,34 +5,147 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ gruppe_name }} - Gruppe | RiftCircle</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='seiten_tabs.js') }}" defer></script>
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <style>
-  .page-head { text-align: center; margin: 4px 0 8px; }
-  .page-head .gruppe-icon { font-size: 2.4rem; line-height: 1; margin-bottom: 4px; }
-  .page-head .gruppe-icon img { width: 112px; height: 112px; object-fit: contain; }
-  /* Doppelt so groß wie der Standard-Picker (Startseite/Profil) - hier ist die Auswahl das
-     zentrale Element der Umbenennen-Form, nicht nur ein Nebendetail */
-  .rename-form .icon-picker button { width: 88px; height: 88px; }
-  .rename-form .icon-picker button img { width: 64px; height: 64px; }
-  .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
-
-  .share-hint {
-    text-align: center;
+  /* ---------- Kopfbereich: Banner (stärkstes Achievement bzw. letztes Spiel), Gruppen-Emblem,
+     Status, Mitglieder-Stapel, Aktionen und vier Kennzahlen ---------- */
+  .gruppe-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin-bottom: 16px;
+    padding: 26px 28px 22px;
+    border-radius: 22px;
+    background: rgba(17, 10, 42, 0.95);
+    border: 1px solid rgba(61, 214, 198, 0.24);
+    box-shadow: 0 18px 50px rgba(5, 3, 18, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .gruppe-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: var(--banner);
+    background-size: cover;
+    background-position: center 22%;
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(90deg, transparent 20%, rgba(0, 0, 0, 0.55) 50%, #000 88%);
+    mask-image: linear-gradient(90deg, transparent 20%, rgba(0, 0, 0, 0.55) 50%, #000 88%);
+  }
+  .ghero-oben { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .ghero-emblem {
+    width: 112px; height: 112px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 28px;
+    background: radial-gradient(circle at 50% 40%, rgba(61, 214, 198, 0.22), rgba(12, 7, 30, 0.8) 70%);
+    border: 1px solid rgba(61, 214, 198, 0.4);
+    box-shadow: 0 0 30px rgba(61, 214, 198, 0.18);
+  }
+  .ghero-emblem img { width: 88px; height: 88px; object-fit: contain; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5)); }
+  .ghero-emblem span { font-size: 3rem; }
+  .ghero-text { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ghero-text h1 { margin: 0; font-size: clamp(1.6rem, 4.4vw, 2.5rem); line-height: 1.1; overflow-wrap: anywhere; }
+  .ghero-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(12, 7, 30, 0.7);
+    border: 1px solid var(--border);
     color: var(--muted);
-    font-size: 0.85rem;
-    max-width: 480px;
-    margin: 0 auto 28px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
-  .share-link-row {
-    display: flex;
-    gap: 8px;
-    max-width: 420px;
-    margin: 12px auto 0;
+  .status-punkt { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .status-pill.oeffentlich { color: var(--teal); border-color: rgba(61, 214, 198, 0.5); }
+  .status-pill.oeffentlich .status-punkt { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+  .status-pill.discord { color: #aab1ff; border-color: rgba(88, 101, 242, 0.55); }
+  .status-pill.discord .status-punkt { background: #5865f2; box-shadow: 0 0 6px #5865f2; }
+  .ghero-mitglieder { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; color: inherit; text-decoration: none; width: fit-content; }
+  .ghero-mitglieder:hover .ghero-mitglieder-text { color: var(--text); }
+  .avatar-stapel { display: inline-flex; }
+  .avatar-stapel > * {
+    width: 32px; height: 32px;
+    margin-left: -9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    border: 2px solid #120b2c;
+    object-fit: cover;
+    color: #0a0818;
+    font-size: 0.78rem;
+    font-weight: 800;
   }
+  .avatar-stapel > :first-child { margin-left: 0; }
+  .avatar-stapel .stapel-rest { background: var(--panel-2); color: var(--text); font-size: 0.7rem; }
+  .ghero-mitglieder-text { color: var(--muted); font-size: 0.85rem; }
+  .ghero-aktionen { display: flex; gap: 8px; flex-wrap: wrap; align-self: flex-start; }
+  .ghero-aktionen form { display: contents; }
+  .ghero-knopf {
+    padding: 9px 16px;
+    border-radius: 11px;
+    border: 1px solid rgba(150, 130, 240, 0.3);
+    background: rgba(12, 7, 30, 0.72);
+    color: var(--text);
+    font: 600 0.85rem var(--font-text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .ghero-knopf:hover { border-color: var(--void); }
+  .ghero-knopf.primaer { border: 0; background: linear-gradient(90deg, var(--teal), var(--accent2)); color: #0a0818; font-weight: 700; }
+  .ghero-knopf.leise { color: var(--muted); }
+  .ghero-kennzahlen { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(150, 130, 240, 0.14); }
+  .kz-klein { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  @media (max-width: 560px) {
+    .gruppe-hero { padding: 20px 16px 18px; }
+    .ghero-emblem { width: 84px; height: 84px; border-radius: 22px; }
+    .ghero-emblem img { width: 64px; height: 64px; }
+    .ghero-aktionen { width: 100%; }
+    .ghero-knopf { flex: 1 1 auto; }
+  }
+
+  /* Panel-Kopf mit Link rechts (Highlights -> alle Achievements) */
+  .panel-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .panel-kopf h2.section-title { margin: 0; }
+  .kopf-link { padding: 4px 0; border: 0; background: none; color: var(--accent2); font: 600 0.82rem var(--font-text); cursor: pointer; }
+  .kopf-link:hover { color: var(--text); }
+  /* Highlights: vier gleich große Karten nebeneinander - Legendär nimmt hier (anders als im
+     Achievements-Tab) keine Doppelspalte ein */
+  .highlight-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
+  .highlight-grid .ach-card-wrap.ach-span-2 { grid-column: auto; }
+  .highlight-grid .ach-card.tier-legendaer { padding: 26px 16px 16px; }
+  .highlight-grid .ach-card.tier-legendaer .ach-emblem { width: 56px; height: 56px; }
+  .highlight-grid .ach-card.tier-legendaer .ach-icon { font-size: 1.5rem; }
+  .highlight-grid .ach-card.tier-legendaer .ach-headline { font-size: 0.86rem; }
+  .mehr-zeile { display: flex; justify-content: center; margin-top: 20px; }
+  .mehr-knopf {
+    padding: 10px 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(150, 130, 240, 0.35);
+    background: rgba(12, 7, 30, 0.6);
+    color: var(--text);
+    font: 600 0.85rem var(--font-text);
+    cursor: pointer;
+  }
+  .mehr-knopf:hover { border-color: var(--void); }
+
+  /* ---------- Einstellungen-Tab ---------- */
+  .einstellungen-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
+  .einstellungen-raster > .panel { margin-bottom: 0; }
+  .einstellung-hint { color: var(--muted); font-size: 0.84rem; line-height: 1.5; margin: -4px 0 14px; }
+  .rename-form { display: flex; flex-direction: column; gap: 12px; max-width: none; margin: 0; }
+  .rename-form .icon-picker { gap: 8px; }
+  .rename-form .icon-picker button { width: 56px; height: 56px; }
+  .rename-form .icon-picker button img { width: 40px; height: 40px; }
+  .share-link-row { display: flex; gap: 8px; margin-bottom: 18px; }
   .share-link-row input {
     flex: 1;
+    min-width: 0;
     padding: 9px 14px;
     border-radius: 999px;
     border: 1px solid var(--border);
@@ -319,14 +432,6 @@
     .ach-card.tier-legendaer::after { animation: none; display: none; }
   }
 
-  .rename-trigger {
-    background: none; border: none; color: var(--muted);
-    font-size: 0.78rem; cursor: pointer; text-decoration: underline;
-  }
-  .rename-trigger:hover { color: var(--text); }
-  .rename-form { display: none; margin: 14px auto 0; max-width: 420px; }
-  .rename-form.active { display: flex; flex-direction: column; gap: 10px; }
-
   /* Wochenübersicht */
   .woche-winner {
     display: flex; align-items: center; gap: 16px;
@@ -362,7 +467,7 @@
   .woche-zeile .stats { color: var(--muted); font-size: 0.74rem; }
 
   /* Stack-Stats: Duo/Trio/Quad/5er-Stack-Winrate (siehe seiten_gruppen.stack_stats) */
-  .stack-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
   .stack-karte { padding: 14px 16px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--border); text-align: center; }
   .stack-groesse { color: var(--muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .stack-wr { font-size: 1.4rem; font-weight: 800; }
@@ -568,7 +673,7 @@
   .danger-btn:hover { background: rgba(247, 108, 138, 0.12); }
 
   /* Sichtbarkeits-Schalter: Opt-in für die öffentliche Gruppen-Rangliste auf /gruppen */
-  .sichtbarkeit-zeile { text-align: center; margin: 0 0 28px; }
+  .sichtbarkeit-zeile { margin: 0; }
   .sichtbarkeit-knopf {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 8px 18px;
@@ -583,16 +688,20 @@
   .sichtbarkeit-punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   .sichtbarkeit-knopf.aktiv { border-color: var(--teal); color: var(--teal); }
   .sichtbarkeit-knopf.aktiv .sichtbarkeit-punkt { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
-  .sichtbarkeit-hint { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 8px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .sichtbarkeit-hint { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.5; margin-top: 10px; }
   .sichtbarkeit-hint a { color: var(--teal); }
 
   /* Gruppen-Trophäen: dieselbe Leiter wie die Karriere-Trophäen im Profil (siehe
      trophaeen.py/gruppen_trophaeen.py), hier als Fortschritt der ganzen Gruppe zusammen. */
+  /* 6 Gruppen-Trophäen -> eine volle Reihe, auf dem Handy 2 Reihen à 3 */
   .trophy-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 16px;
+  }
+  @media (max-width: 600px) {
+    .trophy-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
   .trophy-badge {
     display: flex; flex-direction: column; align-items: center; gap: 5px;
@@ -689,54 +798,65 @@
 
 <div class="wrap">
 
-  <div class="page-head">
-    <div class="gruppe-icon">
-      {% set gruppe_icon_bild = gruppen_icon_bild(gruppe_icon) %}
-      {% if gruppe_icon_bild %}<img src="{{ gruppe_icon_bild }}" alt="">{% else %}{{ gruppe_icon }}{% endif %}
+  {% set gruppe_bild = gruppen_icon_bild(gruppe_icon) %}
+  {% set erreichte_gruppen_trophaeen = gruppen_trophaeen | selectattr("stufe") | list | length %}
+  {% set wochensieger = ranglisten["woche"][0] if ranglisten["woche"] else None %}
+  {% set kann_beitreten = login_aktiv and ich and meine_puuid and not bin_mitglied %}
+
+  {# ---------- Kopfbereich ---------- #}
+  <section class="gruppe-hero" {% if banner %}style="--banner: url('{{ banner }}');"{% endif %}>
+    <div class="ghero-oben">
+      <div class="ghero-emblem">
+        {% if gruppe_bild %}<img src="{{ gruppe_bild }}" alt="">{% else %}<span>{{ gruppe_icon }}</span>{% endif %}
+      </div>
+      <div class="ghero-text">
+        <div class="ghero-pills">
+          <span class="status-pill {{ 'oeffentlich' if oeffentlich else '' }}"><span class="status-punkt"></span>{{ "Öffentlich" if oeffentlich else "Privat" }}</span>
+          {% if discord_verbunden %}<span class="status-pill discord"><span class="status-punkt"></span>Discord verbunden</span>{% endif %}
+        </div>
+        <h1>{{ gruppe_name }}</h1>
+        {% if mitglieder %}
+        <a class="ghero-mitglieder" href="#mitglieder">
+          <span class="avatar-stapel">
+            {% for m in mitglieder[:7] %}
+            {% if m.icon_url %}<img src="{{ m.icon_url }}" alt="" title="{{ m.name }}">{% else %}<span style="background: {{ m.farbe }};" title="{{ m.name }}">{{ m.name[0] | upper }}</span>{% endif %}
+            {% endfor %}
+            {% if mitglieder|length > 7 %}<span class="stapel-rest">+{{ mitglieder|length - 7 }}</span>{% endif %}
+          </span>
+          <span class="ghero-mitglieder-text">{{ mitglieder|length }} Mitglied{{ "er" if mitglieder|length != 1 else "" }}{% if heute_aktiv %} · <span class="win-value">{{ heute_aktiv }} heute aktiv</span>{% endif %}</span>
+        </a>
+        {% endif %}
+      </div>
+      <div class="ghero-aktionen">
+        {% if kann_beitreten %}
+        <form method="post" action="{{ url_for('gruppe_beitreten', gruppe_id=gruppe_id) }}" data-laden>
+          <button type="submit" class="ghero-knopf primaer">Beitreten</button>
+        </form>
+        {% endif %}
+        <button type="button" class="ghero-knopf" id="linkKopieren">Link kopieren</button>
+        <button type="button" class="ghero-knopf leise" data-gehe-zu="einstellungen">Einstellungen</button>
+      </div>
     </div>
-    <h1>{{ gruppe_name }}</h1>
-    <button type="button" class="rename-trigger" id="renameTrigger">Umbenennen</button>
 
-    <form class="gruppe-form rename-form" id="renameForm" method="post" action="{{ url_for('gruppe_umbenennen', gruppe_id=gruppe_id) }}">
-      <div class="gruppe-form-row">
-        <input type="text" name="name" value="{{ gruppe_name }}" maxlength="60" required>
+    <div class="kennzahlen ghero-kennzahlen">
+      <div class="kennzahl">
+        <span class="kz-wert">{% if wochensieger %}👑 {{ wochensieger.name }}{% else %}–{% endif %}</span>
+        <span class="kz-label">{% if wochensieger %}Spieler der Woche · Score {{ wochensieger.score }}{% else %}Diese Woche noch kein Spiel{% endif %}</span>
       </div>
-      <input type="hidden" name="icon" id="renameIconInput" value="{{ gruppe_icon }}">
-      <div class="icon-picker">
-        {% for icon in gruppen_icons %}
-        <button type="button" class="icon-choice {{ 'selected' if icon == gruppe_icon else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
-          <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
-        </button>
-        {% endfor %}
+      <div class="kennzahl">
+        <span class="kz-wert">{{ gesamt.spiele | tausender }}</span>
+        <span class="kz-label">Spiele · {{ gesamt.winrate }}% Winrate gesamt</span>
       </div>
-      <button type="submit">Speichern</button>
-    </form>
-  </div>
-
-  <p class="share-hint">
-    Diesen Link mit Freunden teilen, damit sie dieselbe Gruppe sehen und Mitglieder eintragen können - kein Login nötig, wer den Link hat, hat Zugriff.
-    <span class="share-link-row">
-      <input type="text" id="shareLink" readonly value="">
-      <button type="button" id="copyBtn">Kopieren</button>
-    </span>
-  </p>
-
-  <div class="sichtbarkeit-zeile">
-    <form method="post" action="{{ url_for('gruppe_sichtbarkeit_umschalten', gruppe_id=gruppe_id) }}">
-      <input type="hidden" name="oeffentlich" value="{{ '0' if oeffentlich else '1' }}">
-      <button type="submit" class="sichtbarkeit-knopf {{ 'aktiv' if oeffentlich else '' }}">
-        <span class="sichtbarkeit-punkt"></span>
-        {{ "Öffentlich sichtbar" if oeffentlich else "Privat" }}
-      </button>
-    </form>
-    <span class="sichtbarkeit-hint">
-      {% if oeffentlich %}
-      Erscheint mit Trophäen-Punktestand in der <a href="{{ url_for('gruppen_uebersicht') }}">öffentlichen Gruppen-Rangliste</a>.
-      {% else %}
-      Nur per Link sichtbar. Schalte um, damit die Gruppe mit ihrem Trophäen-Punktestand in der öffentlichen Rangliste auftaucht.
-      {% endif %}
-    </span>
-  </div>
+      <div class="kennzahl">
+        <span class="kz-wert">{{ achievement_feed|length }}</span>
+        <span class="kz-label">Achievements in den letzten {{ feed|length }} Spielen</span>
+      </div>
+      <div class="kennzahl">
+        <span class="kz-wert">{{ trophaeen_punkte }} <small class="kz-klein">Pkt.</small></span>
+        <span class="kz-label">{{ erreichte_gruppen_trophaeen }} von {{ gruppen_trophaeen|length }} Gruppen-Trophäen</span>
+      </div>
+    </div>
+  </section>
 
   {# Hinweise für Besucher: je nach Stand genau der nächste sinnvolle Schritt #}
   {% set hinweis_konto = login_aktiv and (not ich or not meine_puuid or not bin_mitglied) %}
@@ -773,191 +893,23 @@
        wirklich verbunden ist, statt für immer im Browser verschwinden zu können. #}
     <div class="hinweis-karte discord-kanal dauerhaft" data-hinweis="kanal">
       <div class="hinweis-titel">So verbindet ihr die Gruppe mit Discord</div>
-      <p>Verbinde euren Server per Webhook, dann postet RiftCircle Pentakills, perfekte Spiele und den Wochensieger automatisch in euren Kanal. Dauert eine Minute - die Schritt-für-Schritt-Anleitung steht weiter unten.</p>
+      <p>Verbinde euren Server per Webhook, dann postet RiftCircle Pentakills, perfekte Spiele und den Wochensieger automatisch in euren Kanal. Dauert eine Minute, die Schritt-für-Schritt-Anleitung steht unter Einstellungen.</p>
       <a class="hinweis-knopf discord" href="#discord">Zur Anleitung</a>
     </div>
     {% endif %}
   </div>
   {% endif %}
 
-  <div class="panel">
-    <h2 class="section-title">Mitglieder</h2>
-    {% if mitglieder %}
-    <div class="avatar-grid">
-      {% for m in mitglieder %}
-      <div class="avatar-chip member-cell {{ 'ich' if m.puuid == meine_puuid else '' }}">
-        <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
-          <button type="submit" class="member-remove" title="Entfernen">&times;</button>
-        </form>
-        <a class="member-link" href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
-          <span class="member-avatar">
-            {% if m.icon_url %}
-            <div class="circle has-icon" style="background: {{ m.farbe }};"><img src="{{ m.icon_url }}" alt=""></div>
-            {% else %}
-            <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
-            {% endif %}
-            {% if m.discord %}
-            <button type="button" class="member-discord-link" data-discord-id="{{ m.discord.id }}"
-                    title="{{ m.discord.name }} auf Discord ansehen/hinzufügen">
-              <img class="member-discord" src="{{ m.discord.avatar }}" alt="Discord: {{ m.discord.name }}">
-            </button>
-            {% endif %}
-          </span>
-          <div class="name">{{ m.name }}</div>
-          {% if m.puuid == meine_puuid %}<span class="du-pill">Du</span>{% endif %}
-          {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
-        </a>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
-    {% endif %}
 
-    {% if vorschlaege %}
-    <div class="vorschlaege-label">Schnellauswahl aus deinem Verlauf</div>
-    <div class="vorschlaege-row">
-      {% for v in vorschlaege %}
-      <button type="button" class="vorschlag-chip" data-riotid="{{ v.name }}#{{ v.tag }}">
-        <span class="dot" style="background: {{ v.farbe }};"></span>{{ v.name }}
-      </button>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
-      <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name oder Name#Tag" required data-spieler-suche="fuellen">
-      <button type="submit">Hinzufügen</button>
-    </form>
-  </div>
-
-  {% set zeitraum_namen = {"woche": "Diese Woche", "monat": "Dieser Monat", "gesamt": "Gesamt"} %}
-  {% set zeitraum_leer = {"woche": "diese Woche", "monat": "diesen Monat", "gesamt": "bisher"} %}
-  <div class="panel">
-    <h2 class="section-title accent-gold">Rangliste</h2>
-    <div class="tab-nav rangliste-tabs">
-      {% for z in ["woche", "monat", "gesamt"] %}
-      <button type="button" class="tab-btn rangliste-tab {{ 'active' if loop.first else '' }}" data-zeitraum="{{ z }}">{{ zeitraum_namen[z] }}</button>
-      {% endfor %}
-    </div>
-
-    {% for z in ["woche", "monat", "gesamt"] %}
-    {% set liste = ranglisten[z] %}
-    <div class="rangliste-inhalt" data-zeitraum="{{ z }}" {{ 'hidden' if not loop.first else '' }}>
-      {% if liste %}
-      {% set sieger = liste[0] %}
-      <div class="woche-winner">
-        <div class="crown">👑</div>
-        <div class="circle" style="background: {{ sieger.farbe }};">{{ sieger.name[0] | upper }}</div>
-        <div class="woche-winner-info">
-          <div class="woche-winner-name">{{ sieger.name }}</div>
-          <div class="woche-winner-stats">
-            {{ sieger.spiele }} Spiel{{ "e" if sieger.spiele != 1 else "" }} &middot; {{ sieger.winrate }}% Winrate &middot; {{ sieger.avg_kda }} Ø-KDA
-            {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
-            {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
-            {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
-            {%- if z == "monat" and sieger.stimmen %} &middot; ▲ {{ sieger.stimmen }} Stimme{{ "n" if sieger.stimmen != 1 else "" }}{% endif -%}
-          </div>
-          <div class="woche-winner-score">Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl{{ " - Multikills pro Spiel gerechnet" if z != "woche" else "" }}{{ ", Achievement-Upvotes zählen als Bonus" if z == "monat" else "" }})</div>
-        </div>
-      </div>
-
-      {% if liste[1:] %}
-      <div class="woche-liste">
-        {% for w in liste[1:] %}
-        <div class="woche-zeile">
-          <span class="rang">#{{ loop.index + 1 }}</span>
-          <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
-          <span class="name">{{ w.name }}</span>
-          <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA{% if z == "monat" and w.stimmen %} &middot; ▲{{ w.stimmen }}{% endif %} &middot; Score {{ w.score }}</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% else %}
-      <p class="empty">Noch niemand aus der Gruppe hat {{ zeitraum_leer[z] }} gespielt.</p>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-
-  {% if stacks %}
-  <div class="panel">
-    <h2 class="section-title accent-teal">Stack-Stats</h2>
-    <p class="rollen-hint" style="margin: 0 0 16px;">Wie schneidet ihr ab, wenn mehrere Mitglieder im selben Team landen - über die komplette gespeicherte Historie.</p>
-    <div class="stack-grid">
-      {% for s in stacks %}
-      <div class="stack-karte">
-        <div class="stack-groesse">{{ s.label }}</div>
-        <div class="stack-wr {{ 'gut' if s.winrate >= 50 else 'schlecht' }}">{{ s.winrate }}%</div>
-        <div class="stack-balken"><div class="{{ 'gut' if s.winrate >= 50 else 'schlecht' }}" style="width: {{ s.winrate }}%;"></div></div>
-        <div class="stack-anzahl">{{ s.siege }}S &middot; {{ s.spiele - s.siege }}N &middot; {{ s.spiele }} Spiel{{ "e" if s.spiele != 1 else "" }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  {% if gruppen_trophaeen %}
-  <div class="panel">
-    <h2 class="section-title accent-gold">Gruppen-Trophäen</h2>
-    <p class="rollen-hint" style="margin: 0 0 16px;">Kollektiver Fortschritt über alle Mitglieder zusammen - klick ein Abzeichen für den Fortschritt zur nächsten Stufe.</p>
-    <div class="trophy-grid" id="gruppenTrophyGrid">
-      {% for t in gruppen_trophaeen %}
-      <button type="button" class="trophy-badge {{ 'leer' if not t.stufe else '' }} {{ 'active' if loop.first else '' }}"
-              style="--trophy-color: {{ t.farbe }};" data-trophy="{{ t.id }}">
-        <span class="trophy-icon">{{ t.icon }}</span>
-        <span class="trophy-name">{{ t.name }}</span>
-        <span class="trophy-stufe">{{ t.stufe_label if t.stufe else "-" }}</span>
-      </button>
-      {% endfor %}
-    </div>
-    <div class="trophy-details" id="gruppenTrophyDetails">
-      {% for t in gruppen_trophaeen %}
-      <div class="trophy-detail" data-trophy="{{ t.id }}" {{ '' if loop.first else 'hidden' }} style="--trophy-color: {{ t.farbe }};">
-        <div class="trophy-detail-head">
-          <span class="trophy-icon big">{{ t.icon }}</span>
-          <div>
-            <div class="trophy-detail-name">{{ t.name }} <span class="trophy-detail-stufe">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }}</span></div>
-            <div class="trophy-detail-desc">{{ t.beschreibung }}</div>
-          </div>
-        </div>
-        <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%;"></div></div>
-        <div class="trophy-progress-label">
-          {% if t.ist_maximal %}
-          {{ t.wert }} erreicht - Diamant, die höchste Stufe!
-          {% else %}
-          {{ t.wert }} / {{ t.naechste_schwelle }} für {{ t.naechste_stufe_label }}
-          {% endif %}
-        </div>
-        <div class="trophy-ladder">
-          {% for stufe in t.leiter %}
-          <span class="trophy-ladder-stufe {{ 'erreicht' if stufe.erreicht else '' }}" {% if stufe.erreicht %}style="--trophy-color: {{ stufe.farbe }};"{% endif %}>
-            {{ stufe.label }} &middot; {{ stufe.schwelle }}
-          </span>
-          {% endfor %}
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  {% if verlauf %}
-  <div class="panel">
-    <h2 class="section-title">Verlauf</h2>
-    <div class="verlauf-kopf">
-      <span class="verlauf-hinweis">Pro Kalenderwoche, letzte {{ verlauf.labels | length }} Wochen</span>
-      <div class="verlauf-umschalter">
-        <button type="button" class="filter-chip active" data-kennzahl="winrate">Winrate</button>
-        <button type="button" class="filter-chip" data-kennzahl="kda">Ø-KDA</button>
-        <button type="button" class="filter-chip" data-kennzahl="spiele">Spiele</button>
-      </div>
-    </div>
-    <div class="verlauf-chart"><canvas id="verlaufChart"></canvas></div>
-    <script type="application/json" id="verlaufDaten">{{ verlauf | tojson }}</script>
-  </div>
-  {% endif %}
+  {# ---------- Tabs ---------- #}
+  <nav class="seiten-tabs" id="gruppeTabs" role="tablist" aria-label="Gruppenbereiche" data-seiten-tabs data-aliase='{"discord": "einstellungen:discord"}'>
+    <button type="button" class="seiten-tab aktiv" role="tab" id="tab-feed" data-tab="feed" aria-selected="true">Feed <span class="tab-zahl">{{ feed|length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-rangliste" data-tab="rangliste" aria-selected="false">Rangliste</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-achievements" data-tab="achievements" aria-selected="false">Achievements <span class="tab-zahl">{{ achievement_feed|length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-statistiken" data-tab="statistiken" aria-selected="false">Statistiken</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-mitglieder" data-tab="mitglieder" aria-selected="false">Mitglieder <span class="tab-zahl">{{ mitglieder|length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-einstellungen" data-tab="einstellungen" aria-selected="false">Einstellungen</button>
+  </nav>
 
   {% macro stimme_knopf(f, extra_class="") %}
   <button type="button" class="stimme-knopf {{ extra_class }} {{ 'aktiv' if f.achievement.hat_gestimmt else '' }}"
@@ -1010,112 +962,384 @@
   </div>
   {% endmacro %}
 
-  {% if achievement_feed %}
-  {% set ach_tier_anzahl = {} %}
-  {% for f in achievement_feed %}{% set _ = ach_tier_anzahl.update({f.achievement.tier: ach_tier_anzahl.get(f.achievement.tier, 0) + 1}) %}{% endfor %}
-  <div class="panel ach-panel">
-    <h2 class="section-title accent-achievements">Achievements</h2>
-    <p class="ach-subtitle">{{ achievement_feed|length }} Achievement{{ "s" if achievement_feed|length != 1 else "" }} in den letzten {{ feed|length }} Spielen der Gruppe</p>
-    <div class="filter-chips ach-tier-filter" id="achTierFilter">
-      <button type="button" class="filter-chip active" data-tier="alle">Alle <span class="anzahl">{{ achievement_feed|length }}</span></button>
-      {% for key, label in [("legendaer", "Legendär"), ("episch", "Episch"), ("achievement", "Achievement")] if ach_tier_anzahl.get(key) %}
-      <button type="button" class="filter-chip tier-chip-{{ key }}" data-tier="{{ key }}">{{ label }} <span class="anzahl">{{ ach_tier_anzahl[key] }}</span></button>
+
+  {# ---------- Feed ---------- #}
+  <section class="tab-inhalt" data-tab="feed" role="tabpanel" aria-labelledby="tab-feed">
+    {% if highlights %}
+    <div class="panel ach-panel">
+      <div class="panel-kopf">
+        <h2 class="section-title accent-achievements">Highlights</h2>
+        <button type="button" class="kopf-link" data-gehe-zu="achievements">Alle {{ achievement_feed|length }} Achievements →</button>
+      </div>
+      <div class="ach-grid highlight-grid">
+        {% for f in highlights %}{{ achievement_karte(f) }}{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="panel">
+      <h2 class="section-title accent-teal">Letzte Spiele</h2>
+      {% if feed %}
+      <div class="feed-filters">
+        <div class="filter-group">
+          <span class="filter-label">Mitglied</span>
+          <div class="filter-chips" id="memberFilters">
+            {% for m in mitglieder %}
+            <button type="button" class="filter-chip" data-filter-type="member" data-value="{{ m.puuid }}">
+              <span class="dot" style="background: {{ m.farbe }};"></span>{{ m.name }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Rolle</span>
+          <div class="filter-chips" id="roleFilters">
+            {% for wert, label in rollen_liste %}
+            <button type="button" class="filter-chip" data-filter-type="role" data-value="{{ wert }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Sortierung</span>
+          <select id="feedSort" class="filter-select">
+            <option value="neu">Neueste zuerst</option>
+            <option value="kda_best">Beste KDA zuerst</option>
+            <option value="kda_worst">Schlechteste KDA zuerst</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-grid" id="feedGrid">
+        {% for f in feed %}{{ spiel_karte(f) }}{% endfor %}
+      </div>
+      <p class="empty" id="feedEmpty" style="display: none;">Keine Spiele mit diesem Filter.</p>
+      {% else %}
+      <p class="empty">Noch keine Spiele - füg Mitglieder hinzu, die schon Spiele in RiftCircle getrackt haben.</p>
+      {% endif %}
+    </div>
+
+  </section>
+
+  {# ---------- Rangliste ---------- #}
+  <section class="tab-inhalt" data-tab="rangliste" role="tabpanel" aria-labelledby="tab-rangliste" hidden>
+    {% set zeitraum_namen = {"woche": "Diese Woche", "monat": "Dieser Monat", "gesamt": "Gesamt"} %}
+    {% set zeitraum_leer = {"woche": "diese Woche", "monat": "diesen Monat", "gesamt": "bisher"} %}
+    <div class="panel">
+      <h2 class="section-title accent-gold">Rangliste</h2>
+      <div class="tab-nav rangliste-tabs">
+        {% for z in ["woche", "monat", "gesamt"] %}
+        <button type="button" class="tab-btn rangliste-tab {{ 'active' if loop.first else '' }}" data-zeitraum="{{ z }}">{{ zeitraum_namen[z] }}</button>
+        {% endfor %}
+      </div>
+
+      {% for z in ["woche", "monat", "gesamt"] %}
+      {% set liste = ranglisten[z] %}
+      <div class="rangliste-inhalt" data-zeitraum="{{ z }}" {{ 'hidden' if not loop.first else '' }}>
+        {% if liste %}
+        {% set sieger = liste[0] %}
+        <div class="woche-winner">
+          <div class="crown">👑</div>
+          <div class="circle" style="background: {{ sieger.farbe }};">{{ sieger.name[0] | upper }}</div>
+          <div class="woche-winner-info">
+            <div class="woche-winner-name">{{ sieger.name }}</div>
+            <div class="woche-winner-stats">
+              {{ sieger.spiele }} Spiel{{ "e" if sieger.spiele != 1 else "" }} &middot; {{ sieger.winrate }}% Winrate &middot; {{ sieger.avg_kda }} Ø-KDA
+              {%- if sieger.pentas %} &middot; {{ sieger.pentas }}x Penta{% endif -%}
+              {%- if sieger.quadras %} &middot; {{ sieger.quadras }}x Quadra{% endif -%}
+              {%- if sieger.triples %} &middot; {{ sieger.triples }}x Triple{% endif -%}
+              {%- if z == "monat" and sieger.stimmen %} &middot; ▲ {{ sieger.stimmen }} Stimme{{ "n" if sieger.stimmen != 1 else "" }}{% endif -%}
+            </div>
+            <div class="woche-winner-score">Score: {{ sieger.score }} (Qualität zählt mehr als reine Spielanzahl{{ " - Multikills pro Spiel gerechnet" if z != "woche" else "" }}{{ ", Achievement-Upvotes zählen als Bonus" if z == "monat" else "" }})</div>
+          </div>
+        </div>
+
+        {% if liste[1:] %}
+        <div class="woche-liste">
+          {% for w in liste[1:] %}
+          <div class="woche-zeile">
+            <span class="rang">#{{ loop.index + 1 }}</span>
+            <div class="circle-sm" style="background: {{ w.farbe }};">{{ w.name[0] | upper }}</div>
+            <span class="name">{{ w.name }}</span>
+            <span class="stats">{{ w.spiele }} Sp. &middot; {{ w.winrate }}% &middot; {{ w.avg_kda }} KDA{% if z == "monat" and w.stimmen %} &middot; ▲{{ w.stimmen }}{% endif %} &middot; Score {{ w.score }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="empty">Noch niemand aus der Gruppe hat {{ zeitraum_leer[z] }} gespielt.</p>
+        {% endif %}
+      </div>
       {% endfor %}
     </div>
-    <p class="empty" id="achTierEmpty" style="display: none;">Keine Achievements in dieser Klasse unter den letzten {{ feed|length }} Spielen.</p>
-    <div class="ach-grid" id="achGrid">
-      {% for f in achievement_feed %}{{ achievement_karte(f) }}{% endfor %}
-    </div>
-  </div>
-  {% endif %}
 
-  <div class="panel">
-    <h2 class="section-title accent-teal">Letzte Spiele</h2>
-    {% if feed %}
-    <div class="feed-filters">
-      <div class="filter-group">
-        <span class="filter-label">Mitglied</span>
-        <div class="filter-chips" id="memberFilters">
-          {% for m in mitglieder %}
-          <button type="button" class="filter-chip" data-filter-type="member" data-value="{{ m.puuid }}">
-            <span class="dot" style="background: {{ m.farbe }};"></span>{{ m.name }}
-          </button>
-          {% endfor %}
+
+    {% if verlauf %}
+    <div class="panel">
+      <h2 class="section-title">Verlauf</h2>
+      <div class="verlauf-kopf">
+        <span class="verlauf-hinweis">Pro Kalenderwoche, letzte {{ verlauf.labels | length }} Wochen</span>
+        <div class="verlauf-umschalter">
+          <button type="button" class="filter-chip active" data-kennzahl="winrate">Winrate</button>
+          <button type="button" class="filter-chip" data-kennzahl="kda">Ø-KDA</button>
+          <button type="button" class="filter-chip" data-kennzahl="spiele">Spiele</button>
         </div>
       </div>
-      <div class="filter-group">
-        <span class="filter-label">Rolle</span>
-        <div class="filter-chips" id="roleFilters">
-          {% for wert, label in rollen_liste %}
-          <button type="button" class="filter-chip" data-filter-type="role" data-value="{{ wert }}">{{ label }}</button>
-          {% endfor %}
+      <div class="verlauf-chart"><canvas id="verlaufChart"></canvas></div>
+      <script type="application/json" id="verlaufDaten">{{ verlauf | tojson }}</script>
+    </div>
+    {% endif %}
+
+  </section>
+
+  {# ---------- Achievements ---------- #}
+  <section class="tab-inhalt" data-tab="achievements" role="tabpanel" aria-labelledby="tab-achievements" hidden>
+    {% if achievement_feed %}
+    {% set ach_tier_anzahl = {} %}
+    {% for f in achievement_feed %}{% set _ = ach_tier_anzahl.update({f.achievement.tier: ach_tier_anzahl.get(f.achievement.tier, 0) + 1}) %}{% endfor %}
+    <div class="panel ach-panel">
+      <h2 class="section-title accent-achievements">Achievements</h2>
+      <p class="ach-subtitle">{{ achievement_feed|length }} Achievement{{ "s" if achievement_feed|length != 1 else "" }} in den letzten {{ feed|length }} Spielen der Gruppe</p>
+      <div class="filter-chips ach-tier-filter" id="achTierFilter">
+        <button type="button" class="filter-chip active" data-tier="alle">Alle <span class="anzahl">{{ achievement_feed|length }}</span></button>
+        {% for key, label in [("legendaer", "Legendär"), ("episch", "Episch"), ("achievement", "Achievement")] if ach_tier_anzahl.get(key) %}
+        <button type="button" class="filter-chip tier-chip-{{ key }}" data-tier="{{ key }}">{{ label }} <span class="anzahl">{{ ach_tier_anzahl[key] }}</span></button>
+        {% endfor %}
+      </div>
+      <p class="empty" id="achTierEmpty" style="display: none;">Keine Achievements in dieser Klasse unter den letzten {{ feed|length }} Spielen.</p>
+      <div class="ach-grid" id="achGrid">
+        {% for f in achievement_feed %}{{ achievement_karte(f) }}{% endfor %}
+      </div>
+      <div class="mehr-zeile"><button type="button" class="mehr-knopf" id="achMehr" hidden>Weitere Achievements anzeigen</button></div>
+    </div>
+    {% endif %}
+
+    {% if not achievement_feed %}
+    <div class="panel"><p class="empty">Noch keine Achievements in den letzten {{ feed|length }} Spielen der Gruppe.</p></div>
+    {% endif %}
+  </section>
+
+  {# ---------- Statistiken ---------- #}
+  <section class="tab-inhalt" data-tab="statistiken" role="tabpanel" aria-labelledby="tab-statistiken" hidden>
+    {% if gruppen_trophaeen %}
+    <div class="panel">
+      <h2 class="section-title accent-gold">Gruppen-Trophäen</h2>
+      <p class="rollen-hint" style="margin: 0 0 16px;">Kollektiver Fortschritt über alle Mitglieder zusammen - klick ein Abzeichen für den Fortschritt zur nächsten Stufe.</p>
+      <div class="trophy-grid" id="gruppenTrophyGrid">
+        {% for t in gruppen_trophaeen %}
+        <button type="button" class="trophy-badge {{ 'leer' if not t.stufe else '' }} {{ 'active' if loop.first else '' }}"
+                style="--trophy-color: {{ t.farbe }};" data-trophy="{{ t.id }}">
+          <span class="trophy-icon">{{ t.icon }}</span>
+          <span class="trophy-name">{{ t.name }}</span>
+          <span class="trophy-stufe">{{ t.stufe_label if t.stufe else "-" }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="trophy-details" id="gruppenTrophyDetails">
+        {% for t in gruppen_trophaeen %}
+        <div class="trophy-detail" data-trophy="{{ t.id }}" {{ '' if loop.first else 'hidden' }} style="--trophy-color: {{ t.farbe }};">
+          <div class="trophy-detail-head">
+            <span class="trophy-icon big">{{ t.icon }}</span>
+            <div>
+              <div class="trophy-detail-name">{{ t.name }} <span class="trophy-detail-stufe">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }}</span></div>
+              <div class="trophy-detail-desc">{{ t.beschreibung }}</div>
+            </div>
+          </div>
+          <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%;"></div></div>
+          <div class="trophy-progress-label">
+            {% if t.ist_maximal %}
+            {{ t.wert }} erreicht - Diamant, die höchste Stufe!
+            {% else %}
+            {{ t.wert }} / {{ t.naechste_schwelle }} für {{ t.naechste_stufe_label }}
+            {% endif %}
+          </div>
+          <div class="trophy-ladder">
+            {% for stufe in t.leiter %}
+            <span class="trophy-ladder-stufe {{ 'erreicht' if stufe.erreicht else '' }}" {% if stufe.erreicht %}style="--trophy-color: {{ stufe.farbe }};"{% endif %}>
+              {{ stufe.label }} &middot; {{ stufe.schwelle }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+
+    {% if stacks %}
+    <div class="panel">
+      <h2 class="section-title accent-teal">Stack-Stats</h2>
+      <p class="rollen-hint" style="margin: 0 0 16px;">Wie schneidet ihr ab, wenn mehrere Mitglieder im selben Team landen - über die komplette gespeicherte Historie.</p>
+      <div class="stack-grid">
+        {% for s in stacks %}
+        <div class="stack-karte">
+          <div class="stack-groesse">{{ s.label }}</div>
+          <div class="stack-wr {{ 'gut' if s.winrate >= 50 else 'schlecht' }}">{{ s.winrate }}%</div>
+          <div class="stack-balken"><div class="{{ 'gut' if s.winrate >= 50 else 'schlecht' }}" style="width: {{ s.winrate }}%;"></div></div>
+          <div class="stack-anzahl">{{ s.siege }}S &middot; {{ s.spiele - s.siege }}N &middot; {{ s.spiele }} Spiel{{ "e" if s.spiele != 1 else "" }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not stacks %}
+    <div class="panel">
+      <h2 class="section-title accent-teal">Stack-Stats</h2>
+      <p class="empty">Noch keine gemeinsamen Spiele: Sobald mindestens zwei Mitglieder im selben Team gespielt haben, erscheint hier eure Winrate als Duo, Trio, Quad und 5er-Stack.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  {# ---------- Mitglieder ---------- #}
+  <section class="tab-inhalt" data-tab="mitglieder" role="tabpanel" aria-labelledby="tab-mitglieder" hidden>
+    <div class="panel" id="mitglieder-liste">
+      <h2 class="section-title">Mitglieder</h2>
+      {% if mitglieder %}
+      <div class="avatar-grid">
+        {% for m in mitglieder %}
+        <div class="avatar-chip member-cell {{ 'ich' if m.puuid == meine_puuid else '' }}">
+          <form method="post" action="{{ url_for('gruppe_mitglied_entfernen', gruppe_id=gruppe_id, puuid=m.puuid) }}" onsubmit="return confirm('{{ m.name }} aus der Gruppe entfernen?');">
+            <button type="submit" class="member-remove" title="Entfernen">&times;</button>
+          </form>
+          <a class="member-link" href="{{ url_for('profil', riot_id = m.name ~ '#' ~ m.tag) }}">
+            <span class="member-avatar">
+              {% if m.icon_url %}
+              <div class="circle has-icon" style="background: {{ m.farbe }};"><img src="{{ m.icon_url }}" alt=""></div>
+              {% else %}
+              <div class="circle" style="background: {{ m.farbe }};">{{ m.name[0] | upper }}</div>
+              {% endif %}
+              {% if m.discord %}
+              <button type="button" class="member-discord-link" data-discord-id="{{ m.discord.id }}"
+                      title="{{ m.discord.name }} auf Discord ansehen/hinzufügen">
+                <img class="member-discord" src="{{ m.discord.avatar }}" alt="Discord: {{ m.discord.name }}">
+              </button>
+              {% endif %}
+            </span>
+            <div class="name">{{ m.name }}</div>
+            {% if m.puuid == meine_puuid %}<span class="du-pill">Du</span>{% endif %}
+            {% if m.zuletzt_aktiv %}<div class="member-active">aktiv {{ m.zuletzt_aktiv }}</div>{% endif %}
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty">Noch keine Mitglieder - trag unten ein Profil ein.</p>
+      {% endif %}
+
+      {% if vorschlaege %}
+      <div class="vorschlaege-label">Schnellauswahl aus deinem Verlauf</div>
+      <div class="vorschlaege-row">
+        {% for v in vorschlaege %}
+        <button type="button" class="vorschlag-chip" data-riotid="{{ v.name }}#{{ v.tag }}">
+          <span class="dot" style="background: {{ v.farbe }};"></span>{{ v.name }}
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form class="add-member-form" id="addMemberForm" method="post" action="{{ url_for('gruppe_mitglied_hinzufuegen', gruppe_id=gruppe_id) }}">
+        <input type="text" name="riot_id" id="addMemberInput" placeholder="Profil hinzufügen: Name oder Name#Tag" required data-spieler-suche="fuellen">
+        <button type="submit">Hinzufügen</button>
+      </form>
+    </div>
+
+  </section>
+
+  {# ---------- Einstellungen ---------- #}
+  <section class="tab-inhalt" data-tab="einstellungen" role="tabpanel" aria-labelledby="tab-einstellungen" hidden>
+    <div class="einstellungen-raster">
+      <div class="panel">
+        <h2 class="section-title">Name &amp; Emblem</h2>
+        <form class="gruppe-form rename-form" id="renameForm" method="post" action="{{ url_for('gruppe_umbenennen', gruppe_id=gruppe_id) }}">
+          <div class="gruppe-form-row">
+            <input type="text" name="name" value="{{ gruppe_name }}" maxlength="60" required>
+          </div>
+          <input type="hidden" name="icon" id="renameIconInput" value="{{ gruppe_icon }}">
+          <div class="icon-picker">
+            {% for icon in gruppen_icons %}
+            <button type="button" class="icon-choice {{ 'selected' if icon == gruppe_icon else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
+              <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
+            </button>
+            {% endfor %}
+          </div>
+          <button type="submit">Speichern</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2 class="section-title accent-teal">Teilen &amp; Sichtbarkeit</h2>
+        <p class="einstellung-hint">Wer den Link hat, sieht die Gruppe und kann Mitglieder eintragen. Ein Login ist dafür nicht nötig.</p>
+        <div class="share-link-row">
+          <input type="text" id="shareLink" readonly value="" aria-label="Link zur Gruppe">
+          <button type="button" id="copyBtn">Kopieren</button>
+        </div>
+        <div class="sichtbarkeit-zeile">
+          <form method="post" action="{{ url_for('gruppe_sichtbarkeit_umschalten', gruppe_id=gruppe_id) }}">
+            <input type="hidden" name="oeffentlich" value="{{ '0' if oeffentlich else '1' }}">
+            <button type="submit" class="sichtbarkeit-knopf {{ 'aktiv' if oeffentlich else '' }}">
+              <span class="sichtbarkeit-punkt"></span>
+              {{ "Öffentlich sichtbar" if oeffentlich else "Privat" }}
+            </button>
+          </form>
+          <span class="sichtbarkeit-hint">
+            {% if oeffentlich %}
+            Erscheint mit Trophäen-Punktestand in der <a href="{{ url_for('gruppen_uebersicht') }}">öffentlichen Gruppen-Rangliste</a> und auf den Profilen der Mitglieder.
+            {% else %}
+            Nur per Link sichtbar. Schalte um, damit die Gruppe in der öffentlichen Rangliste und auf den Profilen der Mitglieder auftaucht.
+            {% endif %}
+          </span>
         </div>
       </div>
-      <div class="filter-group">
-        <span class="filter-label">Sortierung</span>
-        <select id="feedSort" class="filter-select">
-          <option value="neu">Neueste zuerst</option>
-          <option value="kda_best">Beste KDA zuerst</option>
-          <option value="kda_worst">Schlechteste KDA zuerst</option>
-        </select>
+    </div>
+
+    <div class="panel discord-panel" id="discord">
+      <h2 class="section-title">
+        <svg class="discord-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.27 18.27 0 0 0-5.49 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.74 19.74 0 0 0-4.89 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.1 13.1 13.1 0 0 1-1.87-.9.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1 0 .13c-.6.35-1.22.65-1.87.9a.08.08 0 0 0-.04.1c.36.7.77 1.36 1.22 1.99a.08.08 0 0 0 .08.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.05c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg>
+        Discord
+      </h2>
+
+      {% if discord_meldung %}
+      <div class="discord-meldung {{ discord_meldung[0] }}">{{ discord_meldung[1] }}</div>
+      {% endif %}
+
+      {% if discord_verbunden %}
+      <p class="discord-status"><span class="discord-punkt"></span> Verbunden seit {{ discord_seit }} - neue Achievements und der Wochensieger landen automatisch in eurem Kanal.</p>
+      <p class="discord-hinweis">Gepostet wird, sobald RiftCircle von neuen Spielen erfährt: wenn jemand ein Profil sucht oder diese Gruppe öffnet.</p>
+      <div class="discord-aktionen">
+        <form method="post" action="{{ url_for('gruppe_discord_test', gruppe_id=gruppe_id) }}">
+          <button type="submit" class="discord-btn">Testnachricht senden</button>
+        </form>
+        <form method="post" action="{{ url_for('gruppe_discord_trennen', gruppe_id=gruppe_id) }}"
+              onsubmit="return confirm('Discord-Verbindung dieser Gruppe trennen?');">
+          <button type="submit" class="discord-btn trennen">Trennen</button>
+        </form>
       </div>
-    </div>
-    <div class="card-grid" id="feedGrid">
-      {% for f in feed %}{{ spiel_karte(f) }}{% endfor %}
-    </div>
-    <p class="empty" id="feedEmpty" style="display: none;">Keine Spiele mit diesem Filter.</p>
-    {% else %}
-    <p class="empty">Noch keine Spiele - füg Mitglieder hinzu, die schon Spiele in RiftCircle getrackt haben.</p>
-    {% endif %}
-  </div>
-
-  <div class="panel discord-panel" id="discord">
-    <h2 class="section-title">
-      <svg class="discord-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.27 18.27 0 0 0-5.49 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.74 19.74 0 0 0-4.89 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.1 13.1 13.1 0 0 1-1.87-.9.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1 0 .13c-.6.35-1.22.65-1.87.9a.08.08 0 0 0-.04.1c.36.7.77 1.36 1.22 1.99a.08.08 0 0 0 .08.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.05c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.15-1.08-2.15-2.42 0-1.33.95-2.42 2.15-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg>
-      Discord
-    </h2>
-
-    {% if discord_meldung %}
-    <div class="discord-meldung {{ discord_meldung[0] }}">{{ discord_meldung[1] }}</div>
-    {% endif %}
-
-    {% if discord_verbunden %}
-    <p class="discord-status"><span class="discord-punkt"></span> Verbunden seit {{ discord_seit }} - neue Achievements und der Wochensieger landen automatisch in eurem Kanal.</p>
-    <p class="discord-hinweis">Gepostet wird, sobald RiftCircle von neuen Spielen erfährt: wenn jemand ein Profil sucht oder diese Gruppe öffnet.</p>
-    <div class="discord-aktionen">
-      <form method="post" action="{{ url_for('gruppe_discord_test', gruppe_id=gruppe_id) }}">
-        <button type="submit" class="discord-btn">Testnachricht senden</button>
+      {% else %}
+      <p class="discord-hinweis">Postet Achievements (Pentakill, perfektes Spiel, ...) aus neuen Spielen und den Wochensieger direkt in einen Discord-Kanal eurer Wahl.</p>
+      <ol class="discord-anleitung">
+        <li>Öffne euren Discord-Server und geh zu dem Kanal, in dem die Nachrichten erscheinen sollen.</li>
+        <li>Klick auf das <b>Zahnrad-Symbol</b> neben dem Kanalnamen (oder Rechtsklick auf den Kanal &rarr; <b>Kanal bearbeiten</b>).</li>
+        <li>Wähle links <b>Integrationen</b> &rarr; <b>Webhooks</b> &rarr; <b>Neuer Webhook</b>.</li>
+        <li>Gib dem Webhook optional einen Namen (z.B. „RiftCircle") und wähle den Ziel-Kanal.</li>
+        <li>Klick auf <b>Webhook-URL kopieren</b>.</li>
+        <li>Füge die URL unten ein und klick auf <b>Verbinden</b>.</li>
+      </ol>
+      <form class="discord-form" method="post" action="{{ url_for('gruppe_discord_verbinden', gruppe_id=gruppe_id) }}">
+        <input type="url" name="webhook" placeholder="https://discord.com/api/webhooks/..." required autocomplete="off">
+        <button type="submit">Verbinden</button>
       </form>
-      <form method="post" action="{{ url_for('gruppe_discord_trennen', gruppe_id=gruppe_id) }}"
-            onsubmit="return confirm('Discord-Verbindung dieser Gruppe trennen?');">
-        <button type="submit" class="discord-btn trennen">Trennen</button>
+      <p class="discord-note">Dafür braucht ihr die Berechtigung „Kanäle verwalten" auf eurem Server (meist Admins/Moderatoren). Der Webhook kann ausschließlich in diesen einen Kanal posten - er kann weder eure Nachrichten lesen noch sonst etwas in Discord verändern.</p>
+      {% endif %}
+    </div>
+
+    <div class="panel danger-zone">
+      <p class="panel-hint">Löscht die Gruppe inkl. aller Mitglieder unwiderruflich für alle, die den Link haben.</p>
+      <form method="post" action="{{ url_for('gruppe_loeschen', gruppe_id=gruppe_id) }}"
+            onsubmit="return confirm('Gruppe „{{ gruppe_name }}“ inkl. aller Mitglieder unwiderruflich löschen?');">
+        <button type="submit" class="danger-btn">Gruppe löschen</button>
       </form>
     </div>
-    {% else %}
-    <p class="discord-hinweis">Postet Achievements (Pentakill, perfektes Spiel, ...) aus neuen Spielen und den Wochensieger direkt in einen Discord-Kanal eurer Wahl.</p>
-    <ol class="discord-anleitung">
-      <li>Öffne euren Discord-Server und geh zu dem Kanal, in dem die Nachrichten erscheinen sollen.</li>
-      <li>Klick auf das <b>Zahnrad-Symbol</b> neben dem Kanalnamen (oder Rechtsklick auf den Kanal &rarr; <b>Kanal bearbeiten</b>).</li>
-      <li>Wähle links <b>Integrationen</b> &rarr; <b>Webhooks</b> &rarr; <b>Neuer Webhook</b>.</li>
-      <li>Gib dem Webhook optional einen Namen (z.B. „RiftCircle") und wähle den Ziel-Kanal.</li>
-      <li>Klick auf <b>Webhook-URL kopieren</b>.</li>
-      <li>Füge die URL unten ein und klick auf <b>Verbinden</b>.</li>
-    </ol>
-    <form class="discord-form" method="post" action="{{ url_for('gruppe_discord_verbinden', gruppe_id=gruppe_id) }}">
-      <input type="url" name="webhook" placeholder="https://discord.com/api/webhooks/..." required autocomplete="off">
-      <button type="submit">Verbinden</button>
-    </form>
-    <p class="discord-note">Dafür braucht ihr die Berechtigung „Kanäle verwalten" auf eurem Server (meist Admins/Moderatoren). Der Webhook kann ausschließlich in diesen einen Kanal posten - er kann weder eure Nachrichten lesen noch sonst etwas in Discord verändern.</p>
-    {% endif %}
-  </div>
 
-  <div class="panel danger-zone">
-    <p class="panel-hint">Löscht die Gruppe inkl. aller Mitglieder unwiderruflich für alle, die den Link haben.</p>
-    <form method="post" action="{{ url_for('gruppe_loeschen', gruppe_id=gruppe_id) }}"
-          onsubmit="return confirm('Gruppe „{{ gruppe_name }}“ inkl. aller Mitglieder unwiderruflich löschen?');">
-      <button type="submit" class="danger-btn">Gruppe löschen</button>
-    </form>
-  </div>
+  </section>
 
 </div>
 
@@ -1126,25 +1350,26 @@
 
 <script>
   (function () {
+    // Teilen-Link ohne Hash (#einstellungen o.ä.) - Empfänger sollen im Feed landen
+    var gruppenLink = location.origin + location.pathname;
     var input = document.getElementById("shareLink");
-    input.value = window.location.href;
+    input.value = gruppenLink;
 
-    document.getElementById("copyBtn").addEventListener("click", function () {
+    function linkKopieren(btn) {
       input.select();
-      navigator.clipboard.writeText(input.value).then(function () {
-        var btn = document.getElementById("copyBtn");
+      navigator.clipboard.writeText(gruppenLink).then(function () {
         var original = btn.textContent;
         btn.textContent = "Kopiert!";
         setTimeout(function () { btn.textContent = original; }, 1500);
       }).catch(function () {});
+    }
+    ["copyBtn", "linkKopieren"].forEach(function (id) {
+      var btn = document.getElementById(id);
+      btn.addEventListener("click", function () { linkKopieren(btn); });
     });
 
-    // Umbenennen-Formular ein-/ausklappen
-    var renameTrigger = document.getElementById("renameTrigger");
+    // Umbenennen: Emblem-Auswahl im Einstellungen-Tab
     var renameForm = document.getElementById("renameForm");
-    renameTrigger.addEventListener("click", function () {
-      renameForm.classList.toggle("active");
-    });
     var renameIconInput = document.getElementById("renameIconInput");
     renameForm.querySelectorAll(".icon-choice").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1293,24 +1518,46 @@
     }
 
     // Klassen-Filter (Legendär/Episch/Achievement) für den Achievement-Schaukasten
+    // Unter "Alle" erst 12 Karten, "Weitere anzeigen" lädt je 12 nach - eine einzelne Klasse
+    // (z.B. nur Legendär) zeigt dagegen immer alle Karten dieser Klasse.
     var achTierFilter = document.getElementById("achTierFilter");
     if (achTierFilter) {
+      var ACH_SCHRITT = 12;
       var achGrid = document.getElementById("achGrid");
       var achKarten = Array.prototype.slice.call(achGrid.querySelectorAll(".ach-card-wrap"));
       var achEmpty = document.getElementById("achTierEmpty");
+      var achMehr = document.getElementById("achMehr");
+      var achTier = "alle";
+      var achLimit = ACH_SCHRITT;
+
+      function achAktualisieren() {
+        var passend = 0;
+        var sichtbar = 0;
+        achKarten.forEach(function (karte) {
+          var passt = achTier === "alle" || karte.getAttribute("data-tier") === achTier;
+          if (passt) passend++;
+          var zeigen = passt && (achTier !== "alle" || passend <= achLimit);
+          karte.style.display = zeigen ? "" : "none";
+          if (zeigen) sichtbar++;
+        });
+        achEmpty.style.display = passend === 0 ? "block" : "none";
+        achMehr.hidden = sichtbar >= passend;
+        achMehr.textContent = "Weitere Achievements anzeigen (" + (passend - sichtbar) + " übrig)";
+      }
+
       achTierFilter.addEventListener("click", function (e) {
         var chip = e.target.closest(".filter-chip");
         if (!chip) return;
         achTierFilter.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.toggle("active", c === chip); });
-        var tier = chip.getAttribute("data-tier");
-        var sichtbar = 0;
-        achKarten.forEach(function (karte) {
-          var zeigen = tier === "alle" || karte.getAttribute("data-tier") === tier;
-          karte.style.display = zeigen ? "" : "none";
-          if (zeigen) sichtbar++;
-        });
-        achEmpty.style.display = sichtbar === 0 ? "block" : "none";
+        achTier = chip.getAttribute("data-tier");
+        achLimit = ACH_SCHRITT;
+        achAktualisieren();
       });
+      achMehr.addEventListener("click", function () {
+        achLimit += ACH_SCHRITT;
+        achAktualisieren();
+      });
+      achAktualisieren();
     }
 
     // Discord-Badge am Mitglied öffnet das öffentliche Profil in einem neuen Tab (Button statt
@@ -1412,58 +1659,67 @@
       });
     });
 
-    // Verlauf: ein Diagramm, Kennzahl per Umschalter
+    // Verlauf: ein Diagramm, Kennzahl per Umschalter. Liegt im Rangliste-Tab - Chart.js kann
+    // in einem versteckten Container keine Größe ermitteln, deshalb erst beim Öffnen bauen.
     var datenEl = document.getElementById("verlaufDaten");
-    if (!datenEl || !window.Chart) return;
-    var daten = JSON.parse(datenEl.textContent);
-    var stil = getComputedStyle(document.documentElement);
-    function cssFarbe(wert) {
-      var m = /var\((--[\w-]+)\)/.exec(wert);
-      return m ? stil.getPropertyValue(m[1]).trim() : wert;
-    }
-    var gedaempft = cssFarbe("var(--muted)");
-    var raster = "rgba(150, 130, 240, 0.12)";
-    var achsen = {
-      winrate: { min: 0, max: 100, einheit: "%" },
-      kda: { min: 0, einheit: "" },
-      spiele: { min: 0, einheit: "" }
-    };
-    var chart = new Chart(document.getElementById("verlaufChart"), {
-      type: "line",
-      data: {
-        labels: daten.labels,
-        datasets: daten.reihen.map(function (r) {
-          var f = cssFarbe(r.farbe);
-          return { label: r.name, data: r.winrate, borderColor: f, backgroundColor: f,
-                   tension: 0.3, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5 };
-        })
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: { labels: { color: gedaempft, usePointStyle: true, boxWidth: 8 } },
-          tooltip: { callbacks: { label: function (c) {
-            return c.dataset.label + ": " + (c.parsed.y === null ? "-" : c.parsed.y + achsen[aktuell].einheit);
-          } } }
-        },
-        scales: {
-          x: { ticks: { color: gedaempft }, grid: { color: raster } },
-          y: { min: 0, max: 100, ticks: { color: gedaempft }, grid: { color: raster } }
-        }
+    if (!datenEl) return;
+    var gebaut = false;
+    function verlaufBauen() {
+      if (gebaut || !window.Chart) return;
+      gebaut = true;
+      var daten = JSON.parse(datenEl.textContent);
+      var stil = getComputedStyle(document.documentElement);
+      function cssFarbe(wert) {
+        var m = /var\((--[\w-]+)\)/.exec(wert);
+        return m ? stil.getPropertyValue(m[1]).trim() : wert;
       }
-    });
-    var aktuell = "winrate";
-    document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (knopf) {
-      knopf.addEventListener("click", function () {
-        aktuell = knopf.getAttribute("data-kennzahl");
-        document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (k) { k.classList.toggle("active", k === knopf); });
-        chart.data.datasets.forEach(function (ds, i) { ds.data = daten.reihen[i][aktuell]; });
-        chart.options.scales.y.min = achsen[aktuell].min;
-        chart.options.scales.y.max = achsen[aktuell].max;
-        chart.update();
+      var gedaempft = cssFarbe("var(--muted)");
+      var raster = "rgba(150, 130, 240, 0.12)";
+      var achsen = {
+        winrate: { min: 0, max: 100, einheit: "%" },
+        kda: { min: 0, einheit: "" },
+        spiele: { min: 0, einheit: "" }
+      };
+      var chart = new Chart(document.getElementById("verlaufChart"), {
+        type: "line",
+        data: {
+          labels: daten.labels,
+          datasets: daten.reihen.map(function (r) {
+            var f = cssFarbe(r.farbe);
+            return { label: r.name, data: r.winrate, borderColor: f, backgroundColor: f,
+                     tension: 0.3, spanGaps: true, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5 };
+          })
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { labels: { color: gedaempft, usePointStyle: true, boxWidth: 8 } },
+            tooltip: { callbacks: { label: function (c) {
+              return c.dataset.label + ": " + (c.parsed.y === null ? "-" : c.parsed.y + achsen[aktuell].einheit);
+            } } }
+          },
+          scales: {
+            x: { ticks: { color: gedaempft }, grid: { color: raster } },
+            y: { min: 0, max: 100, ticks: { color: gedaempft }, grid: { color: raster } }
+          }
+        }
       });
+      var aktuell = "winrate";
+      document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (knopf) {
+        knopf.addEventListener("click", function () {
+          aktuell = knopf.getAttribute("data-kennzahl");
+          document.querySelectorAll(".verlauf-umschalter .filter-chip").forEach(function (k) { k.classList.toggle("active", k === knopf); });
+          chart.data.datasets.forEach(function (ds, i) { ds.data = daten.reihen[i][aktuell]; });
+          chart.options.scales.y.min = achsen[aktuell].min;
+          chart.options.scales.y.max = achsen[aktuell].max;
+          chart.update();
+        });
+      });
+    }
+    document.addEventListener("seiten-tab", function (e) {
+      if (e.detail === "rangliste") verlaufBauen();
     });
   })();
 </script>

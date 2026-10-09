@@ -213,7 +213,10 @@ def erkenne_achievements(row):
     Prioritäts-Bänder). Erwartet ein Dict mit den relevanten participants-Feldern."""
     treffer = [d for d in ACHIEVEMENT_DEFINITIONEN if d["pruefung"](row)]
     treffer.sort(key=lambda d: d["prioritaet"], reverse=True)
-    return [{"icon": d["icon"], "text": d["text"](row), "tier": d["tier"], "tier_label": TIER_LABEL[d["tier"]]} for d in treffer]
+    return [
+        {"id": d["id"], "icon": d["icon"], "text": d["text"](row), "tier": d["tier"], "tier_label": TIER_LABEL[d["tier"]]}
+        for d in treffer
+    ]
 
 
 def bestes_achievement(row):

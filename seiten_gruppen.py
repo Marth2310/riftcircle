@@ -25,6 +25,7 @@ from vergleich import GRUPPEN_VERGLEICH_STATS, fazit_saetze, vergleiche
 from web_hilfen import (
     GRUPPEN_ICONS,
     MEINE_GRUPPEN_COOKIE,
+    aktive_puuids,
     angemeldeter_nutzer,
     cookie_meine_gruppen,
     lese_meine_gruppen,
@@ -256,6 +257,23 @@ def baue_gruppen_feed(cur, mitglied_puuids):
 
 
 STACK_LABEL = {2: "Duo", 3: "Trio", 4: "Quad", 5: "5er-Stack"}
+ACHIEVEMENT_KLASSEN_RANG = {"legendaer": 0, "episch": 1, "achievement": 2}
+MAX_HIGHLIGHTS = 4
+
+
+def waehle_highlights(achievement_feed):
+    """Highlights oben im Gruppen-Feed: die stärksten Achievements zuerst, aber höchstens eins
+    pro Art (sonst stünden oft vier fast gleiche "Solo-Kills"-Karten nebeneinander). Reicht die
+    Vielfalt nicht, wird mit den nächstbesten aufgefüllt. sorted() ist stabil - innerhalb einer
+    Klasse bleibt die Reihenfolge neueste zuerst."""
+    sortiert = sorted(achievement_feed, key=lambda f: ACHIEVEMENT_KLASSEN_RANG.get(f["achievement"]["tier"], 9))
+    gewaehlt, arten = [], set()
+    for f in sortiert:
+        if f["achievement"]["id"] not in arten:
+            gewaehlt.append(f)
+            arten.add(f["achievement"]["id"])
+    gewaehlt += [f for f in sortiert if f not in gewaehlt]
+    return gewaehlt[:MAX_HIGHLIGHTS]
 
 
 def stack_stats(cur, mitglied_puuids):
@@ -624,6 +642,11 @@ def gruppe_ansehen(gruppe_id):
     verlauf = baue_verlauf(cur, mitglieder)
     stacks = stack_stats(cur, [p for p, _, _ in mitglieder_rows])
     gruppen_trophaeen = trophaeen_fuer_gruppe(cur, [p for p, _, _ in mitglieder_rows])
+    gesamt = gruppen_gesamtstats(cur, [p for p, _, _ in mitglieder_rows])
+    heute_aktiv = aktive_puuids(cur, [p for p, _, _ in mitglieder_rows])
+    highlights = waehle_highlights(achievement_feed)
+    # Banner: Splash des stärksten Achievements, sonst des letzten Spiels der Gruppe
+    banner = (highlights[0] if highlights else (feed[0] if feed else {})).get("champion_splash")
 
     benachrichtige_gruppe_sicher(cur, conn, gruppe_id, feed=feed, mitglieder=mitglieder)
     # Erst NACH dem Benachrichtigen lesen - ein in Discord gelöschter Webhook wird dabei getrennt
@@ -686,6 +709,8 @@ def gruppe_ansehen(gruppe_id):
         "gruppe.html", gruppe_id=gruppe_id, gruppe_name=name, gruppe_icon=icon, mitglieder=mitglieder,
         feed=feed, achievement_feed=achievement_feed, ranglisten=ranglisten, verlauf=verlauf,
         stacks=stacks, gruppen_trophaeen=gruppen_trophaeen, oeffentlich=oeffentlich,
+        gesamt=gesamt, trophaeen_punkte=trophaeen_punkte(gruppen_trophaeen), banner=banner,
+        highlights=highlights, heute_aktiv=len(heute_aktiv),
         gruppen_icons=GRUPPEN_ICONS, vorschlaege=vorschlaege, rollen_liste=ROLLEN_LISTE,
         discord_verbunden=discord_verbunden,
         discord_seit=discord_seit.strftime("%d.%m.%Y") if discord_seit else None,
@@ -730,7 +755,7 @@ def gruppe_mitglied_hinzufuegen(gruppe_id):
 
     cur.close()
     conn.close()
-    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id) + "#mitglieder")
 
 
 @app.route("/gruppe/<gruppe_id>/beitreten", methods=["POST"])
@@ -766,7 +791,7 @@ def gruppe_mitglied_entfernen(gruppe_id, puuid):
     conn.commit()
     cur.close()
     conn.close()
-    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id) + "#mitglieder")
 
 
 @app.route("/gruppe/<gruppe_id>/stimme", methods=["POST"])
@@ -846,7 +871,7 @@ def gruppe_umbenennen(gruppe_id):
     conn.close()
     # Das neue Cookie mit dem aktuellen Namen/Icon wird gleich beim Redirect auf
     # gruppe_ansehen() automatisch mitgeschrieben (die liest immer frisch aus der DB).
-    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id) + "#einstellungen")
 
 
 @app.route("/gruppe/<gruppe_id>/sichtbarkeit", methods=["POST"])
@@ -861,7 +886,7 @@ def gruppe_sichtbarkeit_umschalten(gruppe_id):
     conn.commit()
     cur.close()
     conn.close()
-    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id))
+    return redirect(url_for("gruppe_ansehen", gruppe_id=gruppe_id) + "#einstellungen")
 
 
 @app.route("/gruppe/<gruppe_id>/loeschen", methods=["POST"])
