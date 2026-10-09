@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if ergebnis %}{{ ergebnis.a.name }} vs {{ ergebnis.b.name }}{% else %}Spieler vergleichen{% endif %} | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<style>
+  .wrap { max-width: 860px; }
+  .vgl-kopf { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+  .vgl-kopf h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+  .vgl-kopf p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+
+  /* Eingabe: zwei Felder mit Live-Vorschlägen, dazwischen ein Tausch-Knopf */
+  .vgl-form { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .vgl-form input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+  }
+  .vgl-form input::placeholder { color: var(--muted); }
+  .vgl-form input:focus { outline: none; border-color: rgba(192, 77, 255, 0.6); box-shadow: 0 0 0 3px rgba(192, 77, 255, 0.15); }
+  .tausch {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 1.05rem;
+    cursor: pointer;
+  }
+  .tausch:hover { color: var(--text); border-color: var(--void); }
+  .vgl-form button[type="submit"] {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 0;
+    background: linear-gradient(90deg, var(--accent), var(--void));
+    color: #0a0818;
+    font: 700 0.9rem var(--font-text);
+    cursor: pointer;
+  }
+  @media (max-width: 640px) {
+    .vgl-form { grid-template-columns: 1fr; }
+    .tausch { justify-self: center; transform: rotate(90deg); }
+  }
+  .fehler-box { margin-top: 14px; padding: 12px 16px; border-radius: 12px; background: rgba(247, 108, 138, 0.12); border: 1px solid var(--loss); color: var(--loss); font-size: 0.88rem; }
+
+  /* Duell-Kopf: beide Spieler groß, dazwischen VS */
+  .duell { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; align-items: center; margin-bottom: 22px; }
+  .duell-seite { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: inherit; text-decoration: none; min-width: 0; }
+  .duell-avatar {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    padding: 3px;
+    background: conic-gradient(from 200deg, var(--accent2), var(--teal), var(--accent2));
+  }
+  .duell-seite.b .duell-avatar { background: conic-gradient(from 200deg, var(--loss), var(--void-2), var(--loss)); }
+  .duell-avatar img, .duell-avatar span { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; object-fit: cover; border: 3px solid #120b2c; background: var(--panel); font: 800 1.8rem var(--font-display); }
+  .duell-name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .duell-name small { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+  .duell-mains { display: flex; gap: 4px; }
+  .duell-mains img { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); }
+  .duell-vs { font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; color: var(--muted); }
+  .duell-seite:hover .duell-name { color: var(--accent2); }
+
+  /* Direkte Bilanz */
+  .bilanz-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .bilanz-karte { padding: 16px 18px; border-radius: 14px; background: rgba(12, 7, 30, 0.6); border: 1px solid rgba(150, 130, 240, 0.16); }
+  .bilanz-titel { color: var(--muted); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 6px; }
+  .bilanz-wert { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+  .bilanz-wert .a { color: var(--accent2); }
+  .bilanz-wert .b { color: var(--loss); }
+  .bilanz-text { color: var(--muted); font-size: 0.82rem; margin-top: 4px; line-height: 1.45; }
+
+  /* Längere Kennzahl-Namen als beim Match-Vergleich ("Schadensanteil") - breitere Mittelspalte */
+  .vs-stat-row { grid-template-columns: 56px minmax(0, 1fr) 128px minmax(0, 1fr) 56px; }
+  @media (max-width: 480px) {
+    .vs-stat-row { grid-template-columns: 44px minmax(0, 1fr) 96px minmax(0, 1fr) 44px; gap: 6px; }
+    .vs-stat-label { font-size: 0.62rem; }
+  }
+  .fazit-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .fazit-list li { padding: 10px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); font-size: 0.88rem; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+{% include "_navigation.html" %}
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<div class="wrap">
+
+  <div class="vgl-kopf">
+    <h1>Spieler vergleichen</h1>
+    <p>Zwei Profile nebeneinander: Schnittwerte über alle bei RiftCircle gespeicherten Spiele, dazu eure direkte Bilanz im selben Team und gegeneinander.</p>
+  </div>
+
+  <div class="panel">
+    <form class="vgl-form" method="get" action="{{ url_for('spieler_vergleich') }}" id="vglForm">
+      <input type="text" name="a" id="vglA" value="{{ a_eingabe }}" placeholder="Spieler 1: Name#Tag" required data-spieler-suche="fuellen" aria-label="Spieler 1">
+      <button type="button" class="tausch" id="vglTausch" title="Seiten tauschen" aria-label="Seiten tauschen">⇄</button>
+      <input type="text" name="b" id="vglB" value="{{ b_eingabe }}" placeholder="Spieler 2: Name#Tag" required data-spieler-suche="fuellen" aria-label="Spieler 2">
+      <button type="submit">Vergleichen</button>
+    </form>
+    {% if fehler %}<div class="fehler-box">{{ fehler }}</div>{% endif %}
+  </div>
+
+  {% if ergebnis %}
+  {% set a = ergebnis.a %}{% set b = ergebnis.b %}{% set d = ergebnis.direkt %}
+  <div class="panel">
+    <div class="duell">
+      {% for s, seite in [(a, "a"), (b, "b")] %}
+      {% if seite == "b" %}<span class="duell-vs">VS</span>{% endif %}
+      <a class="duell-seite {{ seite }}" href="{{ url_for('profil', riot_id=s.name ~ '#' ~ s.tag) }}">
+        <span class="duell-avatar">{% if s.icon %}<img src="{{ s.icon }}" alt="">{% else %}<span>{{ s.name[0] | upper }}</span>{% endif %}</span>
+        <span class="duell-name">{{ s.name }} <small>#{{ s.tag }}</small></span>
+        {% if s.champions %}
+        <span class="duell-mains" title="Meistgespielte Champions">
+          {% for c in s.champions %}<img src="{{ c.icon }}" alt="{{ c.key }}" title="{{ c.key }} · {{ c.spiele }} Spiele · {{ c.winrate }}%">{% endfor %}
+        </span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+
+    {% for z in ergebnis.zeilen %}
+    <div class="vs-stat-row">
+      <span class="vs-stat-value {{ 'lead' if z.a_besser else '' }}">{{ z.wert_a_text }}</span>
+      <div class="vs-bar-track mine">
+        <div class="vs-bar-fill {{ 'lead' if z.a_besser else '' }}" style="width: {{ z.a_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-label">{{ z.label }}</span>
+      <div class="vs-bar-track">
+        <div class="vs-bar-fill gegner {{ 'lead' if z.a_besser == false else '' }}" style="width: {{ 100 - z.a_pct }}%;"></div>
+      </div>
+      <span class="vs-stat-value {{ 'lead' if z.a_besser == false else '' }}">{{ z.wert_b_text }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title accent-teal">Direkte Bilanz</h2>
+    <div class="bilanz-raster">
+      <div class="bilanz-karte">
+        <div class="bilanz-titel">Zusammen im Team</div>
+        {% if d.team_spiele %}
+        <div class="bilanz-wert">{{ d.team_winrate }}%</div>
+        <div class="bilanz-text">{{ d.team_siege }} Siege aus {{ d.team_spiele }} gemeinsamen Spiel{{ "en" if d.team_spiele != 1 else "" }}</div>
+        {% else %}
+        <div class="bilanz-wert">–</div>
+        <div class="bilanz-text">Noch kein gespeichertes Spiel im selben Team.</div>
+        {% endif %}
+      </div>
+      <div class="bilanz-karte">
+        <div class="bilanz-titel">Gegeneinander</div>
+        {% if d.gegen_spiele %}
+        <div class="bilanz-wert"><span class="a">{{ d.gegen_siege_a }}</span> : <span class="b">{{ d.gegen_spiele - d.gegen_siege_a }}</span></div>
+        <div class="bilanz-text">{{ d.gegen_spiele }} Spiel{{ "e" if d.gegen_spiele != 1 else "" }} in gegnerischen Teams, Siege {{ a.name }} : {{ b.name }}</div>
+        {% else %}
+        <div class="bilanz-wert">–</div>
+        <div class="bilanz-text">Noch kein gespeichertes Spiel gegeneinander.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 class="section-title">Fazit</h2>
+    {% if ergebnis.saetze %}
+    <ul class="fazit-list">
+      {% for satz in ergebnis.saetze %}<li>{{ satz }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">Beide liegen in allen Kategorien exakt gleich auf.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+  (function () {
+    var a = document.getElementById("vglA"), b = document.getElementById("vglB");
+    document.getElementById("vglTausch").addEventListener("click", function () {
+      var t = a.value; a.value = b.value; b.value = t;
+    });
+    // Leeres Feld zuerst fokussieren (z.B. vom Profil aus mit vorausgefülltem Spieler 1)
+    if (!a.value) a.focus(); else if (!b.value) b.focus();
+  })();
+</script>
+</body>
+</html>

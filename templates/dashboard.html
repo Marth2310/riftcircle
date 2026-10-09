@@ -206,7 +206,6 @@
   }
   .nt-name { font-family: var(--font-display); font-weight: 700; }
   .nt-schritt { color: var(--muted); font-size: 0.8rem; }
-  .nt-schritt b { color: var(--trophy-color); }
   .nt-fortschritt { color: var(--muted); font-size: 0.76rem; margin-top: 6px; line-height: 1.45; }
 
   .mains-liste { display: flex; flex-direction: column; gap: 6px; }
@@ -510,6 +509,17 @@
   .follow-knopf.aktiv:hover::after { content: " entfernen"; }
   .follow-login-hinweis { color: var(--muted); font-size: 0.82rem; text-decoration: none; }
   .follow-login-hinweis:hover { color: var(--text); }
+  .vergleich-knopf {
+    padding: 5px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(150, 130, 240, 0.35);
+    background: rgba(12, 7, 30, 0.6);
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .vergleich-knopf:hover { border-color: var(--void); }
 
   /* Karriere-Trophäen: Xbox/PlayStation-artige Leiter Bronze->Diamant (siehe trophaeen.py) -
      kompaktes Abzeichen-Grid oben, Klick zeigt Fortschrittsdetails darunter statt eines
@@ -773,6 +783,7 @@
           {% elif not ich %}
           <a class="follow-login-hinweis" href="{{ url_for('konto') }}">Anmelden zum Folgen</a>
           {% endif %}
+          <a class="vergleich-knopf" href="{{ url_for('spieler_vergleich', a=riot_name ~ '#' ~ riot_tag) }}">⇄ Vergleichen</a>
         </div>
       </div>
       <div class="hero-raenge">
@@ -866,7 +877,7 @@
           <span class="trophy-icon">{{ t.icon }}</span>
           <div class="nt-text">
             <div class="nt-name">{{ t.name }}</div>
-            <div class="nt-schritt">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }} → <b>{{ t.naechste_stufe_label }}</b></div>
+            <div class="nt-schritt">{{ t.stufe_label if t.stufe else "Noch keine Stufe" }} → <b style="color: {{ (t.leiter | rejectattr('erreicht') | first).farbe }};">{{ t.naechste_stufe_label }}</b></div>
           </div>
         </div>
         <div class="trophy-progress"><div class="trophy-progress-bar" style="width: {{ t.fortschritt_prozent }}%; --trophy-color: {{ t.farbe }};"></div></div>

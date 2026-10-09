@@ -4,6 +4,7 @@ import os
 
 import seiten_allgemein  # noqa: F401
 import seiten_champions  # noqa: F401
+import seiten_feed  # noqa: F401
 import seiten_gruppen  # noqa: F401
 import seiten_konto  # noqa: F401
 import seiten_match  # noqa: F401

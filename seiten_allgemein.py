@@ -4,6 +4,7 @@ import secrets
 from flask import abort, jsonify, render_template, request
 
 from app_core import ANALYTICS_SECRET, app
+from community import community_highlights, meta_snapshot, top_gruppen
 from db import get_connection
 from riot_assets import get_ddragon_version, summoner_icon_url
 from seiten_gruppen import ticker_fuer_gruppen
@@ -55,12 +56,18 @@ def landing():
         if offene:
             naechste_trophaee = max(offene, key=lambda t: t["fortschritt_prozent"])
 
+    # Community-Bereiche für alle Besucher (gecacht, siehe community.py)
+    highlights = community_highlights(cur)
+    gruppen_top = top_gruppen(cur)
+    meta = meta_snapshot(cur)
+
     cur.close()
     conn.close()
 
     return render_template(
         "landing.html", zuletzt_gesehen=zuletzt_gesehen, meine_gruppen=meine_gruppen,
         gruppen_icons=GRUPPEN_ICONS, ich=ich, ticker=ticker, naechste_trophaee=naechste_trophaee,
+        highlights=highlights, gruppen_top=gruppen_top, meta=meta,
     )
 
 

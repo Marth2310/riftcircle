@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dein Feed | RiftCircle</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<style>
+  .wrap { max-width: 860px; }
+  .feed-kopf { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+  .feed-kopf h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+  .feed-kopf p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+  .feed-kopf p b { color: var(--text); }
+
+  .feed-filter { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+  .feed-filter .filter-chips { gap: 6px; }
+
+  /* Zeitleiste: Tages-Überschrift + Einträge an einer senkrechten Linie */
+  .tag-gruppe { position: relative; padding-left: 26px; margin-bottom: 22px; }
+  .tag-gruppe::before {
+    content: "";
+    position: absolute;
+    left: 7px; top: 26px; bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(192, 77, 255, 0.5), rgba(79, 140, 255, 0.15));
+  }
+  .tag-label {
+    position: relative;
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .tag-label::before {
+    content: "";
+    position: absolute;
+    left: -25px; top: 50%;
+    width: 12px; height: 12px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    border: 2.5px solid var(--void);
+    background: var(--bg-1);
+    box-shadow: 0 0 10px var(--void);
+  }
+  .tag-liste { display: flex; flex-direction: column; gap: 8px; }
+
+  .feed-eintrag {
+    --ergebnis: var(--win);
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgba(27, 20, 64, 0.82);
+    border: 1px solid rgba(150, 130, 240, 0.14);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .feed-eintrag.niederlage { --ergebnis: var(--loss); }
+  .feed-eintrag::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.14;
+    -webkit-mask-image: linear-gradient(90deg, transparent 35%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 35%, #000 100%);
+    pointer-events: none;
+  }
+  .feed-eintrag > * { position: relative; }
+  .feed-eintrag:hover { border-color: rgba(192, 77, 255, 0.5); transform: translateX(3px); }
+  .fe-champ { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--ergebnis); display: block; }
+  .fe-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .fe-zeile1 { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 0.92rem; }
+  .fe-zeile1 b { font-weight: 700; }
+  .fe-tag { color: var(--muted); font-size: 0.8rem; }
+  .fe-quelle {
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--teal);
+    background: rgba(61, 214, 198, 0.12);
+    border: 1px solid rgba(61, 214, 198, 0.35);
+  }
+  .fe-quelle.gefolgt { color: #d7b3ff; background: rgba(192, 77, 255, 0.12); border-color: rgba(192, 77, 255, 0.4); }
+  .fe-zeile2 { color: var(--muted); font-size: 0.8rem; }
+  .fe-zeile2 .kda { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fe-zeile2 .tode { color: var(--loss); }
+  .fe-achievement { display: inline-flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%; margin-top: 3px; padding: 3px 10px 3px 7px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; background: rgba(165, 180, 252, 0.12); border: 1px solid rgba(165, 180, 252, 0.4); }
+  .fe-achievement.tier-legendaer { background: rgba(71, 103, 214, 0.2); border-color: rgba(111, 139, 255, 0.6); }
+  .fe-achievement.tier-episch { background: rgba(124, 58, 237, 0.18); border-color: rgba(160, 107, 255, 0.55); }
+  .fe-achievement span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fe-rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .fe-ergebnis { font-family: var(--font-display); font-weight: 700; font-size: 0.86rem; color: var(--ergebnis); }
+  .fe-zeit { color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
+  @media (max-width: 520px) {
+    .feed-eintrag { grid-template-columns: 40px minmax(0, 1fr); padding: 10px 12px; }
+    .fe-champ { width: 40px; height: 40px; }
+    .fe-rechts { grid-column: 2; flex-direction: row; align-items: center; gap: 10px; }
+  }
+
+  .feed-leer { text-align: center; padding: 34px 24px; }
+  .feed-leer h2 { margin: 0 0 8px; font-size: 1.2rem; }
+  .feed-leer p { color: var(--muted); max-width: 52ch; margin: 0 auto 18px; line-height: 1.55; font-size: 0.9rem; }
+  .feed-leer .aktionen { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .knopf {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(150, 130, 240, 0.35);
+    background: rgba(12, 7, 30, 0.6);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.86rem;
+    text-decoration: none;
+  }
+  .knopf.discord { border: 0; background: #5865f2; color: #fff; }
+  .knopf:hover { filter: brightness(1.1); }
+</style>
+</head>
+<body>
+{% include "_navigation.html" %}
+
+<div class="void-glow void-glow-1"></div>
+<div class="void-glow void-glow-2"></div>
+<div class="void-glow void-glow-3"></div>
+
+<div class="wrap">
+
+  <div class="feed-kopf">
+    <h1>Dein Feed</h1>
+    {% if ich and anzahl_spieler %}
+    <p>Die letzten <b>{{ anzahl_spiele }}</b> Spiele von <b>{{ anzahl_spieler }}</b> Spieler{{ "n" if anzahl_spieler != 1 else "" }} aus deinem Kreis:
+      {{ anzahl_gefolgt }} gefolgt{% if anzahl_gruppen %}, dazu die Mitglieder deiner {{ anzahl_gruppen }} Gruppe{{ "n" if anzahl_gruppen != 1 else "" }}{% endif %}. Deine eigenen Spiele stehen in deinem Profil.</p>
+    {% else %}
+    <p>Die Spiele der Leute, denen du folgst, und deiner Gruppen an einem Ort.</p>
+    {% endif %}
+  </div>
+
+  {% if not ich %}
+  <div class="panel feed-leer">
+    <h2>Melde dich an, um deinen Feed zu sehen</h2>
+    <p>Der Feed zeigt die Spiele der Leute, denen du folgst, und der Mitglieder deiner Gruppen. Dafür braucht RiftCircle dein Discord-Konto, damit dein Kreis auf allen Geräten gleich ist.</p>
+    <div class="aktionen">
+      <a class="knopf discord" href="{{ url_for('discord_login', weiter=request.path) }}">Mit Discord anmelden</a>
+    </div>
+  </div>
+
+  {% elif not anzahl_spieler %}
+  <div class="panel feed-leer">
+    <h2>Dein Kreis ist noch leer</h2>
+    <p>Folge Spielern mit „+ Folgen“ auf ihrem Profil oder tritt einer Gruppe bei. Ihre Spiele erscheinen dann hier, neueste zuerst.</p>
+    <div class="aktionen">
+      <a class="knopf" href="{{ url_for('gruppen_uebersicht') }}">Gruppen ansehen</a>
+      {% if ich.riot %}<a class="knopf" href="{{ url_for('profil', riot_id=ich.riot) }}">Zu deinem Profil</a>{% endif %}
+    </div>
+  </div>
+
+  {% elif not tage %}
+  <div class="panel feed-leer">
+    <h2>Noch keine Spiele</h2>
+    <p>Von den Spielern in deinem Kreis sind noch keine Spiele gespeichert. RiftCircle lädt neue Spiele, sobald jemand ein Profil öffnet oder eine Gruppe besucht.</p>
+  </div>
+
+  {% else %}
+  <div class="feed-filter">
+    <div class="filter-chips" id="ergebnisFilter" role="group" aria-label="Nach Ergebnis filtern">
+      <button type="button" class="filter-chip active" data-ergebnis="alle">Alle <span class="anzahl">{{ anzahl_spiele }}</span></button>
+      <button type="button" class="filter-chip" data-ergebnis="sieg">Siege</button>
+      <button type="button" class="filter-chip" data-ergebnis="niederlage">Niederlagen</button>
+      <button type="button" class="filter-chip" data-ergebnis="achievement">Mit Achievement <span class="anzahl">{{ anzahl_achievements }}</span></button>
+    </div>
+    {% if quellen_namen|length > 1 %}
+    <div class="filter-chips" id="quellenFilter" role="group" aria-label="Nach Herkunft filtern">
+      {% for q in quellen_namen %}
+      <button type="button" class="filter-chip" data-quelle="{{ q }}">{{ q }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="zeitleiste">
+    {% for tag in tage %}
+    <section class="tag-gruppe">
+      <h2 class="tag-label">{{ tag.label }}</h2>
+      <div class="tag-liste">
+        {% for e in tag.eintraege %}
+        <a class="feed-eintrag {{ 'sieg' if e.win else 'niederlage' }}" href="{{ url_for('match_detail', match_id=e.match_id, puuid=e.puuid) }}"
+           style="--splash: url('{{ e.champion_splash }}');"
+           data-ergebnis="{{ 'sieg' if e.win else 'niederlage' }}" data-achievement="{{ '1' if e.achievement else '' }}" data-quelle="{{ e.quelle }}">
+          <img class="fe-champ" src="{{ e.champion_icon }}" alt="{{ e.champion }}" loading="lazy">
+          <span class="fe-text">
+            <span class="fe-zeile1"><b>{{ e.riot_name }}</b><span class="fe-tag">#{{ e.riot_tag }}</span><span class="fe-quelle {{ 'gefolgt' if e.quelle == 'Gefolgt' else '' }}">{{ e.quelle }}</span></span>
+            <span class="fe-zeile2">{{ e.champion }} · {{ e.role_label }} · <span class="kda">{{ e.kills }}/<span class="tode">{{ e.deaths }}</span>/{{ e.assists }}</span> ({{ e.kda }} KDA) · {{ e.dauer_min }} Min.</span>
+            {% if e.achievement %}<span class="fe-achievement tier-{{ e.achievement.tier }}"><span>{{ e.achievement.icon }}</span><span>{{ e.achievement.text }}</span></span>{% endif %}
+          </span>
+          <span class="fe-rechts">
+            <span class="fe-ergebnis">{{ "Sieg" if e.win else "Niederlage" }}</span>
+            <span class="fe-zeit">{{ e.zeit_text }}</span>
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+  <p class="empty" id="feedLeer" hidden>Keine Spiele mit diesem Filter.</p>
+  {% endif %}
+
+</div>
+
+<script>
+  (function () {
+    var zeitleiste = document.getElementById("zeitleiste");
+    if (!zeitleiste) return;
+    var ergebnis = "alle";
+    var quelle = null;
+
+    function anwenden() {
+      var sichtbar = 0;
+      zeitleiste.querySelectorAll(".tag-gruppe").forEach(function (gruppe) {
+        var inGruppe = 0;
+        gruppe.querySelectorAll(".feed-eintrag").forEach(function (e) {
+          var passt = (ergebnis === "alle"
+                       || (ergebnis === "achievement" ? e.dataset.achievement === "1" : e.dataset.ergebnis === ergebnis))
+                      && (!quelle || e.dataset.quelle === quelle);
+          e.hidden = !passt;
+          if (passt) inGruppe++;
+        });
+        gruppe.hidden = inGruppe === 0;
+        sichtbar += inGruppe;
+      });
+      document.getElementById("feedLeer").hidden = sichtbar > 0;
+    }
+
+    document.getElementById("ergebnisFilter").addEventListener("click", function (e) {
+      var chip = e.target.closest(".filter-chip");
+      if (!chip) return;
+      this.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.toggle("active", c === chip); });
+      ergebnis = chip.dataset.ergebnis;
+      anwenden();
+    });
+    var quellenFilter = document.getElementById("quellenFilter");
+    if (quellenFilter) {
+      quellenFilter.addEventListener("click", function (e) {
+        var chip = e.target.closest(".filter-chip");
+        if (!chip) return;
+        var aus = chip.classList.contains("active");
+        quellenFilter.querySelectorAll(".filter-chip").forEach(function (c) { c.classList.remove("active"); });
+        if (!aus) chip.classList.add("active");
+        quelle = aus ? null : chip.dataset.quelle;
+        anwenden();
+      });
+    }
+  })();
+</script>
+</body>
+</html>

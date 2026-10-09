@@ -37,6 +37,19 @@ GRUPPEN_VERGLEICH_STATS = [
 ]
 
 
+# Profil gegen Profil auf /vergleich/spieler - Schnitt über alle gespeicherten Spiele je Spieler
+SPIELER_VERGLEICH_STATS = [
+    ("spiele", "Spiele", False, _fmt_int),
+    ("winrate", "Winrate", False, lambda v: f"{v}%"),
+    ("kda", "Ø KDA", False, _fmt_kda),
+    ("cs_min", "CS/Min", False, lambda v: f"{v:.1f}"),
+    ("vision_min", "Vision/Min", False, lambda v: f"{v:.2f}"),
+    ("kp", "Kill-Beteiligung", False, lambda v: f"{v}%"),
+    ("schaden", "Schadensanteil", False, lambda v: f"{v}%"),
+    ("pentas", "Pentakills", False, _fmt_int),
+]
+
+
 def vergleiche(a, b, stats=VERGLEICH_STATS):
     """a, b: dicts mit 'name' + den Stat-Keys aus `stats`. Gibt eine Liste von Zeilen zurück,
     jede mit Balken-Anteil (a_pct) und wer in dieser Kategorie besser war (a_besser: True/

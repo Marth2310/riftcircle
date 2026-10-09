@@ -12,14 +12,17 @@ registrieren (keine Blueprints — Endpunktnamen bleiben dadurch stabil):
 
 - `seiten_allgemein.py` — Landing, Favicon, `/riot.txt`, Namenssuche-API, `/stats/<key>`
 - `seiten_champions.py` — Champion-Datenbank (`/champions?rolle=`) und Champion-Detail
+- `seiten_feed.py` — persönlicher Feed (`/feed`): Spiele von Gefolgten + Gruppenmitgliedern
 - `seiten_gruppen.py` — Gruppen: Feed, Rangliste, Verlauf, Discord-Webhook-Posts
 - `seiten_konto.py` — Discord-Login/Logout, Konto-Einstellungen, Riot-Verknüpfung
 - `seiten_match.py` — Match-Detailseite (4 Tabs: Übersicht/Team/Karte/Tipps)
-- `seiten_profil.py` — Spielerprofil (Match-History, Rang-Verlauf, Meistgespielte)
+- `seiten_profil.py` — Spielerprofil (Kopfbereich, Tabs, Match-History, Rang-Verlauf) und
+  Spieler-Vergleich (`/vergleich/spieler`)
 
 Sonstige Kernmodule:
 - `app_core.py` — Flask-App, Env-Vars, Session-Config, Context-Processor
 - `web_hilfen.py` — geteilte Helfer (zuletzt gesehen, meine Gruppen, Namenssuche, Login-Session)
+- `community.py` — Startseiten-Bereiche für alle Besucher (Highlights, Top-Gruppen, Meta), 10 Min. gecacht
 - `db.py` — `get_connection()`
 - `riot_fetch.py` — Riot-API-Calls, `sync_player()` (Kern-Sync-Logik), Fehlerklassen
 - `riot_assets.py` — Data-Dragon-Cache (Champion-JSON, Skins, Spell-Icons)
@@ -30,6 +33,7 @@ Sonstige Kernmodule:
 - `match_tipps.py` — individualisierte Tipps auf der Match-Detailseite
 - `spielmodus.py` — queueId → (Anzeigename, Kategorie) für Ranked/Normal/ARAM/Sonstige
 - `achievements.py`, `wochenrueckblick.py` — Gruppen-Achievements bzw. Wochenrückblick-Score
+- `trophaeen.py`, `gruppen_trophaeen.py` — Karriere-Trophäen (Spieler) bzw. kollektive Gruppen-Trophäen
 - `discord_webhook.py`, `discord_login.py` — Discord-Integration
 - `create_tables.py` — Schema (idempotent: `CREATE TABLE IF NOT EXISTS` + `ADD COLUMN IF NOT EXISTS`)
 - `harvest_meta.py` — holt Challenger-Matches für die Champion-Datenbank (Meta-Stichproben)
@@ -40,7 +44,9 @@ Templates unter `templates/`, geteilte Partials mit `_`-Präfix (`_runen.html`,
 `_navigation.html` (globale Top-Leiste mit Suche, Schnellzugriff und Konto) als erstes im
 `<body>` ein. Gemeinsames CSS in `static/style.css` — Navigation, Panels, Filter-Chips,
 Modus-Badges, Rune-Mini-Anzeige usw. liegen dort zentral, nicht in einzelnen Templates.
-Überschriften nutzen die Display-Schrift `var(--font-display)` (Sora).
+Überschriften nutzen die Display-Schrift `var(--font-display)` (Sora). Seiten mit Tabs (Profil,
+Gruppe) nutzen `static/seiten_tabs.js` (`data-seiten-tabs`, Zustand im Hash, Event `seiten-tab`
+für Diagramme, die erst sichtbar gebaut werden können).
 
 ## Datenbank
 

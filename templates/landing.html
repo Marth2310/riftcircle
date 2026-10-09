@@ -142,6 +142,7 @@
   .nav-card.tile-profil { --tile: var(--void); }
   .nav-card.tile-champions { --tile: var(--accent2); }
   .nav-card.tile-gruppen { --tile: var(--teal); }
+  .nav-card.tile-vergleich { --tile: var(--gold); }
   .nav-card.tile-freunde { --tile: var(--muted); }
   .nav-card.tile-discord { --tile: #5865f2; }
   .nav-card.tile-discord .nav-icon { color: #fff; }
@@ -248,9 +249,120 @@
   }
   .trophy-nudge-info { flex: 1; min-width: 0; }
   .trophy-nudge-titel { font-size: 0.86rem; margin-bottom: 6px; }
-  .trophy-nudge-titel b { color: var(--trophy-color); }
   .trophy-nudge-bar { height: 6px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
   .trophy-nudge-bar div { height: 100%; border-radius: 999px; background: var(--trophy-color); }
+
+  /* Neue Gruppe: eingeklappt, solange schon Gruppen da sind */
+  .neue-gruppe { margin-top: 14px; }
+  .neue-gruppe summary {
+    display: inline-flex;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px dashed rgba(61, 214, 198, 0.5);
+    color: var(--teal);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+  .neue-gruppe summary::-webkit-details-marker { display: none; }
+  .neue-gruppe[open] summary { margin-bottom: 14px; }
+
+  /* ---------- Community-Bereich ---------- */
+  .community { padding-top: 8px; }
+  .community-kopf { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+  .community-eyebrow { color: var(--teal); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+  .community-titel { margin: 0; font-size: clamp(1.4rem, 3vw, 1.9rem); }
+  .community-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+  .community-raster > .panel { margin-bottom: 0; }
+  .community-leer { color: var(--muted); font-size: 0.86rem; line-height: 1.55; margin: 0; }
+
+  .hl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .hl-karte {
+    --klasse: #a5b4fc;
+    position: relative;
+    overflow: hidden;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(12, 7, 30, 0.7);
+    border: 1px solid color-mix(in srgb, var(--klasse) 45%, transparent);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .hl-karte.tier-legendaer { --klasse: #6f8bff; box-shadow: 0 0 22px rgba(71, 103, 214, 0.25); }
+  .hl-karte.tier-episch { --klasse: #a06bff; }
+  .hl-karte::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--splash);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.2;
+    -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 30%, #000 100%);
+    pointer-events: none;
+  }
+  .hl-karte > * { position: relative; }
+  .hl-karte:hover { transform: translateY(-3px); box-shadow: 0 10px 26px color-mix(in srgb, var(--klasse) 30%, transparent); }
+  .hl-klasse { align-self: flex-start; padding: 2px 9px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #0d0820; background: var(--klasse); }
+  .hl-kopf { display: flex; align-items: flex-start; gap: 10px; }
+  .hl-icon { font-size: 1.4rem; line-height: 1.2; filter: drop-shadow(0 0 6px var(--klasse)); }
+  .hl-text { font-weight: 700; font-size: 0.9rem; line-height: 1.4; }
+  .hl-fuss { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 0.78rem; }
+  .hl-fuss img { width: 24px; height: 24px; border-radius: 50%; }
+  .hl-fuss b { color: var(--text); }
+  .hl-kda .loss { color: var(--loss); }
+  .hl-zeit { margin-left: auto; }
+
+  .podium { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .podium-zeile {
+    display: grid; grid-template-columns: 30px 48px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(12, 7, 30, 0.55);
+    border: 1px solid rgba(150, 130, 240, 0.12);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s;
+  }
+  .podium-zeile:hover { border-color: rgba(61, 214, 198, 0.5); }
+  .podium-platz { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; color: var(--muted); text-align: center; }
+  .platz-1 .podium-platz { color: var(--gold); }
+  .platz-2 .podium-platz { color: #c3cbd6; }
+  .platz-3 .podium-platz { color: #d0946a; }
+  .platz-1 { border-color: rgba(212, 175, 106, 0.4); }
+  .podium-emblem { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
+  .podium-emblem img { width: 44px; height: 44px; object-fit: contain; }
+  .podium-text { display: flex; flex-direction: column; min-width: 0; }
+  .podium-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .podium-meta { color: var(--muted); font-size: 0.76rem; }
+  .podium-punkte { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: var(--gold); white-space: nowrap; }
+  .podium-punkte small { font-size: 0.7rem; margin-left: 3px; color: var(--muted); font-weight: 600; }
+
+  .meta-hint { display: block; margin: -6px 0 12px; }
+  .meta-liste { display: flex; flex-direction: column; gap: 6px; }
+  .meta-zeile {
+    display: grid; grid-template-columns: 22px 38px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(12, 7, 30, 0.55);
+    border: 1px solid rgba(150, 130, 240, 0.12);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s;
+  }
+  .meta-zeile:hover { border-color: rgba(212, 175, 106, 0.5); }
+  .meta-rolle { width: 22px; height: 22px; opacity: 0.85; }
+  .meta-champ { width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(212, 175, 106, 0.5); }
+  .meta-name { display: flex; flex-direction: column; min-width: 0; }
+  .meta-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta-name small { color: var(--muted); font-size: 0.74rem; }
+  .meta-wr { font-family: var(--font-display); font-weight: 800; color: var(--win); font-variant-numeric: tabular-nums; }
+  @media (max-width: 420px) {
+    .community-raster { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -312,6 +424,13 @@
         <div class="nav-desc">Winrate, Items und Skill-Prioritäten für jeden Champion.</div>
       </div>
     </a>
+    <a class="nav-card active tile-vergleich" href="{{ url_for('spieler_vergleich') }}">
+      <div class="nav-icon">⇄</div>
+      <div>
+        <div class="nav-title">Spieler vergleichen</div>
+        <div class="nav-desc">Zwei Profile nebeneinander, inklusive eurer Bilanz zusammen und gegeneinander.</div>
+      </div>
+    </a>
     <a class="nav-card active tile-gruppen" href="{{ url_for('gruppen_uebersicht') }}">
       <div class="nav-icon">⚑</div>
       <div>
@@ -347,7 +466,7 @@
         <div class="trophy-nudge-info">
           <div class="trophy-nudge-titel">
             Noch {{ naechste_trophaee.naechste_schwelle - naechste_trophaee.wert }} bis
-            <b>{{ naechste_trophaee.naechste_stufe_label }}</b> bei {{ naechste_trophaee.name }}
+            <b style="color: {{ (naechste_trophaee.leiter | rejectattr('erreicht') | first).farbe }};">{{ naechste_trophaee.naechste_stufe_label }}</b> bei {{ naechste_trophaee.name }}
           </div>
           <div class="trophy-nudge-bar"><div style="width: {{ naechste_trophaee.fortschritt_prozent }}%;"></div></div>
         </div>
@@ -399,6 +518,8 @@
         {% endfor %}
       </div>
       {% endif %}
+      <details class="neue-gruppe" {{ "open" if not meine_gruppen else "" }}>
+      <summary>+ Neue Gruppe anlegen</summary>
       <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
         <div class="gruppe-form-row">
           <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
@@ -413,9 +534,93 @@
         </div>
         <button type="submit">Anlegen</button>
       </form>
+      </details>
     </section>
   </main>
 
+</div>
+
+{# ---------- Community: für alle Besucher, auch ohne Konto (Daten aus community.py) ---------- #}
+<div class="wrap community">
+  <div class="community-kopf">
+    <span class="community-eyebrow">Community</span>
+    <h2 class="community-titel">Was gerade im Kreis passiert</h2>
+  </div>
+
+  {% if highlights.liste %}
+  <section class="panel">
+    <div class="panel-kopf">
+      <h2 class="section-title accent-achievements">Highlights {{ "der Woche" if highlights.tage == 7 else "der letzten " ~ highlights.tage ~ " Tage" }}</h2>
+      <span class="kopf-hint">Über alle bei RiftCircle getrackten Spieler</span>
+    </div>
+    <div class="hl-grid">
+      {% set anzahl_hl = (highlights.liste | length // 3) * 3 if highlights.liste | length >= 3 else highlights.liste | length %}
+      {% for h in highlights.liste[:anzahl_hl] %}
+      <a class="hl-karte tier-{{ h.achievement.tier }}" href="{{ h.url }}" style="--splash: url('{{ h.champion_splash }}');">
+        <span class="hl-klasse">{{ h.achievement.tier_label }}</span>
+        <span class="hl-kopf"><span class="hl-icon">{{ h.achievement.icon }}</span><span class="hl-text">{{ h.achievement.text }}</span></span>
+        <span class="hl-fuss">
+          <img src="{{ h.champion_icon }}" alt="" loading="lazy">
+          <b>{{ h.name }}</b>
+          <span class="hl-kda">{{ h.kills }}/<span class="loss">{{ h.deaths }}</span>/{{ h.assists }}</span>
+          <span class="hl-zeit">{{ h.zeit_text }}</span>
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="community-raster">
+    <section class="panel">
+      <div class="panel-kopf">
+        <h2 class="section-title accent-teal">Top-Gruppen</h2>
+        <a class="kopf-link" href="{{ url_for('gruppen_uebersicht') }}">Alle öffentlichen →</a>
+      </div>
+      {% if gruppen_top %}
+      <ol class="podium">
+        {% for g in gruppen_top %}
+        {% set bild = gruppen_icon_bild(g.icon) %}
+        <li>
+          <a class="podium-zeile platz-{{ loop.index }}" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+            <span class="podium-platz">{{ loop.index }}</span>
+            <span class="podium-emblem">{% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %}</span>
+            <span class="podium-text">
+              <span class="podium-name">{{ g.name }}</span>
+              <span class="podium-meta">{{ g.mitglieder }} Mitglieder · {{ g.spiele | tausender }} Spiele · {{ g.winrate }}% Winrate</span>
+            </span>
+            <span class="podium-punkte">{{ g.punkte }}<small>Pkt.</small></span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="community-leer">Noch keine Gruppe ist öffentlich. In den Einstellungen einer Gruppe lässt sich das mit einem Klick umschalten, dann steht sie hier mit ihrem Trophäen-Punktestand.</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-kopf">
+        <h2 class="section-title accent-gold">Meta-Snapshot</h2>
+        <a class="kopf-link" href="{{ url_for('champions') }}">Champion-Datenbank →</a>
+      </div>
+      {% if meta %}
+      <p class="kopf-hint meta-hint">Höchste Winrate je Rolle aus allen gespeicherten Spielen, ab 25 Spielen.</p>
+      <div class="meta-liste">
+        {% for m in meta %}
+        <a class="meta-zeile" href="{{ url_for('champion_detail', key=m.champion) }}">
+          <img class="meta-rolle" src="{{ m.rollen_icon }}" alt="{{ m.rolle }}" title="{{ m.rolle }}">
+          <img class="meta-champ" src="{{ m.icon }}" alt="" loading="lazy">
+          <span class="meta-name"><b>{{ m.name }}</b><small>{{ m.rolle }} · {{ m.spiele | tausender }} Spiele</small></span>
+          <span class="meta-wr">{{ m.winrate }}%</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="community-leer">Noch zu wenige Spiele je Rolle für eine aussagekräftige Winrate.</p>
+      {% endif %}
+    </section>
+  </div>
 </div>
 
 <script>

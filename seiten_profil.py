@@ -39,6 +39,7 @@ from riot_fetch import (
 from profil_statistik import duo_partner, rang_speichern, rang_verlauf, rollen_statistik, tier_achse
 from riot_runes import keystone_and_secondary_icons
 from trophaeen import trophaeen_fuer_spieler
+from vergleich import SPIELER_VERGLEICH_STATS, fazit_saetze, vergleiche
 from seiten_champions import ROLLEN_ICON_URL
 from seiten_gruppen import benachrichtige_gruppe_sicher
 from spielmodus import KATEGORIEN as MODUS_KATEGORIEN
@@ -437,3 +438,121 @@ def profil_entfolgen():
     cur.close()
     conn.close()
     return _zurueck_zum_profil(riot_name, riot_tag)
+
+
+def _spieler_finden(cur, eingabe):
+    """Name#Tag (oder ein eindeutiger Name) -> getracktes Profil aus der eigenen DB. Bewusst ohne
+    Riot-Abfrage: der Vergleich nutzt nur gespeicherte Spiele und soll sofort da sein."""
+    eingabe = eingabe.strip()
+    if "#" in eingabe:
+        name, tag = (teil.strip() for teil in eingabe.rsplit("#", 1))
+        cur.execute("""
+            SELECT puuid, riot_name, riot_tag, profile_icon_id FROM players
+            WHERE lower(riot_name) = lower(%s) AND lower(riot_tag) = lower(%s)
+              AND NOT COALESCE(is_meta_sample, FALSE);
+        """, (name, tag))
+        treffer = cur.fetchall()
+    else:
+        cur.execute("""
+            SELECT puuid, riot_name, riot_tag, profile_icon_id FROM players
+            WHERE lower(riot_name) = lower(%s) AND NOT COALESCE(is_meta_sample, FALSE)
+            LIMIT 2;
+        """, (eingabe,))
+        treffer = cur.fetchall()
+    if len(treffer) != 1:
+        return None
+    puuid, name, tag, icon_id = treffer[0]
+    return {
+        "puuid": puuid, "name": name, "tag": tag,
+        "icon": summoner_icon_url(icon_id, get_ddragon_version()) if icon_id else None,
+    }
+
+
+def _spieler_kennzahlen(cur, puuid):
+    cur.execute("""
+        SELECT COUNT(*), COALESCE(SUM(CASE WHEN p.win THEN 1 ELSE 0 END), 0),
+               COALESCE(SUM(p.kills), 0), COALESCE(SUM(p.deaths), 0), COALESCE(SUM(p.assists), 0),
+               COALESCE(SUM(p.cs), 0), COALESCE(SUM(p.vision_score), 0),
+               COALESCE(SUM(m.duration_seconds), 0),
+               AVG(p.kill_participation), AVG(p.damage_share), COALESCE(SUM(p.penta_kills), 0)
+        FROM participants p JOIN matches m ON m.match_id = p.match_id
+        WHERE p.puuid = %s;
+    """, (puuid,))
+    spiele, siege, kills, deaths, assists, cs, vision, dauer, kp, schaden, pentas = cur.fetchone()
+    minuten = dauer / 60
+    cur.execute("""
+        SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END)
+        FROM participants WHERE puuid = %s
+        GROUP BY champion ORDER BY COUNT(*) DESC, champion LIMIT 3;
+    """, (puuid,))
+    champions = [
+        {"key": c, "icon": champion_icon_url(c), "spiele": n, "winrate": round(s / n * 100)}
+        for c, n, s in cur.fetchall()
+    ]
+    return {
+        "spiele": spiele,
+        "winrate": round(siege / spiele * 100) if spiele else 0,
+        "kda": round((kills + assists) / deaths, 2) if deaths else float(kills + assists),
+        "cs_min": round(cs / minuten, 1) if minuten else 0.0,
+        "vision_min": round(vision / minuten, 2) if minuten else 0.0,
+        "kp": round(kp * 100) if kp else 0,
+        "schaden": round(schaden * 100) if schaden else 0,
+        "pentas": pentas,
+        "champions": champions,
+    }
+
+
+def _direkte_bilanz(cur, puuid_a, puuid_b):
+    """Gemeinsame Spiele: selbes Team (gleicher win-Wert, siehe stack_stats in seiten_gruppen)
+    bzw. gegeneinander, jeweils aus Sicht von Spieler A."""
+    cur.execute("""
+        SELECT a.win, a.win = b.win
+        FROM participants a JOIN participants b ON b.match_id = a.match_id AND b.puuid = %s
+        WHERE a.puuid = %s;
+    """, (puuid_b, puuid_a))
+    zeilen = cur.fetchall()
+    team = [win for win, gleich in zeilen if gleich]
+    gegen = [win for win, gleich in zeilen if not gleich]
+    return {
+        "team_spiele": len(team), "team_siege": sum(team),
+        "team_winrate": round(sum(team) / len(team) * 100) if team else 0,
+        "gegen_spiele": len(gegen), "gegen_siege_a": sum(gegen),
+    }
+
+
+@app.route("/vergleich/spieler")
+def spieler_vergleich():
+    """Zwei getrackte Profile nebeneinander: Schnittwerte über alle gespeicherten Spiele, die
+    Top-Champions und die direkte Bilanz (zusammen im Team / gegeneinander)."""
+    a_eingabe = request.args.get("a", "").strip()
+    b_eingabe = request.args.get("b", "").strip()
+    fehler, ergebnis = None, None
+    if a_eingabe and b_eingabe:
+        conn = get_connection()
+        cur = conn.cursor()
+        a = _spieler_finden(cur, a_eingabe)
+        b = _spieler_finden(cur, b_eingabe)
+        if not a or not b:
+            fehlend = a_eingabe if not a else b_eingabe
+            fehler = (
+                f"„{fehlend}“ ist bei RiftCircle noch nicht getrackt oder der Name ist mehrdeutig. "
+                "Gib Name#Tag an oder öffne das Profil einmal über die Suche, danach klappt der Vergleich."
+            )
+        elif a["puuid"] == b["puuid"]:
+            fehler = "Das ist zweimal derselbe Spieler."
+        else:
+            a.update(_spieler_kennzahlen(cur, a["puuid"]))
+            b.update(_spieler_kennzahlen(cur, b["puuid"]))
+            zeilen = vergleiche(a, b, SPIELER_VERGLEICH_STATS)
+            ergebnis = {
+                "a": a, "b": b, "zeilen": zeilen,
+                # "mehr Spiele" ist kein Vorsprung - die erste Zeile bleibt aus dem Fazit
+                "saetze": fazit_saetze(a, b, zeilen[1:]),
+                "direkt": _direkte_bilanz(cur, a["puuid"], b["puuid"]),
+            }
+        cur.close()
+        conn.close()
+    return render_template(
+        "spieler_vergleich.html", a_eingabe=a_eingabe, b_eingabe=b_eingabe,
+        fehler=fehler, ergebnis=ergebnis,
+    )

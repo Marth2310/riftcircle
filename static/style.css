@@ -445,6 +445,13 @@ h2.section-title.accent-achievements { --ring: #a5b4fc; }
   .kz-label { white-space: normal; }
 }
 
+/* Panel-Kopf: Titel links, Link/Hinweis rechts (Gruppe, Startseite, Feed, Vergleich) */
+.panel-kopf { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.panel-kopf h2.section-title { margin: 0; }
+.kopf-link { padding: 4px 0; border: 0; background: none; color: var(--accent2); font: 600 0.82rem var(--font-text); text-decoration: none; cursor: pointer; }
+.kopf-link:hover { color: var(--text); }
+.kopf-hint { color: var(--muted); font-size: 0.8rem; }
+
 /* Kontext-Rücksprung (Match -> Profil, Champion -> Datenbank) als kleine Pille statt Textlink -
    der allgemeine "Zurück zur Startseite"-Link entfällt, dafür gibt es die Top-Navigation. */
 .back-link {

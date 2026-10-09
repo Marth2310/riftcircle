@@ -18,6 +18,12 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 13.6c2.8.2 5 2 5 4.9"/></svg>
         <span>Gruppen</span>
       </a>
+      {% if angemeldet %}
+      <a class="topnav-link {{ 'aktiv' if ep == 'feed' else '' }}" href="{{ url_for('feed') }}" title="Feed">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="1.6"/></svg>
+        <span>Feed</span>
+      </a>
+      {% endif %}
       {% if mein_riot %}
       <a class="topnav-link {{ 'aktiv' if ep == 'profil' and request.args.get('riot_id', '') | lower == mein_riot | lower else '' }}" href="{{ url_for('profil', riot_id=mein_riot) }}" title="Mein Profil">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
