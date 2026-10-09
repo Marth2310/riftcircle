@@ -263,6 +263,9 @@ def gruppen_icon_bild(icon):
 
 app.add_template_global(gruppen_icon_bild, name="gruppen_icon_bild")
 app.add_template_global(GRUPPEN_ICON_NAMEN, name="gruppen_icon_namen")
+# Schnellzugriff in der Such-Leiste der globalen Navigation (templates/_navigation.html)
+app.add_template_global(lese_zuletzt_gesehen, name="lese_zuletzt_gesehen")
+app.add_template_global(lese_meine_gruppen, name="lese_meine_gruppen")
 
 
 MAX_NAMENS_TREFFER = 25

@@ -36,9 +36,11 @@ Sonstige Kernmodule:
 - `backfill_*.py` — einmalige/wiederholbare Nachlade-Skripte für neu eingeführte Spalten
 
 Templates unter `templates/`, geteilte Partials mit `_`-Präfix (`_runen.html`,
-`_skill_raster.html`, `_konto_ecke.html`). Gemeinsames CSS in `static/style.css` — Filter-
-Chips, Modus-Badges, Konto-Ecke, Rune-Mini-Anzeige usw. liegen dort zentral, nicht in
-einzelnen Templates.
+`_skill_raster.html`, `_navigation.html`). Es gibt kein Basis-Template: jede Seite bindet
+`_navigation.html` (globale Top-Leiste mit Suche, Schnellzugriff und Konto) als erstes im
+`<body>` ein. Gemeinsames CSS in `static/style.css` — Navigation, Panels, Filter-Chips,
+Modus-Badges, Rune-Mini-Anzeige usw. liegen dort zentral, nicht in einzelnen Templates.
+Überschriften nutzen die Display-Schrift `var(--font-display)` (Sora).
 
 ## Datenbank
 

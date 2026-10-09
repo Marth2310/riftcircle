@@ -398,7 +398,7 @@
 </style>
 </head>
 <body>
-{% include "_konto_ecke.html" %}
+{% include "_navigation.html" %}
 {% from "_runen.html" import rune_seite %}
 {% from "_skill_raster.html" import skill_raster %}
 
@@ -411,10 +411,6 @@
   <div class="loading-text" id="loadingText">Lädt...</div>
 </div>
 
-<a class="site-header" href="{{ url_for('landing') }}">
-  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
-  <div class="wordmark">RiftCircle</div>
-</a>
 
 <div class="wrap">
 

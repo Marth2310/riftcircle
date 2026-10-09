@@ -69,7 +69,12 @@
     border: 3px solid var(--accent);
     box-shadow: 0 0 0 5px rgba(139, 108, 245, 0.15);
   }
-  .profile h1 { font-size: 2rem; margin: 0; }
+  .profile h1 { font-size: clamp(1.45rem, 6vw, 2rem); margin: 0; overflow-wrap: anywhere; }
+  .profile > div { min-width: 0; }
+  @media (max-width: 560px) {
+    .profile { gap: 16px; padding: 20px 18px; }
+    .profile img.icon { width: 72px; height: 72px; }
+  }
   .profile .tag { color: var(--muted); font-weight: 400; }
   .rank-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .rank-badge {
@@ -508,7 +513,7 @@
 </style>
 </head>
 <body>
-{% include "_konto_ecke.html" %}
+{% include "_navigation.html" %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -552,54 +557,21 @@
   <div class="loading-text" id="loadingText">Lädt...</div>
 </div>
 
-<a class="site-header" href="{{ url_for('landing') }}">
-  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
-  <div class="wordmark">RiftCircle</div>
-</a>
 
 <div class="wrap">
 
+  {# Suche, "Zuletzt gesehen" und "Meine Gruppen" stecken in der Top-Navigation - die große
+     Suche hier nur, solange (noch) kein Profil angezeigt wird #}
+  {% if kein_spieler %}
   <form class="search-bar" method="get" action="{{ url_for('profil') }}">
     <input type="text" name="riot_id" placeholder="Summoner suchen: Name oder Name#Tag" value="{{ riot_id_input }}" data-spieler-suche="absenden">
     <button type="submit">Suchen</button>
   </form>
+  {% endif %}
 
   {% if fehler %}
     <div class="error-msg">{{ fehler }}</div>
   {% endif %}
-
-  {% if zuletzt_gesehen %}
-  <div class="known-players-label">Zuletzt gesehen</div>
-  <div class="known-players">
-    {% for sp in zuletzt_gesehen %}
-      <a href="{{ url_for('profil', riot_id = sp.name ~ '#' ~ sp.tag) }}">{{ sp.name }}#{{ sp.tag }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if meine_gruppen %}
-  <div class="known-players-label">Meine Gruppen</div>
-  <div class="known-players">
-    {% for g in meine_gruppen %}
-      {% set bild = gruppen_icon_bild(g.icon) %}
-      <a href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">{% if bild %}<img class="gruppen-pill-icon" src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %} {{ g.name }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-  <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
-    <div class="gruppe-form-row">
-      <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
-    </div>
-    <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
-    <div class="icon-picker">
-      {% for icon in gruppen_icons %}
-      <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
-        <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
-      </button>
-      {% endfor %}
-    </div>
-    <button type="submit">Anlegen</button>
-  </form>
 
 {% if kein_spieler %}
   {% if namens_treffer %}
@@ -1142,15 +1114,6 @@
       });
     });
 
-    var iconInput = document.getElementById("gruppeIconInput");
-    document.querySelectorAll(".icon-choice").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        document.querySelectorAll(".icon-choice").forEach(function (b) { b.classList.remove("selected"); });
-        btn.classList.add("selected");
-        iconInput.value = btn.getAttribute("data-icon");
-      });
-    });
-
     // Trophäen-Grid: Klick auf ein Abzeichen zeigt dessen Fortschritts-Details darunter
     var trophyGrid = document.getElementById("trophyGrid");
     if (trophyGrid) {
@@ -1168,6 +1131,5 @@
   })();
 </script>
 
-<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

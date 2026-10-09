@@ -112,7 +112,7 @@
 </style>
 </head>
 <body>
-{% include "_konto_ecke.html" %}
+{% include "_navigation.html" %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -123,13 +123,8 @@
   <div class="loading-text">Lädt - wenn neue Spiele synchronisiert werden, kann das wegen Riots Rate-Limit bis zu 30 Sekunden dauern...</div>
 </div>
 
-<a class="site-header" href="{{ url_for('landing') }}">
-  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
-  <div class="wordmark">RiftCircle</div>
-</a>
 
 <div class="wrap">
-  <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
 
   <div class="page-head">
     <h1>Mein Konto</h1>
@@ -260,6 +255,5 @@
     });
   })();
 </script>
-<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

@@ -8,6 +8,8 @@
   var VERZOEGERUNG_MS = 150;
 
   document.querySelectorAll("input[data-spieler-suche]").forEach(function (input) {
+    if (input.dataset.sucheGebunden) return;
+    input.dataset.sucheGebunden = "1";
     var modus = input.getAttribute("data-spieler-suche");
     var form = input.form;
     var liste = document.createElement("div");
@@ -21,10 +23,15 @@
     var timer = null;
     var anfrageNr = 0;
 
+    // Felder in der sticky Top-Navigation scrollen nicht mit - die Liste dort fixed anheften,
+    // sonst würde sie beim Scrollen von der Leiste wegwandern
+    var inFesterLeiste = !!input.closest(".topnav");
+
     function positionieren() {
       var r = input.getBoundingClientRect();
-      liste.style.top = (r.bottom + window.scrollY + 6) + "px";
-      liste.style.left = (r.left + window.scrollX) + "px";
+      liste.style.position = inFesterLeiste ? "fixed" : "absolute";
+      liste.style.top = (r.bottom + (inFesterLeiste ? 0 : window.scrollY) + 6) + "px";
+      liste.style.left = (r.left + (inFesterLeiste ? 0 : window.scrollX)) + "px";
       liste.style.width = Math.max(r.width, 260) + "px";
     }
 

@@ -584,6 +584,7 @@
   .sichtbarkeit-knopf.aktiv { border-color: var(--teal); color: var(--teal); }
   .sichtbarkeit-knopf.aktiv .sichtbarkeit-punkt { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
   .sichtbarkeit-hint { display: block; color: var(--muted); font-size: 0.78rem; margin-top: 8px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .sichtbarkeit-hint a { color: var(--teal); }
 
   /* Gruppen-Trophäen: dieselbe Leiter wie die Karriere-Trophäen im Profil (siehe
      trophaeen.py/gruppen_trophaeen.py), hier als Fortschritt der ganzen Gruppe zusammen. */
@@ -673,7 +674,7 @@
 </style>
 </head>
 <body>
-{% include "_konto_ecke.html" %}
+{% include "_navigation.html" %}
 
 <div class="void-glow void-glow-1"></div>
 <div class="void-glow void-glow-2"></div>
@@ -684,14 +685,8 @@
   <div class="loading-text" id="loadingText">Lädt...</div>
 </div>
 
-<a class="site-header" href="{{ url_for('landing') }}">
-  <img class="mark" src="{{ url_for('static', filename='malzahar-orb.png') }}" alt="">
-  <div class="wordmark">RiftCircle</div>
-</a>
 
 <div class="wrap">
-
-  <a class="back-link" href="{{ url_for('landing') }}">&larr; Zurück zur Startseite</a>
 
   <div class="page-head">
     <div class="gruppe-icon">
@@ -1471,6 +1466,5 @@
     });
   })();
 </script>
-<script src="{{ url_for('static', filename='spielersuche.js') }}"></script>
 </body>
 </html>

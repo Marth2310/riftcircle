@@ -43,10 +43,8 @@ from seiten_champions import ROLLEN_ICON_URL
 from seiten_gruppen import benachrichtige_gruppe_sicher
 from spielmodus import KATEGORIEN as MODUS_KATEGORIEN
 from web_hilfen import (
-    GRUPPEN_ICONS,
     angemeldeter_nutzer,
     cookie_setzen,
-    lese_meine_gruppen,
     lese_zuletzt_gesehen,
     merke_zuletzt_gesehen,
     mit_farbe,
@@ -121,9 +119,6 @@ def profil():
         if zg:
             puuid = zg[0]["puuid"]
 
-    zuletzt_gesehen = mit_farbe(lese_zuletzt_gesehen())
-    meine_gruppen = lese_meine_gruppen()
-
     if puuid is None:
         cur.close()
         conn.close()
@@ -133,9 +128,6 @@ def profil():
             fehler=fehler,
             riot_id_input=riot_id_input,
             namens_treffer=mit_summoner_icons(mit_farbe(namens_treffer)),
-            zuletzt_gesehen=zuletzt_gesehen,
-            meine_gruppen=meine_gruppen,
-            gruppen_icons=GRUPPEN_ICONS,
         )
 
     cur.execute("SELECT riot_name, riot_tag FROM players WHERE puuid = %s;", (puuid,))
@@ -151,9 +143,6 @@ def profil():
             kein_spieler=True,
             fehler=fehler,
             riot_id_input=riot_id_input,
-            zuletzt_gesehen=zuletzt_gesehen,
-            meine_gruppen=meine_gruppen,
-            gruppen_icons=GRUPPEN_ICONS,
         )
     riot_name, riot_tag = row
 
@@ -307,9 +296,6 @@ def profil():
         modus_kategorien=MODUS_KATEGORIEN,
         fehler=fehler,
         riot_id_input=riot_id_input,
-        zuletzt_gesehen=mit_farbe(neue_liste),
-        meine_gruppen=meine_gruppen,
-        gruppen_icons=GRUPPEN_ICONS,
         puuid=puuid,
         riot_name=riot_name,
         riot_tag=riot_tag,
