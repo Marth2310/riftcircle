@@ -5,31 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ champ.name }} - Champion-Datenbank | RiftCircle</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='seiten_tabs.js') }}" defer></script>
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <style>
   .wrap { max-width: 860px; }
 
-  .champ-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-  .champ-head img { width: 84px; height: 84px; border-radius: 16px; border: 1px solid var(--border); }
-  .champ-head h1 { margin: 0; font-size: 1.5rem; }
-  .champ-head .title { color: var(--muted); font-style: italic; font-size: 0.9rem; margin-top: 2px; }
-  .champ-head .tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .champ-head .tag-pill {
-    font-size: 0.7rem; font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--muted);
+  /* ---------- Kopfbereich: Splash-Banner, Icon, Rollenverteilung, Winrate-Ring, Kennzahlen ---------- */
+  .champ-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin-bottom: 16px;
+    padding: 26px 28px 20px;
+    border-radius: 22px;
+    background: rgba(17, 10, 42, 0.94);
+    border: 1px solid rgba(212, 175, 106, 0.26);
+    box-shadow: 0 18px 50px rgba(5, 3, 18, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
-
-  .source-note { color: var(--muted); font-size: 0.8rem; margin: 10px 0 20px; }
-
-  h2 { font-size: 0.95rem; margin: 0 0 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-
-  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+  .champ-hero::before {
+    content: "";
+    position: absolute; inset: 0; z-index: -1;
+    background-image: var(--banner);
+    background-size: cover;
+    background-position: center 20%;
+    opacity: 0.6;
+    -webkit-mask-image: linear-gradient(90deg, transparent 15%, rgba(0, 0, 0, 0.6) 50%, #000 90%);
+    mask-image: linear-gradient(90deg, transparent 15%, rgba(0, 0, 0, 0.6) 50%, #000 90%);
+  }
+  .chero-oben { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .chero-icon { width: 100px; height: 100px; flex-shrink: 0; padding: 3px; border-radius: 24px; background: linear-gradient(140deg, var(--gold), var(--void)); box-shadow: 0 0 26px rgba(212, 175, 106, 0.25); }
+  .chero-icon img { width: 100%; height: 100%; display: block; border-radius: 21px; border: 3px solid #120b2c; }
+  .chero-text { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .chero-text h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.05; }
+  .chero-titel { color: var(--muted); font-style: italic; font-size: 0.92rem; }
+  .chero-tags, .chero-rollen { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag-pill { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: rgba(12, 7, 30, 0.7); border: 1px solid var(--border); color: var(--muted); }
+  .rollen-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 5px; border-radius: 999px; background: rgba(12, 7, 30, 0.7); border: 1px solid rgba(150, 130, 240, 0.25); font-size: 0.78rem; font-weight: 600; }
+  .rollen-pill img { width: 18px; height: 18px; }
+  .rollen-pill b { color: var(--gold); }
+  .chero-kennzahlen { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(150, 130, 240, 0.14); }
+  .chero-quelle { color: var(--muted); font-size: 0.76rem; margin: 12px 0 0; }
 
   .winrate-ring {
     --pct: 0;
@@ -40,12 +57,46 @@
     position: relative;
     flex-shrink: 0;
   }
-  .winrate-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: var(--panel); }
-  .winrate-ring span { position: relative; font-size: 1.25rem; font-weight: 800; }
+  .winrate-ring::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: #140c32; }
+  .winrate-ring span { position: relative; display: flex; flex-direction: column; align-items: center; font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; line-height: 1.1; }
+  .winrate-ring small { font-family: var(--font-text); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .winrate-ring.gross { width: 104px; height: 104px; }
+  .winrate-ring.gut span { color: var(--win); }
+  .winrate-ring.schlecht span { color: var(--loss); }
+  @media (max-width: 560px) {
+    .champ-hero { padding: 20px 16px 16px; }
+    .chero-icon { width: 76px; height: 76px; border-radius: 20px; }
+    .chero-icon img { border-radius: 17px; }
+    .winrate-ring.gross { width: 84px; height: 84px; }
+    .winrate-ring span { font-size: 1.1rem; }
+  }
 
-  .stat-mini { display: flex; flex-direction: column; gap: 2px; }
-  .stat-mini .value { font-size: 1.15rem; font-weight: 700; }
-  .stat-mini .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* Spieler-Rangliste des Champions */
+  .spieler-liste { display: flex; flex-direction: column; gap: 6px; }
+  .spieler-rang {
+    display: grid; grid-template-columns: 26px 36px minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px;
+    padding: 9px 14px;
+    border-radius: 12px;
+    background: rgba(12, 7, 30, 0.55);
+    border: 1px solid rgba(150, 130, 240, 0.12);
+    color: inherit;
+    text-decoration: none;
+  }
+  .spieler-rang:hover { border-color: rgba(61, 214, 198, 0.5); }
+  .sr-platz { font-family: var(--font-display); font-weight: 800; color: var(--muted); text-align: center; }
+  .spieler-rang:nth-child(1) .sr-platz { color: var(--gold); }
+  .sr-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+  .sr-buchstabe { display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--accent), var(--void)); color: #0a0818; font-weight: 800; }
+  .sr-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sr-tag { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+  .sr-spiele, .sr-kda { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+  .sr-wr { font-family: var(--font-display); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .sr-wr.gut { color: var(--win); }
+  .sr-wr.schlecht { color: var(--loss); }
+  @media (max-width: 520px) {
+    .spieler-rang { grid-template-columns: 22px 32px minmax(0, 1fr) auto; }
+    .sr-spiele, .sr-kda { display: none; }
+  }
 
   .item-hint { color: var(--muted); font-size: 0.82rem; margin: -4px 0 14px; }
   .item-hint.boots-hint { margin: 18px 0 10px; }
@@ -76,11 +127,9 @@
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%);
     mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 95%);
   }
-  .panel {
-    background: rgba(27, 20, 64, 0.8);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
+  /* Leicht durchsichtig, damit der Skin dahinter durchscheint - ohne backdrop-filter (kostet
+     beim Scrollen, siehe style.css) */
+  body .panel { background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 120px), rgba(27, 20, 64, 0.86); }
 
 
   .rune-tab-title { display: inline-flex; align-items: center; gap: 6px; }
@@ -103,18 +152,50 @@
 
   <a class="back-link" href="{{ url_for('champions') }}">&larr; Zurück zur Champion-Datenbank</a>
 
-  <div class="panel">
-    <div class="champ-head">
-      <img src="{{ champ.icon }}" alt="{{ champ.name }}">
-      <div>
+  {# ---------- Kopfbereich ---------- #}
+  <section class="champ-hero" style="--banner: url('{{ banner }}');">
+    <div class="chero-oben">
+      <div class="chero-icon"><img src="{{ champ.icon }}" alt="{{ champ.name }}"></div>
+      <div class="chero-text">
+        <div class="chero-tags">{% for tag in champ.tags %}<span class="tag-pill">{{ tag }}</span>{% endfor %}</div>
         <h1>{{ champ.name }}</h1>
-        <div class="title">{{ champ.title }}</div>
-        <div class="tags">
-          {% for tag in champ.tags %}<span class="tag-pill">{{ tag }}</span>{% endfor %}
+        <div class="chero-titel">{{ champ.title }}</div>
+        {% if rollen %}
+        <div class="chero-rollen">
+          {% for r in rollen %}
+          <span class="rollen-pill" title="{{ r.spiele }} Spiele · {{ r.winrate }}% Winrate auf {{ r.name }}"><img src="{{ r.icon }}" alt="">{{ r.name }} <b>{{ r.anteil }}%</b></span>
+          {% endfor %}
         </div>
+        {% endif %}
+      </div>
+      {% if stats %}
+      <div class="winrate-ring gross {{ 'gut' if stats.winrate >= 50 else 'schlecht' }}" style="--pct: {{ stats.winrate }};" title="Winrate aus {{ stats.total_games }} Spielen">
+        <span>{{ stats.winrate }}%<small>Winrate</small></span>
+      </div>
+      {% endif %}
+    </div>
+    {% if stats %}
+    <div class="kennzahlen chero-kennzahlen">
+      <div class="kennzahl">
+        <span class="kz-wert">{{ stats.total_games | tausender }}</span>
+        <span class="kz-label">Spiele bei RiftCircle</span>
+      </div>
+      <div class="kennzahl">
+        <span class="kz-wert"><span class="win-value">{{ stats.wins }}</span><span class="kz-trenner">:</span><span class="loss-value">{{ stats.total_games - stats.wins }}</span></span>
+        <span class="kz-label">Siege : Niederlagen</span>
+      </div>
+      <div class="kennzahl">
+        <span class="kz-wert">{{ stats.avg_kda }}</span>
+        <span class="kz-label">Ø KDA · {{ stats.avg_kills }} / {{ stats.avg_deaths }} / {{ stats.avg_assists }}</span>
+      </div>
+      <div class="kennzahl">
+        <span class="kz-wert">{{ rollen[0].name if rollen else "–" }}</span>
+        <span class="kz-label">{% if rollen %}Hauptrolle · {{ rollen[0].anteil }}% der Spiele{% else %}Keine Rollen-Daten{% endif %}</span>
       </div>
     </div>
-  </div>
+    <p class="chero-quelle">Aus {{ stats.total_games }} bei RiftCircle getrackten Spiel{{ "en" if stats.total_games != 1 else "" }}, keine globale Meta-Statistik.</p>
+    {% endif %}
+  </section>
 
   {% if not stats %}
   <div class="panel empty-panel">
@@ -123,145 +204,165 @@
   </div>
   {% else %}
 
-  <p class="source-note">Aus {{ stats.total_games }} in RiftCircle getrackten Spiel{{ "en" if stats.total_games != 1 else "" }} - keine globale Meta-Statistik.</p>
+  {# ---------- Tabs ---------- #}
+  <nav class="seiten-tabs" id="champTabs" role="tablist" aria-label="Champion-Bereiche" data-seiten-tabs>
+    <button type="button" class="seiten-tab aktiv" role="tab" id="tab-builds" data-tab="builds" aria-selected="true">Builds <span class="tab-zahl">{{ stats.builds|length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-runen" data-tab="runen" aria-selected="false">Runen <span class="tab-zahl">{{ stats.runen_varianten|length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-skills" data-tab="skills" aria-selected="false">Skills</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-spieler" data-tab="spieler" aria-selected="false">Spieler <span class="tab-zahl">{{ top_spieler|length }}</span></button>
+  </nav>
 
-  <div class="panel">
-    <h2>Übersicht</h2>
-    <div class="stat-row">
-      <div class="winrate-ring" style="--pct: {{ stats.winrate }};"><span>{{ stats.winrate }}%</span></div>
-      <div class="stat-mini">
-        <div class="value">{{ stats.wins }} / {{ stats.total_games - stats.wins }}</div>
-        <div class="label">Siege / Niederlagen</div>
+  <section class="tab-inhalt" data-tab="builds" role="tabpanel" aria-labelledby="tab-builds">
+    <div class="panel">
+      <h2 class="section-title accent-gold">Item-Builds</h2>
+      {% if stats.builds %}
+      <p class="item-hint">Spiele werden anhand ihrer 2 teuersten fertigen Items gruppiert - Champions mit mehreren beliebten Strategien (Crit/Lethality/Bruiser/AP/...) haben eben nicht immer dieselben Core-Items.</p>
+      <div class="tab-nav">
+        {% for b in stats.builds %}
+        <button class="tab-btn build-tab-btn {{ 'active' if loop.first else '' }}" data-tab="build{{ loop.index0 }}">
+          {{ b.label }}<span class="build-tab-meta">{{ b.winrate }}% &middot; {{ b.games }} Sp.</span>
+        </button>
+        {% endfor %}
       </div>
-      <div class="stat-mini">
-        <div class="value">{{ stats.avg_kills }} / {{ stats.avg_deaths }} / {{ stats.avg_assists }}</div>
-        <div class="label">Ø Kills / Deaths / Assists</div>
-      </div>
-      <div class="stat-mini">
-        <div class="value">{{ stats.avg_kda }}:1</div>
-        <div class="label">Ø KDA</div>
-      </div>
-    </div>
-  </div>
 
-  <div class="panel">
-    <h2>Runen</h2>
-    {% if stats.runen_varianten %}
-    <p class="item-hint">Varianten nach Keystone + Sekundärbaum, jeweils mit den häufigsten Picks je Zeile. Die Prozentzahl unter einer Rune zeigt, wie oft sie in dieser Variante gewählt wurde.</p>
-    <div class="tab-nav">
-      {% for v in stats.runen_varianten %}
-      <button class="tab-btn build-tab-btn rune-tab-btn {{ 'active' if loop.first else '' }}" data-tab="runen{{ loop.index0 }}">
-        <span class="rune-tab-title">
-          <img src="{{ v.keystone.icon }}" alt="">
-          <img class="rune-tab-sub" src="{{ v.runen.secondary_icon }}" alt="">
-          {{ v.keystone.name }}
-        </span>
-        <span class="build-tab-meta">{{ v.anteil }}% gespielt &middot; {{ v.winrate }}% WR &middot; {{ v.games }} Sp.</span>
-      </button>
-      {% endfor %}
-    </div>
-
-    {% for v in stats.runen_varianten %}
-    <div data-tabgroup="runen{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
-      <p class="item-hint">{{ v.keystone.name }} + {{ v.runen.secondary_name }}: {{ v.winrate }}% Winrate in {{ v.games }} Spiel{{ "en" if v.games != 1 else "" }} ({{ v.anteil }}% aller Spiele mit Runen-Daten).</p>
-      {{ rune_seite(v.runen) }}
-    </div>
-    {% endfor %}
-    {% else %}
-    <p class="empty-panel">Noch nicht genug Spiele für eine Runen-Empfehlung (mindestens 3 Spiele mit derselben Keystone-/Sekundärbaum-Kombination nötig).</p>
-    {% endif %}
-  </div>
-
-  <div class="panel">
-    <h2>Item-Builds</h2>
-    {% if stats.builds %}
-    <p class="item-hint">Spiele werden anhand ihrer 2 teuersten fertigen Items gruppiert - Champions mit mehreren beliebten Strategien (Crit/Lethality/Bruiser/AP/...) haben eben nicht immer dieselben Core-Items.</p>
-    <div class="tab-nav">
       {% for b in stats.builds %}
-      <button class="tab-btn build-tab-btn {{ 'active' if loop.first else '' }}" data-tab="build{{ loop.index0 }}">
-        {{ b.label }}<span class="build-tab-meta">{{ b.winrate }}% &middot; {{ b.games }} Sp.</span>
-      </button>
-      {% endfor %}
-    </div>
-
-    {% for b in stats.builds %}
-    <div data-tabgroup="build{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
-      <p class="item-hint">Core-Items dieses Builds ({{ b.winrate }}% Winrate, {{ b.games }} Spiel{{ "e" if b.games != 1 else "" }}):</p>
-      <div class="item-grid">
-        {% for it in b.top_items[:2] %}
-        <div class="item-cell core">
-          <img src="{{ it.icon }}" alt="" loading="lazy">
-          <div class="pct">{{ it.pct }}%</div>
-          <div class="count">{{ it.count }}x</div>
-        </div>
-        {% endfor %}
-      </div>
-
-      {% if b.top_items[2:] %}
-      <p class="item-hint boots-hint">Situativ:</p>
-      <div class="item-grid">
-        {% for it in b.top_items[2:] %}
-        <div class="item-cell">
-          <img src="{{ it.icon }}" alt="" loading="lazy">
-          <div class="pct">{{ it.pct }}%</div>
-          <div class="count">{{ it.count }}x</div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      {% if b.top_boots %}
-      <p class="item-hint boots-hint">Schuhe:</p>
-      <div class="item-grid">
-        {% for it in b.top_boots %}
-        <div class="item-cell">
-          <img src="{{ it.icon }}" alt="" loading="lazy">
-          <div class="pct">{{ it.pct }}%</div>
-          <div class="count">{{ it.count }}x</div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-    {% endfor %}
-    {% else %}
-    <p class="empty-panel">Noch nicht genug Spiele für eine Build-Aufschlüsselung (mindestens {{ 3 }} Spiele mit derselben Item-Kombination nötig).</p>
-    {% endif %}
-  </div>
-
-  <div class="panel">
-    <h2>Skill-Prioritäten</h2>
-    {% if stats.top_orders %}
-    {% set B = {1: "Q", 2: "W", 3: "E", 4: "R"} %}
-    <p class="item-hint">Varianten nach der Reihenfolge, in der Q/W/E maximiert werden - darunter jeweils der häufigste komplette Skill-Pfad von Level 1 bis 18.</p>
-    <div class="tab-nav">
-      {% for o in stats.top_orders %}
-      <button class="tab-btn build-tab-btn {{ 'active' if loop.first else '' }}" data-tab="skills{{ loop.index0 }}">
-        <span class="skill-prio">
-          {% for slot in o.prioritaet_slots %}
-          {% if not loop.first %}<span class="prio-arrow">&rsaquo;</span>{% endif %}
-          <span class="prio-skill s{{ slot }}">
-            {% if spells %}<img src="{{ spells[slot - 1].icon }}" alt="">{% endif %}<b>{{ B[slot] }}</b>
-          </span>
+      <div data-tabgroup="build{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
+        <p class="item-hint">Core-Items dieses Builds ({{ b.winrate }}% Winrate, {{ b.games }} Spiel{{ "e" if b.games != 1 else "" }}):</p>
+        <div class="item-grid">
+          {% for it in b.top_items[:2] %}
+          <div class="item-cell core">
+            <img src="{{ it.icon }}" alt="" loading="lazy">
+            <div class="pct">{{ it.pct }}%</div>
+            <div class="count">{{ it.count }}x</div>
+          </div>
           {% endfor %}
-        </span>
-        <span class="build-tab-meta">{{ o.pct }}% &middot; {{ o.count }} Sp.</span>
-      </button>
-      {% endfor %}
-    </div>
+        </div>
 
-    {% for o in stats.top_orders %}
-    <div data-tabgroup="skills{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
-      {{ skill_raster(o.pfad, spells, o.daten_bis) }}
-      {% if o.daten_bis < o.pfad | length %}
-      <p class="item-hint skill-note">Level {{ o.daten_bis + 1 }}–{{ o.pfad | length }} gestrichelt: dafür gab es zu wenige Spiele mit genau diesem Pfad (viele Spiele enden vorher), ergänzt nach der Standardregel (R auf 6/11/16, sonst Priorität {{ o.order }}).</p>
+        {% if b.top_items[2:] %}
+        <p class="item-hint boots-hint">Situativ:</p>
+        <div class="item-grid">
+          {% for it in b.top_items[2:] %}
+          <div class="item-cell">
+            <img src="{{ it.icon }}" alt="" loading="lazy">
+            <div class="pct">{{ it.pct }}%</div>
+            <div class="count">{{ it.count }}x</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if b.top_boots %}
+        <p class="item-hint boots-hint">Schuhe:</p>
+        <div class="item-grid">
+          {% for it in b.top_boots %}
+          <div class="item-cell">
+            <img src="{{ it.icon }}" alt="" loading="lazy">
+            <div class="pct">{{ it.pct }}%</div>
+            <div class="count">{{ it.count }}x</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="empty-panel">Noch nicht genug Spiele für eine Build-Aufschlüsselung (mindestens {{ 3 }} Spiele mit derselben Item-Kombination nötig).</p>
       {% endif %}
     </div>
-    {% endfor %}
-    {% else %}
-    <p class="empty-panel">Noch keine Skill-Order-Daten - wird ergänzt, sobald ein Match mit diesem Champion im Detail angeschaut wurde.</p>
-    {% endif %}
-  </div>
+
+  </section>
+
+  <section class="tab-inhalt" data-tab="runen" role="tabpanel" aria-labelledby="tab-runen" hidden>
+    <div class="panel">
+      <h2 class="section-title">Runen</h2>
+      {% if stats.runen_varianten %}
+      <p class="item-hint">Varianten nach Keystone + Sekundärbaum, jeweils mit den häufigsten Picks je Zeile. Die Prozentzahl unter einer Rune zeigt, wie oft sie in dieser Variante gewählt wurde.</p>
+      <div class="tab-nav">
+        {% for v in stats.runen_varianten %}
+        <button class="tab-btn build-tab-btn rune-tab-btn {{ 'active' if loop.first else '' }}" data-tab="runen{{ loop.index0 }}">
+          <span class="rune-tab-title">
+            <img src="{{ v.keystone.icon }}" alt="">
+            <img class="rune-tab-sub" src="{{ v.runen.secondary_icon }}" alt="">
+            {{ v.keystone.name }}
+          </span>
+          <span class="build-tab-meta">{{ v.anteil }}% gespielt &middot; {{ v.winrate }}% WR &middot; {{ v.games }} Sp.</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      {% for v in stats.runen_varianten %}
+      <div data-tabgroup="runen{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
+        <p class="item-hint">{{ v.keystone.name }} + {{ v.runen.secondary_name }}: {{ v.winrate }}% Winrate in {{ v.games }} Spiel{{ "en" if v.games != 1 else "" }} ({{ v.anteil }}% aller Spiele mit Runen-Daten).</p>
+        {{ rune_seite(v.runen) }}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="empty-panel">Noch nicht genug Spiele für eine Runen-Empfehlung (mindestens 3 Spiele mit derselben Keystone-/Sekundärbaum-Kombination nötig).</p>
+      {% endif %}
+    </div>
+
+  </section>
+
+  <section class="tab-inhalt" data-tab="skills" role="tabpanel" aria-labelledby="tab-skills" hidden>
+    <div class="panel">
+      <h2 class="section-title">Skill-Prioritäten</h2>
+      {% if stats.top_orders %}
+      {% set B = {1: "Q", 2: "W", 3: "E", 4: "R"} %}
+      <p class="item-hint">Varianten nach der Reihenfolge, in der Q/W/E maximiert werden - darunter jeweils der häufigste komplette Skill-Pfad von Level 1 bis 18.</p>
+      <div class="tab-nav">
+        {% for o in stats.top_orders %}
+        <button class="tab-btn build-tab-btn {{ 'active' if loop.first else '' }}" data-tab="skills{{ loop.index0 }}">
+          <span class="skill-prio">
+            {% for slot in o.prioritaet_slots %}
+            {% if not loop.first %}<span class="prio-arrow">&rsaquo;</span>{% endif %}
+            <span class="prio-skill s{{ slot }}">
+              {% if spells %}<img src="{{ spells[slot - 1].icon }}" alt="">{% endif %}<b>{{ B[slot] }}</b>
+            </span>
+            {% endfor %}
+          </span>
+          <span class="build-tab-meta">{{ o.pct }}% &middot; {{ o.count }} Sp.</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      {% for o in stats.top_orders %}
+      <div data-tabgroup="skills{{ loop.index0 }}" {{ 'hidden' if not loop.first else '' }}>
+        {{ skill_raster(o.pfad, spells, o.daten_bis) }}
+        {% if o.daten_bis < o.pfad | length %}
+        <p class="item-hint skill-note">Level {{ o.daten_bis + 1 }}–{{ o.pfad | length }} gestrichelt: dafür gab es zu wenige Spiele mit genau diesem Pfad (viele Spiele enden vorher), ergänzt nach der Standardregel (R auf 6/11/16, sonst Priorität {{ o.order }}).</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="empty-panel">Noch keine Skill-Order-Daten - wird ergänzt, sobald ein Match mit diesem Champion im Detail angeschaut wurde.</p>
+      {% endif %}
+    </div>
+
+  </section>
+
+  {# ---------- Spieler: wer spielt den Champion bei RiftCircle ---------- #}
+  <section class="tab-inhalt" data-tab="spieler" role="tabpanel" aria-labelledby="tab-spieler" hidden>
+    <div class="panel">
+      <h2 class="section-title accent-teal">{{ champ.name }}-Spieler bei RiftCircle</h2>
+      {% if top_spieler %}
+      <p class="item-hint">Getrackte Spieler mit den meisten Spielen auf {{ champ.name }}, ohne die Challenger-Stichproben der Meta-Statistik.</p>
+      <div class="spieler-liste">
+        {% for p in top_spieler %}
+        <a class="spieler-rang" href="{{ url_for('profil', riot_id=p.name ~ '#' ~ p.tag) }}">
+          <span class="sr-platz">{{ loop.index }}</span>
+          {% if p.icon %}<img class="sr-avatar" src="{{ p.icon }}" alt="" loading="lazy">{% else %}<span class="sr-avatar sr-buchstabe">{{ p.name[0] | upper }}</span>{% endif %}
+          <span class="sr-name">{{ p.name }}<span class="sr-tag">#{{ p.tag }}</span></span>
+          <span class="sr-spiele">{{ p.spiele }} Spiel{{ "e" if p.spiele != 1 else "" }}</span>
+          <span class="sr-wr {{ 'gut' if p.winrate >= 50 else 'schlecht' }}">{{ p.winrate }}%</span>
+          <span class="sr-kda">{{ p.kda }} KDA</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty-panel">Noch kein getrackter Spieler hat {{ champ.name }} gespielt.</p>
+      {% endif %}
+    </div>
+  </section>
 
   {% endif %}
 

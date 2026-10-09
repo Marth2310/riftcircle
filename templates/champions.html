@@ -129,7 +129,7 @@
   .tier-liste { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
   .tier-kopf, .tier-zeile {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) 150px 190px;
+    grid-template-columns: 42px 46px minmax(0, 1fr) 150px 190px;
     align-items: center;
     gap: 12px;
     padding: 10px 18px;
@@ -176,11 +176,27 @@
   .tier-anzahl { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
 
   @media (max-width: 620px) {
-    .tier-kopf, .tier-zeile { grid-template-columns: 26px minmax(0, 1fr) 64px 104px; gap: 10px; padding: 10px 12px; }
+    .tier-kopf, .tier-zeile { grid-template-columns: 22px 34px minmax(0, 1fr) 60px 100px; gap: 8px; padding: 10px 10px; }
+    .tier-badge { width: 30px; height: 30px; font-size: 0.9rem; }
     .tier-anzahl { font-size: 0.64rem; white-space: normal; }
     .tier-champ img { width: 34px; height: 34px; }
     .rollen-tab { padding: 8px 12px; font-size: 0.82rem; }
   }
+  /* Tier-Badge (S/A/B/C/D, aus geglätteter Winrate - siehe seiten_champions.tier_fuer) */
+  .tier-badge {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1rem;
+    border: 1px solid;
+  }
+  .tier-badge.tier-S { color: #3a2a06; background: linear-gradient(135deg, #ffe08a, var(--gold)); border-color: transparent; box-shadow: 0 0 12px rgba(212, 175, 106, 0.45); }
+  .tier-badge.tier-A { color: var(--win); background: rgba(52, 211, 153, 0.14); border-color: rgba(52, 211, 153, 0.55); }
+  .tier-badge.tier-B { color: var(--accent2); background: rgba(79, 140, 255, 0.14); border-color: rgba(79, 140, 255, 0.5); }
+  .tier-badge.tier-C { color: var(--muted); background: rgba(167, 159, 207, 0.1); border-color: var(--border); }
+  .tier-badge.tier-D { color: var(--loss); background: rgba(247, 108, 138, 0.12); border-color: rgba(247, 108, 138, 0.45); }
 </style>
 </head>
 <body>
@@ -212,6 +228,7 @@
   <div class="champ-controls">
     <input type="text" class="champ-search" id="champSearch" placeholder="Champion suchen..." value="{{ suche }}">
     <select class="champ-sort" id="rollenSort">
+      <option value="tierwert-desc">Tier (beste zuerst)</option>
       <option value="pickrate-desc">Pickrate absteigend</option>
       <option value="pickrate-asc">Pickrate aufsteigend</option>
       <option value="winrate-desc">Winrate absteigend</option>
@@ -229,6 +246,7 @@
   <div class="tier-liste">
     <div class="tier-kopf">
       <span>#</span>
+      <button type="button" class="sort-kopf" data-feld="tierwert" title="Aus der Winrate, bei wenigen Spielen Richtung 50% geglättet">Tier <span class="pfeil"></span></button>
       <span>Champion</span>
       <button type="button" class="sort-kopf" data-feld="winrate">Winrate <span class="pfeil"></span></button>
       <button type="button" class="sort-kopf" data-feld="pickrate">Pickrate <span class="pfeil"></span></button>
@@ -236,8 +254,9 @@
     <div id="tierZeilen">
       {% for c in rollen_liste %}
       <a class="tier-zeile" href="{{ url_for('champion_detail', key=c.key) }}"
-         data-name="{{ c.name|lower }}" data-winrate="{{ c.winrate }}" data-pickrate="{{ c.pickrate }}">
+         data-name="{{ c.name|lower }}" data-winrate="{{ c.winrate }}" data-pickrate="{{ c.pickrate }}" data-tierwert="{{ c.tier_wert }}">
         <span class="tier-rang">{{ loop.index }}</span>
+        <span class="tier-badge tier-{{ c.tier }}" title="Tier {{ c.tier }} · geglättete Winrate {{ c.tier_wert }}%">{{ c.tier }}</span>
         <span class="tier-champ"><img src="{{ c.icon }}" alt="" loading="lazy"><span>{{ c.name }}</span></span>
         <span class="tier-wert">
           <b class="{{ 'gut' if c.winrate >= 50 else 'schlecht' }}">{{ c.winrate }}%</b>
@@ -351,7 +370,7 @@
           sortieren(aktuell === feld + "-desc" ? feld + "-asc" : feld + "-desc");
         });
       });
-      sortieren("pickrate-desc");
+      sortieren("tierwert-desc");
     }
 
     if (input.value) filtern();

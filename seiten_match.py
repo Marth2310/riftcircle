@@ -3,7 +3,8 @@ import json
 
 from flask import abort, redirect, render_template, request, url_for
 
-from analysis import get_player_ranks
+from achievements import erkenne_achievements
+from analysis import berechne_note, get_player_ranks, match_metrics, ringe_fuer_match
 from app_core import app, headers
 from benchmarks import normalize_tier
 from champion_mobility import hat_escape
@@ -382,6 +383,45 @@ def vergleich_ansehen():
     return render_template("vergleich.html", a=a, b=b, zeilen=zeilen, saetze=saetze)
 
 
+MAX_HERO_ACHIEVEMENTS = 3
+
+
+def _bewertung_fuer_hero(cur, match_id, puuid, tier):
+    """Gesamtnote (S+ bis D-), die Richtwert-Kennzahlen (KDA, CS/Min, Vision/Min, KP - je
+    Wert + ob über Richtwert) und alle Achievements dieses Spiels für den Kopfbereich. Dieselbe
+    Berechnung wie in der Match-History des Profils, damit Note und Farben übereinstimmen."""
+    cur.execute("""
+        SELECT p.match_id, p.champion, p.role, p.kills, p.deaths, p.assists, p.cs, p.vision_score,
+               m.duration_seconds, p.win, p.kill_participation, p.damage_share,
+               p.turret_takedowns, p.objectives_stolen, p.solo_kills,
+               p.items, p.champ_level, m.played_at, p.damage_rank, p.gold_earned, p.gold_diff,
+               p.damage_dealt, p.perks, m.queue_id,
+               p.penta_kills, p.quadra_kills, p.triple_kills, p.double_kills,
+               p.inhibitoren_verloren, p.objective_monopol
+        FROM participants p JOIN matches m ON p.match_id = m.match_id
+        WHERE p.match_id = %s AND p.puuid = %s;
+    """, (match_id, puuid))
+    row = cur.fetchone()
+    if row is None:
+        return None, {}, []
+    _, vergleich = match_metrics(row[:24], tier)
+    ringe = {r["label"]: r for r in ringe_fuer_match(vergleich)}
+    (_, champion, _, kills, deaths, assists, cs, vision, dauer, win, _, damage_share,
+     turret_takedowns, objectives_stolen, solo_kills, _, _, _, damage_rank, _, gold_diff,
+     damage_dealt, _, _, penta, quadra, triple, double, inhibitoren_verloren, objective_monopol) = row
+    achievements = erkenne_achievements({
+        "champion": champion, "win": win, "kills": kills, "deaths": deaths, "assists": assists,
+        "damage_dealt": damage_dealt or 0, "damage_rank": damage_rank,
+        "objectives_stolen": objectives_stolen or 0, "solo_kills": solo_kills or 0,
+        "penta_kills": penta or 0, "quadra_kills": quadra or 0, "triple_kills": triple or 0,
+        "double_kills": double or 0, "inhibitoren_verloren": inhibitoren_verloren,
+        "vision_score": vision, "damage_share": damage_share, "gold_diff": gold_diff,
+        "turret_takedowns": turret_takedowns, "objective_monopol": objective_monopol,
+        "cs": cs, "duration_seconds": dauer,
+    })
+    return berechne_note(vergleich), ringe, achievements[:MAX_HERO_ACHIEVEMENTS]
+
+
 def _rang_fuer_tipps(cur, conn, puuid):
     """Solo/Duo-Tier für die Richtwerte: zuerst der gespeicherte Rang-Verlauf (kein API-Call),
     sonst einmal bei Riot nachfragen und gleich mitspeichern. (tier, ob bekannt)."""
@@ -556,8 +596,10 @@ def match_detail(match_id):
         version=ddragon_version,
     )
     kommentare = kommentare_fuer_spiel(cur, match_id, puuid)
+    note, ringe, hero_achievements = _bewertung_fuer_hero(cur, match_id, puuid, tier)
     cur.close()
     conn.close()
+    mein_platz = next((p for spieler in (teams or {}).values() for p in spieler if p.get("puuid") == puuid), None)
     ich = angemeldeter_nutzer()
     tod_analyse = analysiere_tode(death_positions, timeline_extra, teams, puuid, champion)
     zeitstrahl = baue_zeitstrahl(death_positions, timeline_extra, teams, puuid)
@@ -606,6 +648,13 @@ def match_detail(match_id):
         lane_vergleich=lane_vergleich,
         rollen_tipps=rollen_tipps,
         match_tipps=match_tipps,
+        note=note,
+        note_klasse=f"note-{note[0].lower()}" if note and note != "?" else "note-c",
+        ringe=ringe,
+        hero_achievements=hero_achievements,
+        mein_platz=mein_platz,
+        tier_name=tier.capitalize(),
+        tier_bekannt=tier_bekannt,
     )
 
 

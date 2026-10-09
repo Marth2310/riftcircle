@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ champion }} - Postgame | RiftCircle</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='seiten_tabs.js') }}" defer></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
@@ -56,7 +57,7 @@
     font-weight: 800; font-size: 0.85rem;
   }
   .hero-titel { flex: 1; min-width: 200px; }
-  .hero-name { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+  .hero-name { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.015em; }
   .hero-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
   .hero-meta img { width: 20px; height: 20px; }
   .hero-meta .punkt { opacity: 0.5; }
@@ -70,23 +71,65 @@
   .result-badge.win { background: rgba(52, 211, 153, 0.18); color: var(--win); border: 1px solid var(--win); }
   .result-badge.loss { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
 
+  /* Match-eigene Kennzahl-Kacheln (6 statt 4, mit Zusatzzeile) - überschreiben bewusst die
+     globalen .kennzahlen/.kennzahl aus style.css */
   .kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 22px; }
   .kennzahl {
+    display: block;
     padding: 12px 14px;
     border-radius: 14px;
-    background: rgba(23, 19, 47, 0.78);
-    border: 1px solid var(--border);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    background: rgba(12, 7, 30, 0.72);
+    border: 1px solid rgba(150, 130, 240, 0.16);
   }
-  .kennzahl .wert { font-size: 1.35rem; font-weight: 800; white-space: nowrap; }
+  .kennzahl .wert { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .kennzahl .wert .d { color: var(--loss); }
   .kennzahl .label { color: var(--muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
   .kennzahl .zusatz { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+  .kennzahl .richtwert { font-size: 0.72rem; font-weight: 700; margin-top: 4px; }
+  .kennzahl .richtwert.gut { color: var(--win); }
+  .kennzahl .richtwert.schwach { color: var(--loss); }
 
-  /* ---------- Reiter ---------- */
-  .match-tabs { margin-bottom: 20px; }
-  .match-tabs .tab-btn { font-size: 0.98rem; padding: 14px 20px; }
+  /* Rechte Spalte im Kopf: Ergebnis, Gesamtnote, Platz im Match */
+  .hero-rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; align-self: flex-start; }
+  .note-gross {
+    min-width: 58px;
+    padding: 6px 12px;
+    border-radius: 12px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+  .note-s { background: linear-gradient(135deg, #ffe08a, var(--gold)); color: #3a2a06; box-shadow: 0 0 14px rgba(212, 175, 106, 0.55); }
+  .note-a { background: rgba(52, 211, 153, 0.18); color: var(--win); border: 1px solid var(--win); }
+  .note-b { background: rgba(79, 140, 255, 0.18); color: var(--accent2); border: 1px solid var(--accent2); }
+  .note-c { background: rgba(167, 159, 207, 0.18); color: var(--muted); border: 1px solid var(--border); }
+  .note-d { background: rgba(247, 108, 138, 0.18); color: var(--loss); border: 1px solid var(--loss); }
+  .platz-pill { padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; background: rgba(12, 7, 30, 0.72); border: 1px solid var(--border); color: var(--muted); }
+  .platz-pill.mvp { color: #3a2a06; background: linear-gradient(90deg, #ffe08a, var(--gold)); border: 0; }
+  .platz-pill.ace { color: #fff; background: linear-gradient(90deg, var(--void), var(--accent2)); border: 0; }
+
+  /* Achievements dieses Spiels als Abzeichen unter dem Champion-Namen */
+  .hero-achievements { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .hero-ach {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px 4px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: rgba(165, 180, 252, 0.14);
+    border: 1px solid rgba(165, 180, 252, 0.45);
+  }
+  .hero-ach.tier-legendaer { background: rgba(71, 103, 214, 0.25); border-color: rgba(111, 139, 255, 0.7); box-shadow: 0 0 14px rgba(71, 103, 214, 0.35); }
+  .hero-ach.tier-episch { background: rgba(124, 58, 237, 0.22); border-color: rgba(160, 107, 255, 0.6); }
+  .hero-kommentare { color: var(--muted); font-size: 0.82rem; text-decoration: none; }
+  @media (max-width: 640px) {
+    .hero-rechts { flex-direction: row; align-items: center; flex-wrap: wrap; width: 100%; }
+    .note-gross { min-width: 0; padding: 5px 12px; font-size: 1.1rem; }
+    .hero-kommentare { margin-left: auto; }
+  }
+  .hero-kommentare:hover { color: var(--text); }
+
 
   /* ---------- Übersicht: Items ---------- */
   .item-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 24px; }
@@ -431,8 +474,24 @@
           {% if zeit_text %}<span class="punkt">&middot;</span><span>{{ zeit_text }}</span>{% endif %}
         </div>
         <div class="hero-spieler">{{ riot_name }}<span>#{{ riot_tag }}</span></div>
+        {% if hero_achievements %}
+        <div class="hero-achievements">
+          {% for a in hero_achievements %}<span class="hero-ach tier-{{ a.tier }}" title="{{ a.tier_label }}"><span>{{ a.icon }}</span>{{ a.text }}</span>{% endfor %}
+        </div>
+        {% endif %}
       </div>
-      <span class="result-badge {{ 'win' if win else 'loss' }}">{{ "Sieg" if win else "Niederlage" }}</span>
+      <div class="hero-rechts">
+        <span class="result-badge {{ 'win' if win else 'loss' }}">{{ "Sieg" if win else "Niederlage" }}</span>
+        {% if note and note != "?" %}
+        <span class="note-gross {{ note_klasse }}" title="Gesamt-Note aus KDA, CS/Min, Vision/Min und Kill-Beteiligung, gemessen am Richtwert für {{ tier_name }}">{{ note }}</span>
+        {% endif %}
+        {% if mein_platz and mein_platz.rang %}
+        <span class="platz-pill {{ 'mvp' if mein_platz.ist_mvp else '' }} {{ 'ace' if mein_platz.ist_ace else '' }}" title="Platz im Match-Ranking aller 10 Spieler">
+          {% if mein_platz.ist_mvp %}MVP{% elif mein_platz.ist_ace %}ACE{% else %}Platz {{ mein_platz.rang }} von 10{% endif %}
+        </span>
+        {% endif %}
+        <a class="hero-kommentare" href="#kommentare">💬 {{ kommentare|length }} Kommentar{{ "e" if kommentare|length != 1 else "" }}</a>
+      </div>
     </div>
 
     <div class="kennzahlen">
@@ -440,11 +499,13 @@
         <div class="wert">{{ kills }} / <span class="d">{{ deaths }}</span> / {{ assists }}</div>
         <div class="label">KDA</div>
         <div class="zusatz">{{ "%.2f"|format(kda) }}:1</div>
+        {% set r = ringe.get("KDA") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
       <div class="kennzahl">
         <div class="wert">{{ cs }}</div>
         <div class="label">CS</div>
         <div class="zusatz">{{ "%.1f"|format(cs_per_min) }} pro Minute</div>
+        {% set r = ringe.get("CS/Min") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
       {% if damage_dealt %}
       <div class="kennzahl">
@@ -465,25 +526,29 @@
         <div class="wert">{{ (kill_participation * 100) | round | int }}%</div>
         <div class="label">Kill-Beteiligung</div>
         <div class="zusatz">an Team-Kills</div>
+        {% set r = ringe.get("Kill-Participation") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
       {% endif %}
       <div class="kennzahl">
         <div class="wert">{{ vision }}</div>
         <div class="label">Vision</div>
         <div class="zusatz">{{ "%.2f"|format(vision_per_min) }} pro Minute</div>
+        {% set r = ringe.get("Vision/Min") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
     </div>
   </div>
 
-  <div class="tab-nav match-tabs">
-    <button class="tab-btn active" data-tab="uebersicht">Übersicht</button>
-    <button class="tab-btn" data-tab="team">Team &amp; Vergleich</button>
-    <button class="tab-btn" data-tab="karte">Karte &amp; Verlauf</button>
-    <button class="tab-btn" data-tab="tipps">Tipps</button>
-  </div>
+  <nav class="seiten-tabs" id="matchTabs" role="tablist" aria-label="Spielbereiche" data-seiten-tabs>
+    <button type="button" class="seiten-tab aktiv" role="tab" id="tab-uebersicht" data-tab="uebersicht" aria-selected="true">Übersicht</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-team" data-tab="team" aria-selected="false">Team &amp; Vergleich</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-karte" data-tab="karte" aria-selected="false">Karte &amp; Verlauf</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-tipps" data-tab="tipps" aria-selected="false">Tipps</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-kommentare" data-tab="kommentare" aria-selected="false">Kommentare <span class="tab-zahl">{{ kommentare|length }}</span></button>
+  </nav>
 
   {# ================= Übersicht ================= #}
-  <div class="panel" data-tabgroup="uebersicht">
+  <section class="tab-inhalt" data-tab="uebersicht" role="tabpanel" aria-labelledby="tab-uebersicht">
+  <div class="panel">
     <h2 class="section-title">Items</h2>
     <div class="unter-titel">Finaler Build</div>
     <div class="item-row">
@@ -512,13 +577,13 @@
   </div>
 
   {% if skill_pfad %}
-  <div class="panel" data-tabgroup="uebersicht">
+  <div class="panel">
     <h2 class="section-title">Skill-Reihenfolge</h2>
     {{ skill_raster(skill_pfad, spells) }}
   </div>
   {% endif %}
 
-  <div class="panel" data-tabgroup="uebersicht">
+  <div class="panel">
     <h2 class="section-title">Runen</h2>
     {% if runen %}
     {{ rune_seite(runen) }}
@@ -527,8 +592,11 @@
     {% endif %}
   </div>
 
+  </section>
+
   {# ================= Team & Vergleich ================= #}
-  <div class="panel" data-tabgroup="team" hidden>
+  <section class="tab-inhalt" data-tab="team" role="tabpanel" aria-labelledby="tab-team" hidden>
+  <div class="panel">
     <h2 class="section-title">Team-Aufstellung</h2>
     {% if teams %}
     <div class="team-cols">
@@ -579,7 +647,7 @@
     {% endif %}
   </div>
 
-  <div class="panel" data-tabgroup="team" hidden>
+  <div class="panel">
     <h2 class="section-title">Team-Vergleich</h2>
     {% if team_vergleich %}
     <div class="tv-legend">
@@ -626,7 +694,7 @@
     {% endif %}
   </div>
 
-  <div class="panel lane-vergleich" data-tabgroup="team" hidden>
+  <div class="panel lane-vergleich">
     <h2 class="section-title">Lane-Vergleich</h2>
     {% if lane_vergleich %}
     <div class="vs-header">
@@ -669,8 +737,11 @@
     {% endif %}
   </div>
 
+  </section>
+
   {# ================= Karte & Verlauf ================= #}
-  <div class="panel" data-tabgroup="karte" hidden>
+  <section class="tab-inhalt" data-tab="karte" role="tabpanel" aria-labelledby="tab-karte" hidden>
+  <div class="panel">
     <h2 class="section-title">Karte &amp; Zeitstrahl</h2>
     {% if zeitstrahl %}
     <div class="map-timeline-layout">
@@ -714,7 +785,7 @@
     {% endif %}
   </div>
 
-  <div class="panel" data-tabgroup="karte" hidden>
+  <div class="panel">
     <h2 class="section-title">Auffällige Tode</h2>
     {% if tod_analyse %}
     <div class="tod-analyse">
@@ -727,8 +798,11 @@
     {% endif %}
   </div>
 
+  </section>
+
   {# ================= Tipps ================= #}
-  <div class="panel" data-tabgroup="tipps" hidden>
+  <section class="tab-inhalt" data-tab="tipps" role="tabpanel" aria-labelledby="tab-tipps" hidden>
+  <div class="panel">
     <h2 class="section-title">Deine Tipps aus diesem Spiel</h2>
     {% if match_tipps %}
     <p class="tipp-referenz">{{ match_tipps.referenz }} - alle Zahlen stammen aus genau diesem Spiel.</p>
@@ -792,7 +866,11 @@
     </details>
   </div>
 
-  <div class="panel" id="kommentare">
+  </section>
+
+  {# ================= Kommentare ================= #}
+  <section class="tab-inhalt" data-tab="kommentare" role="tabpanel" aria-labelledby="tab-kommentare" hidden>
+  <div class="panel" id="kommentar-liste">
     <h2 class="section-title accent-teal">Kommentare</h2>
     {% if kommentare %}
     <div class="kommentar-liste">
@@ -831,6 +909,7 @@
     <p class="kommentar-login-hinweis">Melde dich mit Discord an, um zu kommentieren - <a href="{{ url_for('konto') }}">jetzt anmelden</a>.</p>
     {% endif %}
   </div>
+  </section>
 
 </div>
 
@@ -857,6 +936,14 @@
     Chart.defaults.borderColor = "rgba(150, 130, 240, 0.15)";
     Chart.defaults.font.family = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
+    // Liegt im Tab "Team & Vergleich" - erst beim Öffnen bauen (versteckt kennt Chart.js keine Größe)
+    var gebaut = false;
+    document.addEventListener("seiten-tab", function (e) {
+      if (e.detail !== "team" || gebaut) return;
+      gebaut = true;
+      goldChartBauen();
+    });
+    function goldChartBauen() {
     new Chart(document.getElementById("goldChart"), {
       type: "line",
       data: {
@@ -891,6 +978,7 @@
         },
       },
     });
+    }
   })();
 </script>
 {% endif %}
@@ -923,16 +1011,6 @@
       });
     });
 
-    // Reiter
-    document.querySelectorAll(".match-tabs .tab-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var tab = btn.getAttribute("data-tab");
-        document.querySelectorAll(".match-tabs .tab-btn").forEach(function (b) { b.classList.toggle("active", b === btn); });
-        document.querySelectorAll("[data-tabgroup]").forEach(function (panel) {
-          panel.hidden = panel.getAttribute("data-tabgroup") !== tab;
-        });
-      });
-    });
   })();
 </script>
 

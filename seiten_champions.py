@@ -11,6 +11,7 @@ from riot_assets import (
     get_ddragon_version,
     item_icon_url,
     random_champion_splash_url,
+    summoner_icon_url,
 )
 from riot_runes import build_rune_display
 
@@ -39,6 +40,31 @@ ROLLEN_ICON_URL = (
 # Unter dieser Spielzahl auf einer Position ausgeblendet - sonst stünde ein einzelnes
 # gewonnenes Off-Role-Spiel (100% Winrate) beim Sortieren nach Winrate ganz oben.
 MIN_SPIELE_JE_ROLLE = 5
+
+
+# Tier-Liste je Rolle: die Winrate wird vorher Richtung 50% geglättet ("als hätte der Champion
+# zusätzlich TIER_PRIOR_SPIELE Spiele mit genau 50% Winrate") - sonst stünde ein 3:0 mit 100%
+# ganz oben, während ein Champion mit 54% aus 200 Spielen wirklich stark ist. Die Tiers selbst
+# sind relativ (Anteil der Rolle), nicht feste Winrate-Grenzen: die Challenger-Stichproben der
+# Meta-Statistik heben alle Winrates an, feste Grenzen machten sonst fast alles zu "S".
+TIER_PRIOR_SPIELE = 50
+TIER_ANTEILE = [("S", 0.10), ("A", 0.20), ("B", 0.40), ("C", 0.20)]  # Rest: D
+
+
+def geglaettete_winrate(spiele, siege):
+    return round((siege + TIER_PRIOR_SPIELE * 0.5) / (spiele + TIER_PRIOR_SPIELE) * 100, 2)
+
+
+def tiers_vergeben(liste):
+    """Setzt "tier" je Champion nach Rang der geglätteten Winrate innerhalb der Rolle."""
+    # Gleichstand nach Pickrate - dieselbe Reihenfolge wie die Sortierung der Tabelle (JS)
+    sortiert = sorted(liste, key=lambda c: (c["tier_wert"], c["pickrate"]), reverse=True)
+    grenzen, summe = [], 0.0
+    for name, anteil in TIER_ANTEILE:
+        summe += anteil
+        grenzen.append((round(summe * len(sortiert)), name))
+    for i, c in enumerate(sortiert):
+        c["tier"] = next((name for grenze, name in grenzen if i < grenze), "D")
 
 
 # team_position (Riot-Wert) -> Icon-Name, fürs Rollen-Badge auf der Champion-Grid-Karte
@@ -109,6 +135,7 @@ def champions():
                 continue
             info = champ_info.get(champion)
             liste.append({
+                "tier_wert": geglaettete_winrate(spiele, siege),
                 "key": champion,
                 "name": info["name"] if info else champion,
                 "icon": info["icon"] if info else champion_icon_url(champion),
@@ -117,7 +144,8 @@ def champions():
                 "winrate": round(siege / spiele * 100, 1),
                 "pickrate": round(spiele / matches_gesamt * 100, 1) if matches_gesamt else 0.0,
             })
-        liste.sort(key=lambda c: (c["pickrate"], c["winrate"]), reverse=True)
+        tiers_vergeben(liste)
+        liste.sort(key=lambda c: (c["tier_wert"], c["pickrate"]), reverse=True)
         return render_template(
             "champions.html", rolle=rolle, rollen_tabs=rollen_tabs,
             rollen_name=CHAMPION_ROLLEN[rolle][1], rollen_liste=liste,
@@ -164,6 +192,55 @@ def champions():
     )
 
 
+MAX_TOP_SPIELER = 10
+
+
+def _rollen_verteilung(cur, champion_key):
+    """Auf welchen Positionen der Champion gespielt wird (Anteil + Winrate je Rolle)."""
+    cur.execute("""
+        SELECT role, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END)
+        FROM participants
+        WHERE champion = %s AND role IN ('TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY')
+        GROUP BY role;
+    """, (champion_key,))
+    zeilen = {role: (n, siege) for role, n, siege in cur.fetchall()}
+    gesamt = sum(n for n, _ in zeilen.values())
+    verteilung = []
+    for _, (position, name, icon) in CHAMPION_ROLLEN.items():
+        n, siege = zeilen.get(position, (0, 0))
+        if n:
+            verteilung.append({
+                "name": name, "icon": ROLLEN_ICON_URL.format(icon), "spiele": n,
+                "anteil": round(n / gesamt * 100), "winrate": round(siege / n * 100),
+            })
+    verteilung.sort(key=lambda r: r["spiele"], reverse=True)
+    return verteilung
+
+
+def _top_spieler(cur, champion_key):
+    """Die getrackten Spieler mit den meisten Spielen auf diesem Champion - ohne Meta-Stichproben
+    (Challenger-Import), damit hier echte RiftCircle-Nutzer und ihre Freunde stehen."""
+    cur.execute("""
+        SELECT pl.riot_name, pl.riot_tag, pl.profile_icon_id, COUNT(*),
+               SUM(CASE WHEN p.win THEN 1 ELSE 0 END), SUM(p.kills), SUM(p.deaths), SUM(p.assists)
+        FROM participants p JOIN players pl ON pl.puuid = p.puuid
+        WHERE p.champion = %s AND NOT COALESCE(pl.is_meta_sample, FALSE)
+        GROUP BY pl.puuid, pl.riot_name, pl.riot_tag, pl.profile_icon_id
+        ORDER BY COUNT(*) DESC, SUM(CASE WHEN p.win THEN 1 ELSE 0 END) DESC
+        LIMIT %s;
+    """, (champion_key, MAX_TOP_SPIELER))
+    version = get_ddragon_version()
+    return [
+        {
+            "name": name, "tag": tag,
+            "icon": summoner_icon_url(icon_id, version) if icon_id else None,
+            "spiele": n, "siege": siege, "winrate": round(siege / n * 100),
+            "kda": round((k + a) / d, 2) if d else float(k + a),
+        }
+        for name, tag, icon_id, n, siege, k, d, a in cur.fetchall()
+    ]
+
+
 @app.route("/champion/<key>")
 def champion_detail(key):
     champ = get_champion_by_key(key)
@@ -173,6 +250,8 @@ def champion_detail(key):
     conn = get_connection()
     cur = conn.cursor()
     stats = berechne_champion_stats(cur, key)
+    rollen = _rollen_verteilung(cur, key)
+    top_spieler = _top_spieler(cur, key)
     cur.close()
     conn.close()
 
@@ -211,5 +290,6 @@ def champion_detail(key):
 
     return render_template(
         "champion_detail.html", champ=champ, stats=stats, hintergrund_splash=hintergrund_splash,
-        spells=spells,
+        spells=spells, rollen=rollen, top_spieler=top_spieler,
+        banner=champion_splash_url(key),
     )
