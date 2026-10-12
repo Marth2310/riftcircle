@@ -501,12 +501,14 @@
         <div class="zusatz">{{ "%.2f"|format(kda) }}:1</div>
         {% set r = ringe.get("KDA") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
+      {% if cs %}
       <div class="kennzahl">
         <div class="wert">{{ cs }}</div>
         <div class="label">CS</div>
         <div class="zusatz">{{ "%.1f"|format(cs_per_min) }} pro Minute</div>
         {% set r = ringe.get("CS/Min") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
+      {% endif %}
       {% if damage_dealt %}
       <div class="kennzahl">
         <div class="wert">{{ "%.1f"|format(damage_dealt / 1000) }}k</div>
@@ -529,12 +531,14 @@
         {% set r = ringe.get("Kill-Participation") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
       {% endif %}
+      {% if vision %}
       <div class="kennzahl">
         <div class="wert">{{ vision }}</div>
         <div class="label">Vision</div>
         <div class="zusatz">{{ "%.2f"|format(vision_per_min) }} pro Minute</div>
         {% set r = ringe.get("Vision/Min") %}{% if r %}<div class="richtwert {{ 'gut' if r.gut else 'schwach' }}" title="Richtwert für {{ tier_name }}">{{ "▲ über Richtwert" if r.gut else "▼ " ~ r.pct ~ "% vom Richtwert" }}</div>{% endif %}
       </div>
+      {% endif %}
     </div>
   </div>
 

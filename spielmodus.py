@@ -20,12 +20,15 @@ QUEUES = {
     450: ("ARAM", "aram"),
     720: ("ARAM Clash", "aram"),
     2400: ("ARAM Mayhem", "aram"),
+    # Nicht in Riots queues.json: 5v5 ohne Rollen und ohne Minions (CS immer 0), ~25 Minuten,
+    # seit Sommer 2026 - eine ARAM-artige Rotation, deren Name Riot nicht dokumentiert
+    1740: ("ARAM-Sondermodus", "aram"),
+    1750: ("ARAM-Sondermodus", "aram"),
     700: ("Clash", "sonstige"),
     900: ("ARURF", "sonstige"),
     1900: ("URF", "sonstige"),
     1700: ("Arena", "sonstige"),
     1710: ("Arena", "sonstige"),
-    1750: ("Arena", "sonstige"),
     1300: ("Nexus Blitz", "sonstige"),
     0: ("Custom", "sonstige"),
 }

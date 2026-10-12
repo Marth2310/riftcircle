@@ -94,11 +94,14 @@ def schnittwerte(spiele):
     deaths = sum(s["deaths"] for s in spiele)
     assists = sum(s["assists"] for s in spiele)
     kp = [s["kill_participation"] for s in spiele if s["kill_participation"] is not None]
+    mit_cs = [s["cs_per_min"] for s in spiele if s["cs_per_min"] > 0]
+    mit_vision = [s["vision_per_min"] for s in spiele if s["vision_per_min"] > 0]
     return {
         "kda": round((kills + assists) / deaths, 2) if deaths else float(kills + assists),
         "kills": round(kills / n, 1), "deaths": round(deaths / n, 1), "assists": round(assists / n, 1),
-        "cs_min": round(sum(s["cs_per_min"] for s in spiele) / n, 1),
-        "vision_min": round(sum(s["vision_per_min"] for s in spiele) / n, 2),
+        # Modi ohne Minions/Wards (CS bzw. Vision immer 0) würden den Schnitt sonst drücken
+        "cs_min": round(sum(mit_cs) / len(mit_cs), 1) if mit_cs else 0.0,
+        "vision_min": round(sum(mit_vision) / len(mit_vision), 2) if mit_vision else 0.0,
         "kp": round(sum(kp) / len(kp) * 100) if kp else None,
     }
 
@@ -473,13 +476,13 @@ def _spieler_kennzahlen(cur, puuid):
         SELECT COUNT(*), COALESCE(SUM(CASE WHEN p.win THEN 1 ELSE 0 END), 0),
                COALESCE(SUM(p.kills), 0), COALESCE(SUM(p.deaths), 0), COALESCE(SUM(p.assists), 0),
                COALESCE(SUM(p.cs), 0), COALESCE(SUM(p.vision_score), 0),
-               COALESCE(SUM(m.duration_seconds), 0),
+               COALESCE(SUM(m.duration_seconds) FILTER (WHERE p.cs > 0), 0),
+               COALESCE(SUM(m.duration_seconds) FILTER (WHERE p.vision_score > 0), 0),
                AVG(p.kill_participation), AVG(p.damage_share), COALESCE(SUM(p.penta_kills), 0)
         FROM participants p JOIN matches m ON m.match_id = p.match_id
         WHERE p.puuid = %s;
     """, (puuid,))
-    spiele, siege, kills, deaths, assists, cs, vision, dauer, kp, schaden, pentas = cur.fetchone()
-    minuten = dauer / 60
+    spiele, siege, kills, deaths, assists, cs, vision, dauer_cs, dauer_vision, kp, schaden, pentas = cur.fetchone()
     cur.execute("""
         SELECT champion, COUNT(*), SUM(CASE WHEN win THEN 1 ELSE 0 END)
         FROM participants WHERE puuid = %s
@@ -493,8 +496,8 @@ def _spieler_kennzahlen(cur, puuid):
         "spiele": spiele,
         "winrate": round(siege / spiele * 100) if spiele else 0,
         "kda": round((kills + assists) / deaths, 2) if deaths else float(kills + assists),
-        "cs_min": round(cs / minuten, 1) if minuten else 0.0,
-        "vision_min": round(vision / minuten, 2) if minuten else 0.0,
+        "cs_min": round(cs / (dauer_cs / 60), 1) if dauer_cs else 0.0,
+        "vision_min": round(vision / (dauer_vision / 60), 2) if dauer_vision else 0.0,
         "kp": round(kp * 100) if kp else 0,
         "schaden": round(schaden * 100) if schaden else 0,
         "pentas": pentas,
