@@ -221,7 +221,27 @@ h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.015em; }
 }
 .topnav-suche input:focus ~ .topnav-kbd { opacity: 0; }
 .topnav-suche-knopf { display: none; }
-.topnav-konto { flex-shrink: 0; }
+.topnav-konto { flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+.glocke {
+  position: relative;
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px;
+  color: var(--muted);
+  transition: color 0.15s, background 0.15s;
+}
+.glocke:hover { color: var(--text); background: rgba(150, 130, 240, 0.1); }
+.glocke svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.glocke-zahl {
+  position: absolute; top: 3px; right: 2px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--void), var(--void-2));
+  color: #fff;
+  font-size: 0.64rem; font-weight: 800;
+  box-shadow: 0 0 0 2px #0f0924, 0 0 10px rgba(192, 77, 255, 0.6);
+}
 .topnav-links + .topnav-konto { margin-left: auto; }
 
 /* Schnellzugriff unter dem leeren Suchfeld: eigenes Profil, zuletzt gesehen, meine Gruppen */

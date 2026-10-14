@@ -278,6 +278,29 @@ CREATE TABLE IF NOT EXISTS follower (
 """)
 cur.execute("CREATE INDEX IF NOT EXISTS idx_follower_ziel ON follower (ziel_puuid);")
 
+# Benachrichtigungen (Glocke in der Navigation, Tab im Konto): jemand folgt dir, kommentiert dein
+# Spiel, stimmt für dein Achievement oder fügt dich zu einer Gruppe hinzu. "schluessel" verhindert
+# Doppel (z.B. Stimme setzen/zurücknehmen/setzen) - NULL = kein Schutz (Kommentare sind einzeln).
+cur.execute("""
+CREATE TABLE IF NOT EXISTS benachrichtigungen (
+    id SERIAL PRIMARY KEY,
+    discord_id TEXT NOT NULL REFERENCES nutzer(discord_id) ON DELETE CASCADE,
+    typ TEXT NOT NULL,
+    text TEXT NOT NULL,
+    link TEXT,
+    schluessel TEXT,
+    gelesen BOOLEAN NOT NULL DEFAULT FALSE,
+    erstellt_am TIMESTAMP DEFAULT now(),
+    UNIQUE (discord_id, schluessel)
+);
+""")
+cur.execute(
+    "CREATE INDEX IF NOT EXISTS idx_benachrichtigungen_nutzer "
+    "ON benachrichtigungen (discord_id, gelesen, erstellt_am DESC);"
+)
+# Typen, die ein Nutzer abgeschaltet hat (folgen/kommentar/stimme/gruppe)
+cur.execute("ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS benachrichtigung_aus TEXT[] DEFAULT '{}';")
+
 # Rang-Verlauf: Riot liefert nur den aktuellen Rang, keine Historie - daher ein Stand pro
 # Spieler, Queue und Tag (bei jedem Profilaufruf aktualisiert)
 cur.execute("""

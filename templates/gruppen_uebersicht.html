@@ -5,70 +5,141 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gruppen | RiftCircle</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='seiten_tabs.js') }}" defer></script>
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon-32.png') }}" sizes="32x32">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <style>
-  .page-head { text-align: center; margin: 4px 0 28px; }
-  .page-head h1 { margin: 0 0 8px; font-size: 1.8rem; }
-  .page-head p { color: var(--muted); font-size: 0.9rem; max-width: 560px; margin: 0 auto; }
-  .empty { color: var(--muted); text-align: center; padding: 24px; }
+  .wrap { max-width: 940px; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; line-height: 1.55; }
 
-  .vergleich-form { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  /* ---------- Kopfbereich ---------- */
+  .ghub-hero {
+    position: relative; isolation: isolate; overflow: hidden;
+    margin-bottom: 16px; padding: 26px 28px 22px;
+    border-radius: 22px;
+    background: rgba(17, 10, 42, 0.95);
+    border: 1px solid rgba(61, 214, 198, 0.3);
+    box-shadow: 0 18px 50px rgba(5, 3, 18, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .ghub-hero::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 55% 130% at 100% 0%, rgba(61, 214, 198, 0.24), transparent 70%),
+                radial-gradient(ellipse 45% 100% at 0% 100%, rgba(79, 140, 255, 0.16), transparent 70%);
+  }
+  .ghub-oben { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .ghub-text { flex: 1 1 280px; min-width: 0; }
+  .ghub-text h1 { margin: 0 0 6px; font-size: clamp(1.7rem, 4.6vw, 2.4rem); line-height: 1.1; }
+  .ghub-text p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; max-width: 56ch; }
+  .ghub-kennzahlen { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(150, 130, 240, 0.14); }
+  .knopf {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 0;
+    background: linear-gradient(90deg, var(--teal), var(--accent2));
+    color: #0a0818;
+    font: 700 0.88rem var(--font-text);
+    cursor: pointer;
+  }
+  .knopf:hover { filter: brightness(1.08); }
+  .knopf.leise { background: rgba(12, 7, 30, 0.72); border: 1px solid rgba(150, 130, 240, 0.3); color: var(--text); }
+
+  /* ---------- Meine Gruppen: Kacheln mit Kennzahlen ---------- */
+  .gkarten { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .gkarte {
+    position: relative;
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 18px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, rgba(61, 214, 198, 0.12), rgba(27, 20, 64, 0.9) 65%);
+    border: 1px solid rgba(61, 214, 198, 0.32);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .gkarte:hover { transform: translateY(-3px); border-color: var(--teal); box-shadow: 0 10px 28px rgba(61, 214, 198, 0.16); }
+  .gkarte-kopf { display: flex; align-items: center; gap: 14px; }
+  .gkarte-emblem { width: 62px; height: 62px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 18px; background: radial-gradient(circle at 50% 40%, rgba(61, 214, 198, 0.2), rgba(12, 7, 30, 0.7) 70%); border: 1px solid rgba(61, 214, 198, 0.35); font-size: 1.8rem; }
+  .gkarte-emblem img { width: 48px; height: 48px; object-fit: contain; }
+  .gkarte-name { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .gkarte-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .mini-pill { padding: 1px 8px; border-radius: 999px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid var(--border); color: var(--muted); }
+  .mini-pill.oeff { color: var(--teal); border-color: rgba(61, 214, 198, 0.55); }
+  .mini-pill.dc { color: #aab1ff; border-color: rgba(88, 101, 242, 0.6); }
+  .gkarte-werte { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .gwert { padding: 8px 10px; border-radius: 10px; background: rgba(12, 7, 30, 0.55); min-width: 0; }
+  .gwert b { display: block; font-family: var(--font-display); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .gwert span { color: var(--muted); font-size: 0.68rem; }
+  .gwert.gut b { color: var(--win); }
+  .gwert.schlecht b { color: var(--loss); }
+  .gkarte-fuss { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 0.78rem; }
+  .gkarte-fuss b { color: var(--gold); font-family: var(--font-display); }
+
+  /* ---------- Vergleich ---------- */
+  .vergleich-form { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
   .vergleich-form select {
-    flex: 1; min-width: 160px;
-    padding: 11px 16px;
-    border-radius: 999px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     background: var(--panel-2);
     color: var(--text);
-    font-size: 0.88rem;
+    font: inherit;
+    font-size: 0.9rem;
   }
-  .vergleich-form span { color: var(--muted); font-weight: 700; font-size: 0.8rem; }
-  .vergleich-form button {
-    padding: 11px 22px;
-    border-radius: 999px;
-    border: none;
-    background: linear-gradient(90deg, var(--teal), var(--accent2));
-    color: #0a0818;
-    font-weight: 700;
-    font-size: 0.88rem;
-    cursor: pointer;
-    font-family: inherit;
+  .vergleich-form span { color: var(--muted); font-weight: 800; font-size: 0.8rem; }
+  @media (max-width: 640px) {
+    .vergleich-form { grid-template-columns: 1fr; }
+    .vergleich-form span { text-align: center; }
   }
-
+  .vs-side { width: 160px; }
+  .vs-side .vs-name { max-width: 160px; }
   .vs-side .vs-icon { width: 52px; height: 52px; border-radius: 50%; object-fit: contain; }
   .vs-side .vs-icon-emoji { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: var(--panel-2); }
   .vs-side .vs-champ { color: var(--muted); font-size: 0.72rem; margin-top: -4px; }
-
   .fazit-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-  .fazit-list li {
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    font-size: 0.88rem;
-  }
+  .fazit-list li { padding: 10px 14px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); font-size: 0.88rem; }
+  .fehler-box { margin-top: 14px; padding: 12px 16px; border-radius: 12px; background: rgba(247, 108, 138, 0.12); border: 1px solid var(--loss); color: var(--loss); font-size: 0.88rem; }
 
-  /* Öffentliche Rangliste: Gruppen, die sich per Schalter auf ihrer Seite sichtbar gemacht
-     haben (siehe gruppe_sichtbarkeit_umschalten), sortiert nach Trophäen-Punktestand. */
-  .oeff-liste { display: flex; flex-direction: column; gap: 6px; }
-  .oeff-zeile {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: var(--panel-2);
-    text-decoration: none; color: inherit;
-    font-size: 0.85rem;
+  /* ---------- Öffentliche Rangliste: Podest + Liste ---------- */
+  .podest { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; align-items: end; }
+  .podest-karte {
+    --medaille: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    padding: 18px 12px 16px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--medaille) 16%, transparent), rgba(27, 20, 64, 0.9) 70%);
+    border: 1px solid color-mix(in srgb, var(--medaille) 55%, transparent);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s;
   }
-  .oeff-liste > a:nth-child(even) { background: var(--panel-alt); }
-  .oeff-zeile:hover { outline: 1px solid var(--accent2); }
-  .oeff-rang { color: var(--muted); font-weight: 700; width: 20px; flex-shrink: 0; text-align: right; }
-  .oeff-icon { width: 34px; height: 34px; border-radius: 50%; object-fit: contain; flex-shrink: 0; background: var(--panel); }
-  .oeff-icon-emoji { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: var(--panel); flex-shrink: 0; }
+  .podest-karte:hover { transform: translateY(-3px); }
+  .podest-karte.platz-1 { --medaille: var(--gold); padding-top: 26px; padding-bottom: 22px; box-shadow: 0 0 28px rgba(212, 175, 106, 0.2); }
+  .podest-karte.platz-2 { --medaille: #c3cbd6; }
+  .podest-karte.platz-3 { --medaille: #d0946a; }
+  .podest-platz { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; color: var(--medaille); line-height: 1; }
+  .podest-emblem { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+  .podest-emblem img { width: 56px; height: 56px; object-fit: contain; }
+  .platz-1 .podest-emblem { width: 76px; height: 76px; }
+  .platz-1 .podest-emblem img { width: 72px; height: 72px; }
+  .podest-name { font-family: var(--font-display); font-weight: 700; overflow-wrap: anywhere; line-height: 1.2; }
+  .podest-meta { color: var(--muted); font-size: 0.74rem; }
+  .podest-punkte { font-family: var(--font-display); font-weight: 800; color: var(--gold); }
+  .podest-punkte small { color: var(--muted); font-weight: 600; font-size: 0.7rem; margin-left: 3px; }
+  @media (max-width: 560px) { .podest { grid-template-columns: 1fr; } }
+
+  .oeff-liste { display: flex; flex-direction: column; gap: 6px; }
+  .oeff-zeile { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: rgba(12, 7, 30, 0.55); border: 1px solid rgba(150, 130, 240, 0.12); text-decoration: none; color: inherit; font-size: 0.85rem; flex-wrap: wrap; }
+  .oeff-zeile:hover { border-color: rgba(61, 214, 198, 0.5); }
+  .oeff-rang { color: var(--muted); font-weight: 700; width: 22px; text-align: right; flex-shrink: 0; }
+  .oeff-icon { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
+  .oeff-icon-emoji { width: 34px; text-align: center; font-size: 1.2rem; flex-shrink: 0; }
   .oeff-name { font-weight: 700; flex: 1; min-width: 100px; }
   .oeff-stats { color: var(--muted); font-size: 0.78rem; }
   .oeff-punkte { font-weight: 800; color: var(--gold); white-space: nowrap; }
+  .deine-pill { padding: 1px 8px; border-radius: 999px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #0a0818; background: linear-gradient(90deg, var(--teal), var(--accent2)); }
+  .rang-hint { color: var(--muted); font-size: 0.82rem; line-height: 1.5; margin: -4px 0 16px; }
 </style>
 </head>
 <body>
@@ -78,136 +149,194 @@
 <div class="void-glow void-glow-2"></div>
 <div class="void-glow void-glow-3"></div>
 
-
 <div class="wrap">
 
-  <div class="page-head">
-    <h1>Gruppen</h1>
-    <p>Alle deine Gruppen an einem Ort, plus ein direkter Vergleich, wenn du mehr als eine hast.</p>
-  </div>
+  {% set mitglieder_summe = karten | sum(attribute="mitglieder") %}
+  {% set oeffentlich_anzahl = karten | selectattr("oeffentlich") | list | length %}
+  {% set spiele_summe = karten | sum(attribute="spiele") %}
 
-  <div class="panel">
-    <h2 class="section-title accent-teal">Meine Gruppen</h2>
-    {% if meine_gruppen %}
-    <div class="group-grid">
-      {% for g in meine_gruppen %}
-      <a class="group-card" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
-        <div class="group-card-icon">
-          {% set bild = gruppen_icon_bild(g.icon) %}
-          {% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %}
+  {# ---------- Kopfbereich ---------- #}
+  <section class="ghub-hero">
+    <div class="ghub-oben">
+      <div class="ghub-text">
+        <h1>Gruppen</h1>
+        <p>Squads und Rivalen an einem Ort: eure Spiele, Ranglisten und Trophäen. Stell Gruppen gegeneinander oder miss dich mit allen öffentlichen Gruppen.</p>
+      </div>
+      <button type="button" class="knopf" data-gehe-zu="neu">+ Neue Gruppe</button>
+    </div>
+    <div class="kennzahlen ghub-kennzahlen">
+      <div class="kennzahl"><span class="kz-wert">{{ karten | length }}</span><span class="kz-label">Deine Gruppen</span></div>
+      <div class="kennzahl"><span class="kz-wert">{{ mitglieder_summe }}</span><span class="kz-label">Mitglieder zusammen</span></div>
+      <div class="kennzahl"><span class="kz-wert">{{ spiele_summe | tausender }}</span><span class="kz-label">Spiele getrackt</span></div>
+      <div class="kennzahl"><span class="kz-wert">{{ oeffentliche | length }}</span><span class="kz-label">Öffentliche Gruppen insgesamt</span></div>
+    </div>
+  </section>
+
+  {# ---------- Tabs ---------- #}
+  <nav class="seiten-tabs" id="gruppenTabs" role="tablist" aria-label="Gruppenbereiche" data-seiten-tabs {% if vergleich or fehler_vergleich %}data-start="vergleichen"{% endif %}>
+    <button type="button" class="seiten-tab aktiv" role="tab" id="tab-meine" data-tab="meine" aria-selected="true">Meine Gruppen <span class="tab-zahl">{{ karten | length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-vergleichen" data-tab="vergleichen" aria-selected="false">Vergleichen</button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-rangliste" data-tab="rangliste" aria-selected="false">Öffentliche Rangliste <span class="tab-zahl">{{ oeffentliche | length }}</span></button>
+    <button type="button" class="seiten-tab" role="tab" id="tab-neu" data-tab="neu" aria-selected="false">Neue Gruppe</button>
+  </nav>
+
+  {# ---------- Meine Gruppen ---------- #}
+  <section class="tab-inhalt" data-tab="meine" role="tabpanel" aria-labelledby="tab-meine">
+    {% if karten %}
+    <div class="gkarten">
+      {% for g in karten %}
+      {% set bild = gruppen_icon_bild(g.icon) %}
+      <a class="gkarte" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+        <div class="gkarte-kopf">
+          <div class="gkarte-emblem">{% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %}</div>
+          <div>
+            <div class="gkarte-name">{{ g.name }}</div>
+            <div class="gkarte-pills">
+              <span class="mini-pill {{ 'oeff' if g.oeffentlich else '' }}">{{ "Öffentlich" if g.oeffentlich else "Privat" }}</span>
+              {% if g.discord %}<span class="mini-pill dc">Discord</span>{% endif %}
+            </div>
+          </div>
         </div>
-        <div class="group-card-name">{{ g.name }}</div>
+        <div class="gkarte-werte">
+          <div class="gwert"><b>{{ g.mitglieder }}</b><span>Mitglieder</span></div>
+          <div class="gwert"><b>{{ g.spiele | tausender }}</b><span>Spiele</span></div>
+          <div class="gwert {{ '' if g.winrate is none else ('gut' if g.winrate >= 50 else 'schlecht') }}"><b>{{ (g.winrate ~ "%") if g.winrate is not none else "–" }}</b><span>Winrate</span></div>
+        </div>
+        <div class="gkarte-fuss">
+          <span>{{ g.trophaeen }} von {{ g.trophaeen_gesamt }} Gruppen-Trophäen</span>
+          <span><b>{{ g.punkte }}</b> Pkt.</span>
+        </div>
       </a>
       {% endfor %}
     </div>
     {% else %}
-    <p class="empty">Noch keine Gruppen - leg unten die erste an.</p>
+    <div class="panel">
+      <p class="empty">Noch keine Gruppen. Lege deine erste an oder öffne den Link einer Gruppe, dann taucht sie hier auf.</p>
+      <p style="text-align: center; margin: 0;"><button type="button" class="knopf" data-gehe-zu="neu">Erste Gruppe anlegen</button></p>
+    </div>
     {% endif %}
+  </section>
 
-    <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
-      <div class="gruppe-form-row">
-        <input type="text" name="name" placeholder="Neue Gruppe anlegen (z.B. Squad, Rivalen)" maxlength="60" required>
-      </div>
-      <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
-      <div class="icon-picker">
-        {% for icon in gruppen_icons %}
-        <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
-          <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
-        </button>
-        {% endfor %}
-      </div>
-      <button type="submit">Anlegen</button>
-    </form>
-  </div>
-
-  {% if meine_gruppen | length >= 2 %}
-  <div class="panel">
-    <h2 class="section-title accent-gold">Gruppen vergleichen</h2>
-    <p class="treffer-hint">Aggregierte Kennzahlen aller Mitglieder, über die komplette gespeicherte Historie beider Gruppen.</p>
-    <form class="vergleich-form" method="get" action="{{ url_for('gruppen_uebersicht') }}">
-      <select name="a">
-        {% for g in meine_gruppen %}
-        <option value="{{ g.id }}" {{ "selected" if g.id == a_id else "" }}>{{ g.name }}</option>
-        {% endfor %}
-      </select>
-      <span>vs</span>
-      <select name="b">
-        {% for g in meine_gruppen %}
-        <option value="{{ g.id }}" {{ "selected" if g.id == b_id else "" }}>{{ g.name }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit">Vergleichen</button>
-    </form>
-  </div>
-
-  {% if vergleich %}
-  <div class="panel">
-    <div class="vs-header">
-      <div class="vs-side mine">
-        {% set bild_a = gruppen_icon_bild(vergleich.a.icon) %}
-        {% if bild_a %}<img class="vs-icon" src="{{ bild_a }}" alt="">{% else %}<div class="vs-icon-emoji">{{ vergleich.a.icon }}</div>{% endif %}
-        <span class="vs-name">{{ vergleich.a.name }}</span>
-        <span class="vs-champ">{{ vergleich.a.mitglieder }} Mitglieder</span>
-      </div>
-      <span class="vs-label">VS</span>
-      <div class="vs-side gegner">
-        {% set bild_b = gruppen_icon_bild(vergleich.b.icon) %}
-        {% if bild_b %}<img class="vs-icon" src="{{ bild_b }}" alt="">{% else %}<div class="vs-icon-emoji">{{ vergleich.b.icon }}</div>{% endif %}
-        <span class="vs-name">{{ vergleich.b.name }}</span>
-        <span class="vs-champ">{{ vergleich.b.mitglieder }} Mitglieder</span>
-      </div>
+  {# ---------- Vergleichen ---------- #}
+  <section class="tab-inhalt" data-tab="vergleichen" role="tabpanel" aria-labelledby="tab-vergleichen" hidden>
+    <div class="panel">
+      <h2 class="section-title accent-gold">Gruppen vergleichen</h2>
+      {% if meine_gruppen | length >= 2 %}
+      <p class="rang-hint">Aggregierte Kennzahlen aller Mitglieder über die komplette gespeicherte Historie beider Gruppen.</p>
+      <form class="vergleich-form" method="get" action="{{ url_for('gruppen_uebersicht') }}#vergleichen">
+        <select name="a" aria-label="Erste Gruppe">
+          {% for g in meine_gruppen %}<option value="{{ g.id }}" {{ "selected" if g.id == a_id else "" }}>{{ g.name }}</option>{% endfor %}
+        </select>
+        <span>vs</span>
+        <select name="b" aria-label="Zweite Gruppe">
+          {% for g in meine_gruppen %}<option value="{{ g.id }}" {{ "selected" if g.id == b_id or (not b_id and loop.index == 2) else "" }}>{{ g.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="knopf">Vergleichen</button>
+      </form>
+      {% if fehler_vergleich %}<div class="fehler-box">Wähle zwei verschiedene Gruppen aus deiner Liste.</div>{% endif %}
+      {% else %}
+      <p class="empty">Zum Vergleichen brauchst du mindestens zwei Gruppen. Lege eine weitere an, dann kannst du eure Spiele, Winrate und Multikills gegenüberstellen.</p>
+      {% endif %}
     </div>
 
-    {% for z in vergleich.zeilen %}
-    <div class="vs-stat-row">
-      <span class="vs-stat-value {{ 'lead' if z.a_besser else '' }}">{{ z.wert_a_text }}</span>
-      <div class="vs-bar-track mine">
-        <div class="vs-bar-fill {{ 'lead' if z.a_besser else '' }}" style="width: {{ z.a_pct }}%;"></div>
+    {% if vergleich %}
+    <div class="panel">
+      <div class="vs-header">
+        <div class="vs-side mine">
+          {% set bild_a = gruppen_icon_bild(vergleich.a.icon) %}
+          {% if bild_a %}<img class="vs-icon" src="{{ bild_a }}" alt="">{% else %}<div class="vs-icon-emoji">{{ vergleich.a.icon }}</div>{% endif %}
+          <span class="vs-name">{{ vergleich.a.name }}</span>
+          <span class="vs-champ">{{ vergleich.a.mitglieder }} Mitglieder</span>
+        </div>
+        <span class="vs-label">VS</span>
+        <div class="vs-side gegner">
+          {% set bild_b = gruppen_icon_bild(vergleich.b.icon) %}
+          {% if bild_b %}<img class="vs-icon" src="{{ bild_b }}" alt="">{% else %}<div class="vs-icon-emoji">{{ vergleich.b.icon }}</div>{% endif %}
+          <span class="vs-name">{{ vergleich.b.name }}</span>
+          <span class="vs-champ">{{ vergleich.b.mitglieder }} Mitglieder</span>
+        </div>
       </div>
-      <span class="vs-stat-label">{{ z.label }}</span>
-      <div class="vs-bar-track">
-        <div class="vs-bar-fill gegner {{ 'lead' if z.a_besser == false else '' }}" style="width: {{ 100 - z.a_pct }}%;"></div>
+      {% for z in vergleich.zeilen %}
+      <div class="vs-stat-row">
+        <span class="vs-stat-value {{ 'lead' if z.a_besser else '' }}">{{ z.wert_a_text }}</span>
+        <div class="vs-bar-track mine"><div class="vs-bar-fill {{ 'lead' if z.a_besser else '' }}" style="width: {{ z.a_pct }}%;"></div></div>
+        <span class="vs-stat-label">{{ z.label }}</span>
+        <div class="vs-bar-track"><div class="vs-bar-fill gegner {{ 'lead' if z.a_besser == false else '' }}" style="width: {{ 100 - z.a_pct }}%;"></div></div>
+        <span class="vs-stat-value {{ 'lead' if z.a_besser == false else '' }}">{{ z.wert_b_text }}</span>
       </div>
-      <span class="vs-stat-value {{ 'lead' if z.a_besser == false else '' }}">{{ z.wert_b_text }}</span>
-    </div>
-    {% endfor %}
-  </div>
-
-  <div class="panel">
-    <h2 class="section-title">Fazit</h2>
-    {% if vergleich.saetze %}
-    <ul class="fazit-list">
-      {% for satz in vergleich.saetze %}
-      <li>{{ satz }}</li>
       {% endfor %}
-    </ul>
-    {% else %}
-    <p class="empty">Beide Gruppen liegen in allen Kategorien exakt gleich auf.</p>
+    </div>
+    <div class="panel">
+      <h2 class="section-title">Fazit</h2>
+      {% if vergleich.saetze %}
+      <ul class="fazit-list">{% for satz in vergleich.saetze %}<li>{{ satz }}</li>{% endfor %}</ul>
+      {% else %}
+      <p class="empty">Beide Gruppen liegen in allen Kategorien exakt gleich auf.</p>
+      {% endif %}
+    </div>
     {% endif %}
-  </div>
-  {% endif %}
-  {% endif %}
+  </section>
 
-  <div class="panel">
-    <h2 class="section-title accent-gold">Öffentliche Rangliste</h2>
-    <p class="treffer-hint">Gruppen, die sich öffentlich sichtbar gemacht haben - sortiert nach Trophäen-Punktestand (siehe Gruppen-Trophäen auf der jeweiligen Gruppenseite).</p>
-    {% if oeffentliche %}
-    <div class="oeff-liste">
-      {% for g in oeffentliche %}
-      <a class="oeff-zeile" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
-        <span class="oeff-rang">#{{ loop.index }}</span>
+  {# ---------- Öffentliche Rangliste ---------- #}
+  <section class="tab-inhalt" data-tab="rangliste" role="tabpanel" aria-labelledby="tab-rangliste" hidden>
+    <div class="panel">
+      <h2 class="section-title accent-gold">Öffentliche Rangliste</h2>
+      <p class="rang-hint">Gruppen, die sich öffentlich gemacht haben, sortiert nach Trophäen-Punktestand. Eine Gruppe wird öffentlich, wenn du in ihren Einstellungen „Öffentlich sichtbar“ einschaltest.</p>
+      {% if oeffentliche %}
+      <div class="podest">
+        {% for g in oeffentliche[:3] %}
         {% set bild = gruppen_icon_bild(g.icon) %}
-        {% if bild %}<img class="oeff-icon" src="{{ bild }}" alt="">{% else %}<div class="oeff-icon-emoji">{{ g.icon }}</div>{% endif %}
-        <span class="oeff-name">{{ g.name }}</span>
-        <span class="oeff-stats">{{ g.mitglieder }} Mitglieder &middot; {{ g.spiele }} Spiele &middot; {{ g.winrate }}% Winrate</span>
-        <span class="oeff-punkte">{{ g.punkte }} Pkt.</span>
-      </a>
-      {% endfor %}
+        <a class="podest-karte platz-{{ loop.index }}" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+          <span class="podest-platz">{{ loop.index }}</span>
+          <span class="podest-emblem">{% if bild %}<img src="{{ bild }}" alt="">{% else %}{{ g.icon }}{% endif %}</span>
+          <span class="podest-name">{{ g.name }}</span>
+          {% if g.id in meine_ids %}<span class="deine-pill">Deine Gruppe</span>{% endif %}
+          <span class="podest-meta">{{ g.mitglieder }} Mitglieder · {{ g.winrate }}% Winrate</span>
+          <span class="podest-punkte">{{ g.punkte }}<small>Pkt.</small></span>
+        </a>
+        {% endfor %}
+      </div>
+      {% if oeffentliche[3:] %}
+      <div class="oeff-liste">
+        {% for g in oeffentliche[3:] %}
+        {% set bild = gruppen_icon_bild(g.icon) %}
+        <a class="oeff-zeile" href="{{ url_for('gruppe_ansehen', gruppe_id=g.id) }}">
+          <span class="oeff-rang">#{{ loop.index + 3 }}</span>
+          {% if bild %}<img class="oeff-icon" src="{{ bild }}" alt="">{% else %}<span class="oeff-icon-emoji">{{ g.icon }}</span>{% endif %}
+          <span class="oeff-name">{{ g.name }}{% if g.id in meine_ids %} <span class="deine-pill">Deine Gruppe</span>{% endif %}</span>
+          <span class="oeff-stats">{{ g.mitglieder }} Mitglieder · {{ g.spiele | tausender }} Spiele · {{ g.winrate }}% Winrate</span>
+          <span class="oeff-punkte">{{ g.punkte }} Pkt.</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% else %}
+      <p class="empty">Noch keine Gruppe ist öffentlich. Schalte es in den Einstellungen einer Gruppe um, dann steht sie hier mit ihrem Punktestand.</p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="empty">Noch keine Gruppe ist öffentlich - auf einer Gruppenseite lässt sich das umschalten.</p>
-    {% endif %}
-  </div>
+  </section>
+
+  {# ---------- Neue Gruppe ---------- #}
+  <section class="tab-inhalt" data-tab="neu" role="tabpanel" aria-labelledby="tab-neu" hidden>
+    <div class="panel">
+      <h2 class="section-title accent-teal">Neue Gruppe anlegen</h2>
+      <p class="rang-hint">Name und Emblem lassen sich später ändern. Danach teilst du den Link mit deinem Squad und trägst die Mitglieder ein.</p>
+      <form class="gruppe-form" method="post" action="{{ url_for('gruppe_erstellen') }}">
+        <div class="gruppe-form-row">
+          <input type="text" name="name" placeholder="Name, z.B. Squad oder Rivalen" maxlength="60" required aria-label="Gruppenname">
+        </div>
+        <input type="hidden" name="icon" id="gruppeIconInput" value="{{ gruppen_icons[0] }}">
+        <div class="icon-picker">
+          {% for icon in gruppen_icons %}
+          <button type="button" class="icon-choice {{ 'selected' if loop.first else '' }}" data-icon="{{ icon }}" title="{{ gruppen_icon_namen[icon] }}">
+            <img src="{{ gruppen_icon_bild(icon) }}" alt="{{ gruppen_icon_namen[icon] }}">
+          </button>
+          {% endfor %}
+        </div>
+        <button type="submit">Anlegen</button>
+      </form>
+    </div>
+  </section>
 
 </div>
 

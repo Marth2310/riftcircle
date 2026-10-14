@@ -4,6 +4,7 @@ import json
 from flask import abort, redirect, render_template, request, url_for
 
 from achievements import erkenne_achievements
+from benachrichtigungen import benachrichtige_riot_inhaber, sicher
 from analysis import berechne_note, get_player_ranks, match_metrics, ringe_fuer_match
 from app_core import app, headers
 from benchmarks import normalize_tier
@@ -686,6 +687,12 @@ def kommentar_erstellen():
         "INSERT INTO kommentare (match_id, puuid, discord_id, text) VALUES (%s, %s, %s, %s);",
         (match_id, puuid, ich["id"], text),
     )
+    cur.execute("SELECT champion FROM participants WHERE match_id = %s AND puuid = %s;", (match_id, puuid))
+    champion = cur.fetchone()[0]
+    sicher(cur, lambda: benachrichtige_riot_inhaber(
+        cur, puuid, "kommentar", f"{ich['name']} hat dein Spiel mit {champion} kommentiert.",
+        ziel, von_discord_id=ich["id"],
+    ))
     conn.commit()
     cur.close()
     conn.close()

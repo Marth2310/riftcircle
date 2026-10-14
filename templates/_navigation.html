@@ -78,6 +78,11 @@
     {% if login_aktiv %}
     <div class="topnav-konto">
       {% if angemeldet %}
+      {% set ungelesen = ungelesen_anzahl() %}
+      <a class="glocke" href="{{ url_for('konto') }}#benachrichtigungen" title="Benachrichtigungen{{ ' (' ~ ungelesen ~ ' neu)' if ungelesen else '' }}" aria-label="Benachrichtigungen{{ ', ' ~ ungelesen ~ ' ungelesen' if ungelesen else '' }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17h12l-1.6-2.4V10a4.4 4.4 0 0 0-8.8 0v4.6L6 17z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        <span class="glocke-zahl" {{ "hidden" if not ungelesen else "" }}>{{ ungelesen if ungelesen < 10 else "9+" }}</span>
+      </a>
       <a class="konto-knopf angemeldet {{ 'aktiv' if ep == 'konto' else '' }}" href="{{ url_for('konto') }}" title="Mein Konto">
         <img src="{{ angemeldet.avatar }}" alt="">
         <span>{{ angemeldet.name }}</span>

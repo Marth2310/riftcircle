@@ -12,6 +12,8 @@
   var aliase = {};
   try { aliase = JSON.parse(leiste.dataset.aliase || "{}"); } catch (e) {}
   var standard = tabs[0].dataset.tab;
+  // data-start: Tab, der ohne Hash zuerst offen ist (z.B. nach einer Meldung des Servers)
+  var start = leiste.dataset.start || standard;
 
   function zeige(name, scrollen) {
     var zielId = null;
@@ -20,7 +22,7 @@
       name = teile[0];
       zielId = teile[1] || null;
     }
-    if (!tabs.some(function (t) { return t.dataset.tab === name; })) name = standard;
+    if (!tabs.some(function (t) { return t.dataset.tab === name; })) name = start;
 
     tabs.forEach(function (t) {
       var aktiv = t.dataset.tab === name;
@@ -30,7 +32,7 @@
     inhalte.forEach(function (el) { el.hidden = el.dataset.tab !== name; });
     document.dispatchEvent(new CustomEvent("seiten-tab", { detail: name }));
 
-    var hash = name === standard ? "" : "#" + name;
+    var hash = name === start && start === standard ? "" : "#" + name;
     if (location.hash !== hash) history.replaceState(null, "", hash || location.pathname + location.search);
 
     var ziel = zielId && document.getElementById(zielId);

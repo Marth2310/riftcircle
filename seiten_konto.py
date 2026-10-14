@@ -2,7 +2,7 @@
 import random
 import secrets
 
-from flask import abort, redirect, render_template, request, session, url_for
+from flask import abort, jsonify, redirect, render_template, request, session, url_for
 
 from app_core import (
     DISCORD_CLIENT_ID,
@@ -12,10 +12,13 @@ from app_core import (
     app,
     headers,
 )
+from benachrichtigungen import TYPEN, alle_gelesen, liste_fuer
 from db import get_connection
+from follower import follower_info
 from discord_login import hole_discord_nutzer, login_url
 from riot_assets import get_ddragon_version, get_summoner_icon_id, summoner_icon_url
 from riot_fetch import RiotApiNichtVerfuegbar, SummonerNotFound, finde_riot_account, sync_player
+from trophaeen import trophaeen_fuer_spieler
 from web_hilfen import (
     angemeldete_discord_id,
     cookie_listen_uebernehmen,
@@ -126,7 +129,7 @@ def konto():
         SELECT n.discord_name, n.discord_avatar, n.riot_puuid, pl.riot_name, pl.riot_tag, pl.profile_icon_id,
                n.verknuepft_am, n.pruef_name, n.pruef_tag, n.pruef_icon,
                n.pruef_seit IS NOT NULL AND n.pruef_seit > now() - %s * interval '1 minute',
-               COALESCE(n.discord_erwaehnen, TRUE)
+               COALESCE(n.discord_erwaehnen, TRUE), COALESCE(n.benachrichtigung_aus, '{}')
         FROM nutzer n LEFT JOIN players pl ON pl.puuid = n.riot_puuid
         WHERE n.discord_id = %s;
     """, (VERIFIZIERUNG_MINUTEN, discord_id))
@@ -139,12 +142,41 @@ def konto():
         return render_template("konto.html", nutzer=None, meldung=meldung)
 
     (name, avatar, riot_puuid, riot_name, riot_tag, icon_id, verknuepft_am,
-     pruef_name, pruef_tag, pruef_icon, pruef_aktiv, erwaehnen) = row
+     pruef_name, pruef_tag, pruef_icon, pruef_aktiv, erwaehnen, bn_aus) = row
     version = get_ddragon_version()
+    meine_gruppen = lese_meine_gruppen()
+
+    # Kopfbereich-Kennzahlen + Benachrichtigungen (zweite Verbindung, die erste ist schon zu)
+    conn = get_connection()
+    cur = conn.cursor()
+    follower = follower_info(cur, riot_puuid) if riot_puuid else None
+    trophaeen = trophaeen_fuer_spieler(cur, riot_puuid) if riot_puuid else []
+    cur.execute("SELECT COUNT(*) FROM follower WHERE discord_id = %s;", (discord_id,))
+    gefolgt_anzahl = cur.fetchone()[0]
+    benachrichtigungen = liste_fuer(cur, discord_id)
+    conn.commit()
+    cur.close()
+    conn.close()
+    ungelesen = sum(1 for b in benachrichtigungen if not b["gelesen"])
+
+    erste_schritte = [
+        ("Mit Discord anmelden", True, None),
+        ("Riot-Account verknüpfen", bool(riot_puuid), "riot"),
+        ("Einer Gruppe beitreten oder eine anlegen", bool(meine_gruppen), url_for("gruppen_uebersicht")),
+        ("Einem Spieler folgen", gefolgt_anzahl > 0, url_for("landing")),
+    ]
+    riot_meldungen = {"riot_ungueltig", "riot_unbekannt", "riot_nicht_euw", "icon_falsch", "abgelaufen",
+                      "keine_spiele", "verknuepft", "riot_api", "getrennt"}
+    start_tab = "riot" if (request.args.get("meldung") in riot_meldungen or (pruef_aktiv and not riot_puuid)) else "uebersicht"
     return render_template(
-        "konto.html", meldung=meldung,
+        "konto.html", meldung=meldung, start_tab=start_tab,
         nutzer={"name": name, "avatar": avatar, "erwaehnen": erwaehnen},
-        meine_gruppen=lese_meine_gruppen(),
+        meine_gruppen=meine_gruppen,
+        follower=follower, gefolgt_anzahl=gefolgt_anzahl,
+        erreichte_trophaeen=sum(1 for t in trophaeen if t["stufe"]), trophaeen_gesamt=len(trophaeen),
+        erste_schritte=erste_schritte, erste_schritte_fertig=sum(1 for s in erste_schritte if s[1]),
+        benachrichtigungen=benachrichtigungen, ungelesen=ungelesen,
+        benachrichtigung_typen=TYPEN, benachrichtigung_aus=set(bn_aus or []),
         riot={
             "name": riot_name, "tag": riot_tag,
             "icon": summoner_icon_url(icon_id, version) if icon_id is not None else None,
@@ -285,6 +317,39 @@ def konto_einstellungen():
     cur.close()
     conn.close()
     return redirect(url_for("konto", meldung="gespeichert"))
+
+
+@app.route("/konto/benachrichtigungen", methods=["POST"])
+def konto_benachrichtigungen_einstellen():
+    """Welche Arten von Benachrichtigungen kommen an - angehakt = an, der Rest landet in
+    nutzer.benachrichtigung_aus."""
+    discord_id = angemeldete_discord_id()
+    if not discord_id:
+        return redirect(url_for("konto"))
+    an = set(request.form.getlist("typ"))
+    aus = [typ for typ in TYPEN if typ not in an]
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE nutzer SET benachrichtigung_aus = %s WHERE discord_id = %s;", (aus, discord_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for("konto", meldung="gespeichert") + "#benachrichtigungen")
+
+
+@app.route("/benachrichtigungen/gelesen", methods=["POST"])
+def benachrichtigungen_gelesen():
+    """Wird per fetch ausgelöst, sobald der Tab "Benachrichtigungen" geöffnet wird."""
+    discord_id = angemeldete_discord_id()
+    if not discord_id:
+        return jsonify(ok=False), 403
+    conn = get_connection()
+    cur = conn.cursor()
+    alle_gelesen(cur, discord_id)
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(ok=True)
 
 
 @app.route("/konto/trennen", methods=["POST"])

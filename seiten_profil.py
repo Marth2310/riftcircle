@@ -20,6 +20,7 @@ from app_core import app, headers
 from benchmarks import normalize_tier
 from champion_stats import get_champion_by_key, get_champion_by_numeric_id
 from db import get_connection
+from benachrichtigungen import benachrichtige_riot_inhaber, sicher
 from follower import follower_info, ist_gefolgt
 from riot_assets import (
     champion_icon_url,
@@ -418,6 +419,13 @@ def profil_folgen():
         "INSERT INTO follower (discord_id, ziel_puuid) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
         (ich["id"], ziel_puuid),
     )
+    if cur.rowcount == 1:
+        wer = ich["riot"] or ich["name"]
+        link = url_for("profil", riot_id=ich["riot"]) if ich.get("riot") else None
+        sicher(cur, lambda: benachrichtige_riot_inhaber(
+            cur, ziel_puuid, "folgen", f"{wer} folgt dir jetzt.", link,
+            schluessel=f"folgen:{ich['id']}", von_discord_id=ich["id"],
+        ))
     conn.commit()
     cur.close()
     conn.close()

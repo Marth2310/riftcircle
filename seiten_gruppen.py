@@ -6,6 +6,7 @@ import urllib.parse
 from flask import abort, jsonify, make_response, redirect, render_template, request, url_for
 
 from achievements import bestes_achievement
+from benachrichtigungen import benachrichtige_riot_inhaber, sicher
 from app_core import PUBLIC_BASE_URL, app, headers
 from db import get_connection
 from gruppen_trophaeen import trophaeen_fuer_gruppe, trophaeen_punkte
@@ -62,6 +63,38 @@ def gruppe_erstellen():
     return meine_gruppen_cookie_setzen(resp, gruppe_id, name, icon)
 
 
+def kennzahlen_meiner_gruppen(cur, meine_gruppen):
+    """Je eigener Gruppe Mitglieder, Spiele, Winrate, Sichtbarkeit, Discord-Status und
+    Trophäen-Punktestand für die Kacheln auf /gruppen. Ein Aggregat-Query für alles außer den
+    Trophäen (die brauchen je Gruppe die Mitglieder-IDs)."""
+    if not meine_gruppen:
+        return []
+    cur.execute("""
+        SELECT g.id, COALESCE(g.oeffentlich, FALSE), g.discord_webhook IS NOT NULL,
+               COUNT(DISTINCT gm.puuid), COUNT(p.id),
+               COALESCE(SUM(CASE WHEN p.win THEN 1 ELSE 0 END), 0)
+        FROM gruppen g
+        LEFT JOIN gruppen_mitglieder gm ON gm.gruppe_id = g.id
+        LEFT JOIN participants p ON p.puuid = gm.puuid
+        WHERE g.id = ANY(%s)
+        GROUP BY g.id;
+    """, ([g["id"] for g in meine_gruppen],))
+    daten = {row[0]: row[1:] for row in cur.fetchall()}
+    ergebnis = []
+    for g in meine_gruppen:
+        if g["id"] not in daten:
+            continue  # Gruppe wurde gelöscht, der Cookie kennt sie noch
+        oeffentlich, discord, mitglieder, spiele, siege = daten[g["id"]]
+        trophaeen = trophaeen_fuer_gruppe(cur, gruppen_mitglieder_puuids(cur, g["id"])) if mitglieder else []
+        ergebnis.append({
+            **g, "oeffentlich": oeffentlich, "discord": discord, "mitglieder": mitglieder,
+            "spiele": spiele, "winrate": round(siege / spiele * 100) if spiele else None,
+            "punkte": trophaeen_punkte(trophaeen),
+            "trophaeen": sum(1 for t in trophaeen if t["stufe"]), "trophaeen_gesamt": len(trophaeen),
+        })
+    return ergebnis
+
+
 @app.route("/gruppen")
 def gruppen_uebersicht():
     """Übersicht aller eigenen Gruppen plus Gruppen-vs-Gruppen-Vergleich - eigene Seite statt
@@ -77,12 +110,15 @@ def gruppen_uebersicht():
     if a_id and b_id and a_id != b_id:
         vergleich = baue_gruppenvergleich(cur, a_id, b_id, meine_gruppen)
     oeffentliche = oeffentliche_rangliste(cur)
+    karten = kennzahlen_meiner_gruppen(cur, meine_gruppen)
     cur.close()
     conn.close()
 
     return render_template(
         "gruppen_uebersicht.html", meine_gruppen=meine_gruppen, gruppen_icons=GRUPPEN_ICONS,
         vergleich=vergleich, a_id=a_id, b_id=b_id, oeffentliche=oeffentliche,
+        karten=karten, meine_ids={g["id"] for g in meine_gruppen},
+        fehler_vergleich=bool(a_id and b_id and (a_id == b_id or vergleich is None)),
     )
 
 
@@ -749,6 +785,15 @@ def gruppe_mitglied_hinzufuegen(gruppe_id):
                 "ON CONFLICT DO NOTHING;",
                 (gruppe_id, puuid)
             )
+            if cur.rowcount == 1:
+                ich = angemeldeter_nutzer()
+                cur.execute("SELECT name FROM gruppen WHERE id = %s;", (gruppe_id,))
+                gruppen_name = cur.fetchone()[0]
+                sicher(cur, lambda: benachrichtige_riot_inhaber(
+                    cur, puuid, "gruppe", f"Du wurdest zur Gruppe „{gruppen_name}“ hinzugefügt.",
+                    url_for("gruppe_ansehen", gruppe_id=gruppe_id),
+                    schluessel=f"gruppe:{gruppe_id}", von_discord_id=ich["id"] if ich else None,
+                ))
             conn.commit()
         except SummonerNotFound:
             pass  # Stiller Fehlschlag - die Gruppe zeigt einfach weiterhin nur die gültigen Mitglieder
@@ -841,6 +886,11 @@ def gruppe_stimme(gruppe_id):
             (match_id, ziel_puuid, ich["id"]),
         )
         gestimmt = True
+        sicher(cur, lambda: benachrichtige_riot_inhaber(
+            cur, ziel_puuid, "stimme", f"{ich['name']} hat für dein Achievement gestimmt.",
+            url_for("match_detail", match_id=match_id, puuid=ziel_puuid),
+            schluessel=f"stimme:{match_id}:{ich['id']}", von_discord_id=ich["id"],
+        ))
     else:
         gestimmt = False
     conn.commit()
